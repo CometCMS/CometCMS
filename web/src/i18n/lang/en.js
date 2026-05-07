@@ -41,6 +41,8 @@ const messages = {
     'profile.email': 'Email',
     'profile.theme': 'Theme',
     'profile.language': 'Admin language',
+    'profile.apiFooter': 'Show API endpoint footer',
+    'profile.apiFooterDescription': 'Display the contextual public API URL on content and media pages.',
     'profile.save': 'Save profile',
     'profile.saved': 'Profile saved.',
     'profile.password.title': 'Change password',

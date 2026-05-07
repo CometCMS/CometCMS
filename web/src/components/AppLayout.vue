@@ -172,55 +172,33 @@
             {{ t("app.nav.apiTokens") }}
           </router-link>
 
-          <router-link
-            to="/api-explorer"
-            class="nav-link"
-            @click="sidebarOpen = false"
-          >
-            <Icon icon="mdi:code-json" class="w-4 h-4 opacity-60" />
-            {{ t("app.nav.apiExplorer") }}
-          </router-link>
         </nav>
 
         <!-- User footer -->
         <div class="px-4 py-3 border-t border-sidebar-border">
           <div class="flex items-center justify-between gap-2">
-            <div class="flex items-center gap-2 min-w-0">
-              <!-- Avatar circle — click to upload -->
+            <router-link
+              to="/profile"
+              class="sidebar-profile-link flex min-w-0 items-center gap-2 text-xs transition-colors"
+              @click="sidebarOpen = false"
+            >
               <div
-                class="relative group shrink-0 cursor-pointer w-8 h-8"
-                :title="t('app.profile.changePicture')"
-                @click="$refs.avatarInput.click()"
+                class="w-8 h-8 shrink-0 rounded-full overflow-hidden bg-theme-600 flex items-center justify-center text-white text-xs font-semibold select-none"
               >
-                <div
-                  class="w-8 h-8 rounded-full overflow-hidden bg-theme-600 flex items-center justify-center text-white text-xs font-semibold select-none"
-                >
-                  <img
-                    v-if="auth.user?.has_avatar"
-                    :src="`/admin/api/users/${auth.user.id}/avatar?v=${avatarVersion}`"
-                    class="w-full h-full object-cover"
-                    :alt="auth.user?.username"
-                  />
-                  <span v-else>{{
-                    auth.user?.username?.[0]?.toUpperCase()
-                  }}</span>
-                </div>
-                <!-- Hover overlay -->
-                <div
-                  class="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none"
-                >
-                  <Icon icon="mdi:camera" class="w-3.5 h-3.5 text-white" />
-                </div>
+                <img
+                  v-if="auth.user?.has_avatar"
+                  :src="`/admin/api/users/${auth.user.id}/avatar?v=${avatarVersion}`"
+                  class="w-full h-full object-cover"
+                  :alt="auth.user?.username"
+                />
+                <span v-else>{{
+                  auth.user?.username?.[0]?.toUpperCase()
+                }}</span>
               </div>
-              <router-link
-                to="/profile"
-                class="sidebar-profile-link text-xs transition-colors truncate"
-                @click="sidebarOpen = false"
-                >{{
-                  auth.user?.display_name || auth.user?.username
-                }}</router-link
-              >
-            </div>
+              <span class="truncate">{{
+                auth.user?.display_name || auth.user?.username
+              }}</span>
+            </router-link>
             <button
               type="button"
               :title="t('app.actions.logout')"
@@ -231,13 +209,6 @@
               <Icon icon="mdi:logout" class="w-4 h-4" />
             </button>
           </div>
-          <input
-            ref="avatarInput"
-            type="file"
-            class="hidden"
-            accept="image/jpeg,image/png,image/webp,image/gif"
-            @change="uploadAvatar"
-          />
           <router-link
             v-if="appVersion"
             to="/update"
@@ -284,10 +255,11 @@
       </div>
 
       <main class="flex-1 overflow-y-auto">
-        <div class="max-w-7xl mx-auto px-4 py-6 sm:px-8 sm:py-8">
+        <div class="max-w-7xl mx-auto w-full px-4 py-6 sm:px-8 sm:py-8">
           <slot />
         </div>
       </main>
+      <ApiEndpointFooter />
     </div>
   </div>
 </template>
@@ -302,6 +274,7 @@ import { useContentTypesStore } from "../stores/contentTypes.js";
 import { api } from "../api/index.js";
 import { logoForTheme } from "../theme.js";
 import { useI18n } from "../i18n/index.js";
+import ApiEndpointFooter from "./ApiEndpointFooter.vue";
 
 const auth = useAuthStore();
 const router = useRouter();
@@ -348,25 +321,6 @@ async function fetchAppInfo() {
 async function handleLogout() {
   await auth.logout();
   router.push("/login");
-}
-
-async function uploadAvatar(event) {
-  const file = event.target.files?.[0];
-  if (!file) return;
-
-  const formData = new FormData();
-  formData.append("file", file);
-
-  try {
-    await api.profile.uploadAvatar(formData);
-    if (auth.user) auth.user.has_avatar = true;
-    avatarVersion.value = Date.now();
-    toastStore.success(t("app.profile.pictureUpdated"));
-  } catch (err) {
-    toastStore.error(err.message ?? t("app.errors.uploadFailed"));
-  }
-
-  event.target.value = "";
 }
 </script>
 

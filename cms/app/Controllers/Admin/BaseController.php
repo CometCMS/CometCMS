@@ -141,6 +141,7 @@ abstract class BaseController
             'capabilities' => $this->permissions->capabilities($user),
             'theme' => $user['theme'] ?? 'blue',
             'language' => $user['language'] ?? 'en',
+            'show_api_footer' => $user['show_api_footer'] ?? true,
             'has_avatar' => $this->avatarPath((string) $user['id']) !== null,
             'accessible_content_types' => $accessibleContentTypes,
         ];

@@ -7,6 +7,8 @@
 
 Supported formats include JPEG, PNG, WebP, GIF, SVG, AVIF, MP4, WebM, QuickTime/MOV, M4V, AVI, MKV, common audio formats, archives, and common document types.
 
+![Media library view in the CometCMS admin](../screenshots/view-media.png)
+
 ## Organising with categories
 
 Use a file's menu or detail panel to assign it to a category. Categories help you keep large libraries organised. Categories can be nested for finer-grained organisation, for example `Brand / Logos` or `Products / Campaigns`.

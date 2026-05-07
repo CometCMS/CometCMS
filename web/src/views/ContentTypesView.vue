@@ -12,7 +12,7 @@
     <div v-else-if="types.length === 0" class="card p-8 text-center text-slate-500 text-sm">
       {{ t('contentTypes.empty') }}
       <router-link to="/content-types/new" class="text-theme-600 hover:underline ml-1">{{ t('contentTypes.createOne')
-        }}</router-link>.
+      }}</router-link>.
     </div>
 
     <div v-else class="card overflow-hidden">
@@ -49,7 +49,7 @@
               </button>
             </td>
             <td class="px-4 py-3 text-sm font-medium text-slate-900 hover:text-theme-600 hover:underline">{{ type.label
-              }}</td>
+            }}</td>
             <td class="px-4 py-3 text-sm text-slate-600">
               <span :class="modelPillClass(type)">
                 {{ modelLabel(type) }}
@@ -81,10 +81,12 @@
 
 <script setup>
 import LoadingSpinner from '../components/LoadingSpinner.vue'
-import { ref, onMounted } from 'vue'
+import { ref, onBeforeUnmount, onMounted } from 'vue'
 import { Icon } from '@iconify/vue'
 import { useRouter } from 'vue-router'
 import { api } from '../api/index.js'
+import { contentTypesAdminEndpoint } from '../composables/apiEndpoint.js'
+import { useApiEndpointStore } from '../stores/apiEndpoint.js'
 import { useContentTypesStore } from '../stores/contentTypes.js'
 import { useToastStore } from '../stores/toast.js'
 import { useI18n } from '../i18n/index.js'
@@ -93,15 +95,25 @@ const loading = ref(true)
 const types = ref([])
 const defaultIcon = 'mdi:file-document-outline'
 const router = useRouter()
+const apiEndpointStore = useApiEndpointStore()
 const typesStore = useContentTypesStore()
 const toast = useToastStore()
 const { t } = useI18n()
+const apiEndpointOwner = 'content-types-list'
 const draggedName = ref('')
 const dropTargetName = ref('')
 const savingOrder = ref(false)
 let clickAfterDrag = false
 
 onMounted(async () => {
+  apiEndpointStore.setEndpoint(
+    {
+      label: 'Content types',
+      url: contentTypesAdminEndpoint(),
+    },
+    apiEndpointOwner,
+  )
+
   try {
     const res = await api.contentTypes.list()
     types.value = res.data ?? []
@@ -109,6 +121,10 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
+})
+
+onBeforeUnmount(() => {
+  apiEndpointStore.clearEndpoint(apiEndpointOwner)
 })
 
 function openType(name) {

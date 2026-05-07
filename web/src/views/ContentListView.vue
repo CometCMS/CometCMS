@@ -601,11 +601,15 @@ import { useHeightTransition } from "../composables/useHeightTransition.js";
 const ht = useHeightTransition();
 import { useContentStore } from "../stores/content.js";
 import { useToastStore } from "../stores/toast.js";
+import { useApiEndpointStore } from "../stores/apiEndpoint.js";
 import { api } from "../api/index.js";
+import { contentCollectionEndpoint } from "../composables/apiEndpoint.js";
 import { useI18n } from "../i18n/index.js";
 
 const toast = useToastStore();
+const apiEndpointStore = useApiEndpointStore();
 const { t } = useI18n();
+const apiEndpointOwner = "content-list";
 const users = ref([]);
 const userMap = computed(() =>
   Object.fromEntries(users.value.map((u) => [u.id, u])),
@@ -1040,6 +1044,17 @@ const defaultLocale = computed(
 const orderedContentTypeLocales = computed(() =>
   orderLocales(contentTypeLocales.value, defaultLocale.value),
 );
+const apiEndpointUrl = computed(() =>
+  contentCollectionEndpoint({
+    collection: collection.value,
+    limit: pageSize.value,
+    offset: pageOffset.value,
+    sortKey: apiSortKey(sortKey.value),
+    sortDir: sortDir.value,
+    q: filters.value.q.trim(),
+    locale: defaultLocale.value,
+  }),
+);
 const totalEntries = computed(() => col.value.meta.total ?? 0);
 const currentOffset = computed(() => col.value.meta.offset ?? pageOffset.value);
 const currentLimit = computed(() => col.value.meta.limit ?? pageSize.value);
@@ -1402,8 +1417,23 @@ onMounted(async () => {
   loadUsers();
   document.addEventListener("mousedown", onColPickerClickOutside);
 });
-onBeforeUnmount(() =>
-  document.removeEventListener("mousedown", onColPickerClickOutside),
+onBeforeUnmount(() => {
+  document.removeEventListener("mousedown", onColPickerClickOutside);
+  apiEndpointStore.clearEndpoint(apiEndpointOwner);
+});
+
+watch(
+  apiEndpointUrl,
+  (url) => {
+    apiEndpointStore.setEndpoint(
+      {
+        label: "Collection",
+        url,
+      },
+      apiEndpointOwner,
+    );
+  },
+  { immediate: true },
 );
 
 const bulkDuplicating = ref(false);

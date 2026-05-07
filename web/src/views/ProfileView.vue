@@ -81,6 +81,20 @@
               </option>
             </select>
           </div>
+          <div
+            v-if="canManageApiTokens"
+            class="flex items-start justify-between gap-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3"
+          >
+            <div>
+              <label class="text-sm font-medium text-slate-700">{{ t('profile.apiFooter') }}</label>
+              <p class="mt-1 text-xs text-slate-500">{{ t('profile.apiFooterDescription') }}</p>
+            </div>
+            <ToggleSwitch
+              v-model="profileForm.show_api_footer"
+              class="mt-0.5"
+              :aria-label="t('profile.apiFooter')"
+            />
+          </div>
           <div v-if="profileError" class="text-sm text-red-600">{{ profileError }}</div>
           <button type="submit" :disabled="profileSaving" class="btn-primary">
             {{ profileSaving ? t('common.saving') : t('profile.save') }}
@@ -124,9 +138,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { Icon } from '@iconify/vue'
 import ConfirmModal from '../components/ConfirmModal.vue'
+import ToggleSwitch from '../components/ToggleSwitch.vue'
 import { api } from '../api/index.js'
 import { useAuthStore } from '../stores/auth.js'
 import { useToastStore } from '../stores/toast.js'
@@ -136,11 +151,20 @@ import { DEFAULT_ADMIN_LOCALE, setLocale, useI18n } from '../i18n/index.js'
 const auth  = useAuthStore()
 const toast = useToastStore()
 const { languageOptions, t } = useI18n()
+const canManageApiTokens = computed(
+  () => auth.can('tokens.read') || auth.can('tokens.create') || auth.can('tokens.revoke'),
+)
 
 const avatarVersion = ref(Date.now())
 const showDeleteAvatarModal = ref(false)
 
-const profileForm  = ref({ display_name: '', email: '', theme: DEFAULT_THEME, language: DEFAULT_ADMIN_LOCALE })
+const profileForm  = ref({
+  display_name: '',
+  email: '',
+  theme: DEFAULT_THEME,
+  language: DEFAULT_ADMIN_LOCALE,
+  show_api_footer: true,
+})
 const profileError = ref('')
 const profileSaving = ref(false)
 
@@ -153,6 +177,7 @@ onMounted(() => {
   profileForm.value.email        = auth.user?.email ?? ''
   profileForm.value.theme        = auth.user?.theme ?? DEFAULT_THEME
   profileForm.value.language     = auth.user?.language ?? DEFAULT_ADMIN_LOCALE
+  profileForm.value.show_api_footer = auth.user?.show_api_footer ?? true
 })
 
 async function handleAvatarUpload(event) {
@@ -191,12 +216,14 @@ async function handleSaveProfile() {
       email: profileForm.value.email,
       theme: profileForm.value.theme,
       language: profileForm.value.language,
+      show_api_footer: profileForm.value.show_api_footer,
     })
     if (auth.user) {
       auth.user.display_name = res.data.display_name
       auth.user.email        = res.data.email
       auth.user.theme        = res.data.theme
       auth.user.language     = res.data.language
+      auth.user.show_api_footer = res.data.show_api_footer
       applyTheme(res.data.theme)
       setLocale(res.data.language)
     }

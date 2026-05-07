@@ -89,7 +89,7 @@ final class UsersController extends BaseController
             }
         }
 
-        $allowed = array_intersect_key($body, array_flip(['display_name', 'email', 'password', 'theme', 'language']));
+        $allowed = array_intersect_key($body, array_flip(['display_name', 'email', 'password', 'theme', 'language', 'show_api_footer']));
 
         try {
             $user = $this->users->update((string) $current['id'], $allowed);

@@ -41,6 +41,8 @@ const messages = {
   'profile.email': 'E-Mail',
   'profile.theme': 'Theme',
   'profile.language': 'Admin-Sprache',
+  'profile.apiFooter': 'API-Endpunkt-Footer anzeigen',
+  'profile.apiFooterDescription': 'Zeigt die kontextbezogene Public-API-URL auf Inhalts- und Medienseiten.',
   'profile.save': 'Profil speichern',
   'profile.saved': 'Profil gespeichert.',
   'profile.password.title': 'Passwort ändern',

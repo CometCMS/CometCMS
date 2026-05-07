@@ -2,6 +2,8 @@
 
 A **content type** defines the structure (schema) for content. Most content types are collections of entries, such as `posts`. A content type can also be marked as a **single page** for one-off content like `start-page`, `contact-page`, or `imprint`.
 
+![Content types overview in the CometCMS admin](../screenshots/view-content-types.png)
+
 ## Creating a content type
 
 1. In the sidebar, click **Content types**.
@@ -19,6 +21,8 @@ Single page content types appear under **Single** in the sidebar and open direct
 ## Editing a content type
 
 Open an existing content type to add, reorder, remove fields, or set supported field defaults. Changes to the schema do not affect existing entries — old entries simply won't have the new field value until they are edited and saved.
+
+![Editing a content type schema in CometCMS](../screenshots/edit-content-type.png)
 
 Field defaults pre-fill new entries in the admin editor and are applied to API-created entries when the field is omitted.
 

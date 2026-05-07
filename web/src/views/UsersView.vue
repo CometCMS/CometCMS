@@ -146,15 +146,19 @@
 <script setup>
 import LoadingSpinner from "../components/LoadingSpinner.vue";
 import ConfirmModal from "../components/ConfirmModal.vue";
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onBeforeUnmount, onMounted } from "vue";
 import { api } from "../api/index.js";
+import { usersAdminEndpoint } from "../composables/apiEndpoint.js";
+import { useApiEndpointStore } from "../stores/apiEndpoint.js";
 import { useAuthStore } from "../stores/auth.js";
 import { useToastStore } from "../stores/toast.js";
 import { useI18n } from "../i18n/index.js";
 
 const auth = useAuthStore();
+const apiEndpointStore = useApiEndpointStore();
 const toast = useToastStore();
 const { t } = useI18n();
+const apiEndpointOwner = "users";
 const loading = ref(true);
 const users = ref([]);
 const roles = ref([]);
@@ -289,4 +293,19 @@ function roleLabel(id) {
 }
 
 onMounted(load);
+
+onMounted(() => {
+  apiEndpointStore.setEndpoint(
+    {
+      label: "Users",
+      authLabel: "AUTH",
+      url: usersAdminEndpoint(),
+    },
+    apiEndpointOwner,
+  );
+});
+
+onBeforeUnmount(() => {
+  apiEndpointStore.clearEndpoint(apiEndpointOwner);
+});
 </script>

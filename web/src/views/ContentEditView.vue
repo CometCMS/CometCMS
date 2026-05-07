@@ -404,6 +404,11 @@ import { localeLabel } from "../composables/localeOptions.js";
 import { useToastStore } from "../stores/toast.js";
 import { useI18n } from "../i18n/index.js";
 import { useAuthStore } from "../stores/auth.js";
+import { useApiEndpointStore } from "../stores/apiEndpoint.js";
+import {
+  contentCollectionEndpoint,
+  contentEntryEndpoint,
+} from "../composables/apiEndpoint.js";
 
 const users = ref([]);
 const userMap = computed(() =>
@@ -423,7 +428,9 @@ const router = useRouter();
 const toast = useToastStore();
 const { t } = useI18n();
 const auth = useAuthStore();
+const apiEndpointStore = useApiEndpointStore();
 const collection = route.params.collection;
+const apiEndpointOwner = "content-edit";
 const singletonCreateMode = ref(false);
 const isSingleton = computed(() => !!contentTypeSchema.value?.singleton);
 const entryId = computed(
@@ -531,6 +538,23 @@ const defaultLocale = computed(
 const orderedContentTypeLocales = computed(() =>
   orderLocales(contentTypeLocales.value, defaultLocale.value),
 );
+const apiEndpointUrl = computed(() => {
+  if (!isNew.value || isSingleton.value) {
+    return contentEntryEndpoint({
+      collection,
+      entryId: entryId.value || collection,
+      locale: currentLocale.value,
+    });
+  }
+
+  return contentCollectionEndpoint({
+    collection,
+    limit: 20,
+    offset: 0,
+    sortKey: "created_at",
+    sortDir: "desc",
+  });
+});
 const unsupportedTranslationLocales = computed(() => {
   const translations = fullEntry.value?.translations;
   if (!translations || contentTypeLocales.value.length === 0) return [];
@@ -845,7 +869,22 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   document.removeEventListener("pointerdown", closeLocaleMenu);
   document.removeEventListener("keydown", onLocaleMenuKeydown);
+  apiEndpointStore.clearEndpoint(apiEndpointOwner);
 });
+
+watch(
+  apiEndpointUrl,
+  (url) => {
+    apiEndpointStore.setEndpoint(
+      {
+        label: isNew.value && !isSingleton.value ? "Collection" : "Entry",
+        url,
+      },
+      apiEndpointOwner,
+    );
+  },
+  { immediate: true },
+);
 
 async function handleSave() {
   if (!canSaveEntry.value) return;

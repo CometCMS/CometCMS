@@ -2,6 +2,8 @@
 
 Webhooks let CometCMS notify an external URL whenever content changes. The primary use case is triggering SSG (static site generator) rebuild jobs — but any HTTP endpoint can receive these events.
 
+![Webhooks screen in the CometCMS admin](../screenshots/view-webhooks.png)
+
 ## Configuration
 
 Webhooks are configured in the **Webhooks** page of the admin (under **System → Webhooks**). Each webhook has:

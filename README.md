@@ -23,6 +23,10 @@ The entire CMS is a single PHP folder you upload to your server. That's it.
 - **Built-in localization.** Content types support multiple locales; the API resolves translations with a single `?locale=` parameter.
 - **Intentionally simple.** Not a framework, not extensible to infinity. Just a clean JSON API with an admin UI.
 
+<p align="center">
+  <img src="docs/screenshots/view-dashboard.png" alt="CometCMS admin dashboard" width="860" />
+</p>
+
 ## Quick Start
 
 1. Download the latest release from the Github releases.
@@ -170,6 +174,16 @@ Installation replaces release-owned application files and folders while preservi
 
 Roles can be customized or created in **Users → Edit user roles**.
 
+### Screenshots
+
+| Dashboard | Content types |
+| --------- | ------------- |
+| <img src="docs/screenshots/view-dashboard.png" alt="Dashboard view" width="420" /> | <img src="docs/screenshots/view-content-types.png" alt="Content types overview" width="420" /> |
+
+| Media library | Role permissions |
+| ------------- | ---------------- |
+| <img src="docs/screenshots/view-media.png" alt="Media library view" width="420" /> | <img src="docs/screenshots/view-user-role-permissions.png" alt="User role permissions editor" width="420" /> |
+
 ## Storage layout
 
 All data lives in `cms/storage/` (not web-accessible):
@@ -201,6 +215,10 @@ make dev      # start PHP + Vite together
 ```
 
 Open `http://localhost:8000/admin`. The first visit shows the setup screen.
+
+<p align="center">
+  <img src="docs/screenshots/first-login.png" alt="CometCMS setup screen for the first admin account" width="860" />
+</p>
 
 ## Build for production
 

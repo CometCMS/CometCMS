@@ -437,7 +437,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { Icon } from '@iconify/vue'
 import SlidePanel from '../components/SlidePanel.vue'
@@ -447,13 +447,17 @@ import MediaCategorySidebar from '../components/MediaCategorySidebar.vue'
 import MediaBulkEditBar from '../components/MediaBulkEditBar.vue'
 import { api } from '../api/index.js'
 import { useToastStore } from '../stores/toast.js'
+import { useApiEndpointStore } from '../stores/apiEndpoint.js'
 import { useHeightTransition } from '../composables/useHeightTransition.js'
+import { mediaDetailEndpoint, mediaListEndpoint } from '../composables/apiEndpoint.js'
 import { useI18n } from '../i18n/index.js'
 
 const ht = useHeightTransition()
 
 const toast = useToastStore()
+const apiEndpointStore = useApiEndpointStore()
 const { t } = useI18n()
+const apiEndpointOwner = 'media'
 const files = ref([])
 const loading = ref(true)
 const uploading = ref(false)
@@ -597,6 +601,18 @@ const pageSize = 20
 const totalPages = computed(() => Math.max(1, Math.ceil(totalFiles.value / pageSize)))
 const pageStart = computed(() => totalFiles.value === 0 ? 0 : ((currentPage.value - 1) * pageSize) + 1)
 const pageEnd = computed(() => Math.min(currentPage.value * pageSize, totalFiles.value))
+const apiEndpointUrl = computed(() => {
+  if (showDetail.value && detailFile.value?.name) {
+    return mediaDetailEndpoint(detailFile.value.name)
+  }
+
+  return mediaListEndpoint({
+    limit: pageSize,
+    offset: (currentPage.value - 1) * pageSize,
+    q: search.value.trim(),
+    category: selectedCategory.value,
+  })
+})
 const allPageSelected = computed(() => (
   files.value.length > 0
   && files.value.every((file) => selectedMedia.value.has(file.name))
@@ -1116,6 +1132,25 @@ onMounted(() => {
   loadUsers()
   loadUsages()
 })
+
+onBeforeUnmount(() => {
+  if (loadTimer) clearTimeout(loadTimer)
+  apiEndpointStore.clearEndpoint(apiEndpointOwner)
+})
+
+watch(
+  apiEndpointUrl,
+  (url) => {
+    apiEndpointStore.setEndpoint(
+      {
+        label: 'Media',
+        url,
+      },
+      apiEndpointOwner,
+    )
+  },
+  { immediate: true },
+)
 
 watch([search, selectedCategory, mediaType, sortOrder, usageFilter], () => {
   scheduleLoad(true)

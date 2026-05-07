@@ -12,9 +12,13 @@ Roles define the permission grants users receive. A user has exactly one role, a
 
 Use **Edit user roles** from **Users** to create roles or change their grants. The `admin` role cannot be deleted.
 
+![Role permissions editor in the CometCMS admin](../screenshots/view-user-role-permissions.png)
+
 ## Viewing users
 
 Navigate to **Users** in the sidebar. Users are grouped by role: Admins → Editors → Viewers.
+
+![Users overview grouped by role in the CometCMS admin](../screenshots/view-users.png)
 
 ## Creating a user
 

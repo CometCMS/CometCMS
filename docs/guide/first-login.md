@@ -6,6 +6,8 @@ When you visit `/admin` for the first time (or after a [user reset](./recovery))
 
 Enter a username and a password (minimum 8 characters) to create the initial admin account. This is the only account that can access the panel until more users are added.
 
+![CometCMS setup screen for creating the first admin account](../screenshots/first-login.png)
+
 ## Admin URL
 
 The admin panel is always available at:

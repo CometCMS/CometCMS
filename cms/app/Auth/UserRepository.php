@@ -76,6 +76,7 @@ final class UserRepository
             'role' => $role,
             'theme' => 'blue',
             'language' => 'en',
+            'show_api_footer' => true,
             'created_at' => Security::now(),
         ];
 
@@ -128,6 +129,10 @@ final class UserRepository
                 throw new \InvalidArgumentException('Invalid language.');
             }
             $user['language'] = $language;
+        }
+
+        if (array_key_exists('show_api_footer', $data)) {
+            $user['show_api_footer'] = (bool) $data['show_api_footer'];
         }
 
         if (isset($data['password']) && (string) $data['password'] !== '') {

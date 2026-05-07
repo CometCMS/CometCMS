@@ -227,7 +227,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, nextTick } from "vue";
+import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { Icon } from "@iconify/vue";
 import FieldBuilder from "../components/FieldBuilder.vue";
@@ -240,6 +240,8 @@ import { LOCALE_OPTIONS } from "../composables/localeOptions.js";
 import { useToastStore } from "../stores/toast.js";
 import { useContentTypesStore } from "../stores/contentTypes.js";
 import { useAuthStore } from "../stores/auth.js";
+import { useApiEndpointStore } from "../stores/apiEndpoint.js";
+import { contentTypeEndpoint } from "../composables/apiEndpoint.js";
 import { useI18n } from "../i18n/index.js";
 
 const route = useRoute();
@@ -247,7 +249,9 @@ const router = useRouter();
 const toast = useToastStore();
 const typesStore = useContentTypesStore();
 const auth = useAuthStore();
+const apiEndpointStore = useApiEndpointStore();
 const { t } = useI18n();
+const apiEndpointOwner = "content-type-edit";
 
 const isNew = computed(() => !route.params.name);
 const defaultIcon = "mdi:file-document-outline";
@@ -309,6 +313,30 @@ watch(
   },
   { deep: true },
 );
+
+watch(
+  () => route.params.name,
+  (name) => {
+    if (!name) {
+      apiEndpointStore.clearEndpoint(apiEndpointOwner);
+      return;
+    }
+
+    apiEndpointStore.setEndpoint(
+      {
+        label: "Content type",
+        url: contentTypeEndpoint(name),
+      },
+      apiEndpointOwner,
+    );
+  },
+  { immediate: true },
+);
+
+onBeforeUnmount(() => {
+  apiEndpointStore.clearEndpoint(apiEndpointOwner);
+});
+
 onMounted(async () => {
   try {
     const res = await api.contentTypes.list();

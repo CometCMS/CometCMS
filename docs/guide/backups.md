@@ -12,6 +12,8 @@ cms/storage/backups/
 
 The admin panel can list, inspect, download, delete, upload, and restore backups from this folder.
 
+![Backup and restore screen in the CometCMS admin](../screenshots/view-backups.png)
+
 ## What can be backed up
 
 When creating a backup, you can choose which parts to include:
