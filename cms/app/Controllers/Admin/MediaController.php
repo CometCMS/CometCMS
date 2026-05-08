@@ -437,8 +437,10 @@ final class MediaController extends BaseController
     {
         $this->requirePermission('media.update', ['type' => 'media']);
         $this->verifyCsrf();
+        $body = $this->requestJson();
+        $files = array_values(array_filter((array) ($body['files'] ?? []), static fn(mixed $file): bool => is_string($file) && $file !== ''));
 
-        $summary = $this->media->regenerateThumbnails();
+        $summary = $this->media->regenerateThumbnails($files);
         $this->cache->clear();
 
         $this->json(['data' => $summary]);

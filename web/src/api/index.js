@@ -178,7 +178,7 @@ export const api = {
     bulkUpdateCategory: (files, category) => request('PUT', '/media/bulk-category', { files, category }),
     delete: (name) => request('DELETE', `/media/${encodeURIComponent(name)}`),
     bulkDelete: (files) => request('POST', '/media/bulk-delete', { files }),
-    regenerateThumbnails: () => request('POST', '/media/thumbnails/regenerate'),
+    regenerateThumbnails: (files = []) => request('POST', '/media/thumbnails/regenerate', files.length > 0 ? { files } : {}),
     usages: () => request('GET', '/media/usages'),
   },
 

@@ -66,6 +66,7 @@ final class UpdateService
             'name' => (string) ($data['name'] ?? $data['tag_name']),
             'published_at' => $data['published_at'] ?? null,
             'url' => (string) ($data['html_url'] ?? $config['repository_url']),
+            'changelog' => trim((string) ($data['body'] ?? '')),
             'asset' => $asset,
             'checksum_asset' => $checksumAsset,
         ];

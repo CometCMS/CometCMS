@@ -29,7 +29,11 @@ build:
 	cp -R cms/app cms/config $(DIST)/
 	COMET_ADMIN_OUT_DIR="$(CURDIR)/$(DIST)/admin" npm --workspace web run build
 	mkdir -p $(DIST)/storage
-	cp cms/storage/.htaccess $(DIST)/storage/
+	@if [ -f cms/storage/.htaccess ]; then \
+		cp cms/storage/.htaccess $(DIST)/storage/; \
+	else \
+		printf "Options -Indexes\n<IfModule mod_authz_core.c>\n  Require all denied\n</IfModule>\n<IfModule !mod_authz_core.c>\n  Deny from all\n</IfModule>\n" > $(DIST)/storage/.htaccess; \
+	fi
 	for dir in sessions users roles api-tokens logs backups updates cache cache/login-throttle \
 	           workspaces; do \
 	    mkdir -p "$(DIST)/storage/$$dir"; \

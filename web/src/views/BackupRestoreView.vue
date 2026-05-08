@@ -349,18 +349,21 @@
             </div>
           </div>
           <div class="p-6 space-y-5">
-            <dl class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div
-                v-for="item in countItems"
-                :key="item.label"
-                class="rounded-lg border border-slate-200 px-3 py-2"
-              >
-                <dt class="text-xs text-slate-500">{{ item.label }}</dt>
-                <dd class="text-lg font-semibold text-slate-900">
-                  {{ item.value }}
-                </dd>
+            <div>
+              <p class="form-label">{{ t("backup.includedData") }}</p>
+              <div class="flex flex-wrap gap-1.5">
+                <span
+                  v-for="item in countItems"
+                  :key="item.label"
+                  class="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-xs text-slate-700"
+                >
+                  <span class="font-semibold text-slate-900">{{
+                    item.value
+                  }}</span>
+                  <span>{{ item.label }}</span>
+                </span>
               </div>
-            </dl>
+            </div>
 
             <div v-if="inspection.content_types?.length">
               <p class="form-label">{{ t("backup.contentTypes") }}</p>

@@ -12,25 +12,6 @@
       <div class="flex flex-wrap items-center gap-2">
         <button
           type="button"
-          class="btn-secondary shrink-0"
-          :disabled="regeneratingThumbs"
-          @click="regenerateThumbnails"
-        >
-          <Icon
-            :icon="
-              regeneratingThumbs ? 'mdi:loading' : 'mdi:image-refresh-outline'
-            "
-            class="h-4 w-4"
-            :class="{ 'animate-spin': regeneratingThumbs }"
-          />
-          {{
-            regeneratingThumbs
-              ? t("media.regeneratingThumbs")
-              : t("media.regenerateThumbs")
-          }}
-        </button>
-        <button
-          type="button"
           class="btn-primary shrink-0"
           @click="fileInput.click()"
         >
@@ -193,11 +174,13 @@
               :categories="categoryTree"
               :selected-count="selectedCount"
               :all-page-selected="allPageSelected"
+              :all-results-selected="allResultsSelected"
               :page-count="files.length"
-              :applying="bulkWorking"
+              :applying="bulkWorking || regeneratingThumbs || selectingAllMedia"
               @apply="onBulkApply"
               @delete-selected="confirmBulkDelete"
               @clear-selection="clearSelection"
+              @select-all="selectAllMatchingMedia"
               @toggle-page-selection="togglePageSelection($event)"
             />
           </div>
@@ -919,6 +902,7 @@ async function loadUsages() {
   }
 }
 const bulkWorking = ref(false);
+const selectingAllMedia = ref(false);
 const showBulkDeleteModal = ref(false);
 const currentPage = ref(1);
 const totalFiles = ref(0);
@@ -1058,6 +1042,9 @@ const allPageSelected = computed(
     files.value.length > 0 &&
     files.value.every((file) => selectedMedia.value.has(file.name)),
 );
+const allResultsSelected = computed(
+  () => totalFiles.value > 0 && selectedCount.value >= totalFiles.value,
+);
 
 function isImage(name) {
   return imageExts.has(fileExtension(name));
@@ -1194,11 +1181,12 @@ async function uploadFiles(fileList) {
   }
 }
 
-async function regenerateThumbnails() {
+async function regenerateThumbnails(fileNames = []) {
+  const names = Array.from(new Set(fileNames.filter(Boolean)));
   regeneratingThumbs.value = true;
 
   try {
-    const res = await api.media.regenerateThumbnails();
+    const res = await api.media.regenerateThumbnails(names);
     const summary = res.data ?? {};
     const generated = Number(summary.generated ?? 0);
     const failed = Number(summary.failed ?? 0);
@@ -1209,6 +1197,7 @@ async function regenerateThumbnails() {
       toast.success(t("media.regenerateThumbsDone", { count: generated }));
     }
 
+    if (names.length > 0) clearSelection();
     await load();
   } catch (err) {
     toast.error(err.message ?? t("media.regenerateThumbsError"));
@@ -1388,6 +1377,39 @@ function togglePageSelection(selected) {
   selectedMedia.value = next;
 }
 
+async function selectAllMatchingMedia() {
+  selectingAllMedia.value = true;
+
+  try {
+    const params = { sort: sortOrder.value };
+    const query = search.value.trim();
+
+    if (query !== "") params.q = query;
+    if (selectedCategory.value !== null)
+      params.category = selectedCategory.value;
+    if (mediaType.value !== "all") params.type = mediaType.value;
+    if (usageFilter.value === "public" || usageFilter.value === "private") {
+      params.visibility = usageFilter.value;
+    }
+
+    const res = await api.media.list(params);
+    const matchingNames = (res.data ?? [])
+      .filter((file) => {
+        if (usageFilter.value !== "unused") return true;
+        return !usages.value[file.name]?.length;
+      })
+      .map((file) => file.name)
+      .filter(Boolean);
+
+    selectedMedia.value = new Set(matchingNames);
+    lastSelectedIndex.value = -1;
+  } catch (err) {
+    toast.error(err.message);
+  } finally {
+    selectingAllMedia.value = false;
+  }
+}
+
 function clearSelection() {
   selectedMedia.value = new Set();
   lastSelectedIndex.value = -1;
@@ -1424,6 +1446,8 @@ async function onBulkApply({ field, value }) {
     await updateFilesCategory(selectedNames.value, value, true);
   } else if (field === "visibility") {
     await updateFilesVisibility(selectedNames.value, value, true);
+  } else if (field === "regenerate-thumbnails") {
+    await regenerateThumbnails(selectedNames.value);
   }
 }
 

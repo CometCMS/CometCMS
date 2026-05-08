@@ -35,13 +35,15 @@ final class SelectFieldType extends AbstractFieldType
         if ($multiple) {
             foreach ($this->values($value) as $v) {
                 if ($options !== [] && !in_array((string) $v, $options, true)) {
-                    return $this->error('Choose a valid option.', 'invalid_option');
+                    return $this->error($this->invalidOptionMessage($options), 'invalid_option');
                 }
             }
             return ['valid' => true];
         }
 
-        return $options === [] || in_array((string) $value, $options, true) ? ['valid' => true] : $this->error('Choose a valid option.', 'invalid_option');
+        return $options === [] || in_array((string) $value, $options, true)
+            ? ['valid' => true]
+            : $this->error($this->invalidOptionMessage($options), 'invalid_option');
     }
 
     public function normalize(mixed $value, array $config, array $context = []): mixed
@@ -71,5 +73,14 @@ final class SelectFieldType extends AbstractFieldType
             static fn(mixed $item): string => trim((string) $item),
             is_array($value) ? $value : []
         ), static fn(string $item): bool => $item !== ''));
+    }
+
+    private function invalidOptionMessage(array $options): string
+    {
+        if ($options === []) {
+            return 'Choose a valid option.';
+        }
+
+        return 'Choose a valid option. Valid values: ' . implode(', ', $options) . '.';
     }
 }

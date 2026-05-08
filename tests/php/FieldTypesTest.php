@@ -57,7 +57,23 @@ test('select fields enforce configured options', function (): void {
     $field = new SelectFieldType();
 
     assert_true($field->validate('draft', ['options' => ['draft', 'published']])['valid']);
-    assert_false($field->validate('archived', ['options' => ['draft', 'published']])['valid']);
+    $invalid = $field->validate('archived', ['options' => ['draft', 'published']]);
+
+    assert_false($invalid['valid']);
+    assert_same('Choose a valid option. Valid values: draft, published.', $invalid['message'] ?? null);
+});
+
+test('select field validation lists valid stored values for mapped options', function (): void {
+    $field = new SelectFieldType();
+    $invalid = $field->validate('archived', [
+        'options' => [
+            'draft' => 'Draft',
+            'published' => 'Published',
+        ],
+    ]);
+
+    assert_false($invalid['valid']);
+    assert_same('Choose a valid option. Valid values: draft, published.', $invalid['message'] ?? null);
 });
 
 test('multi-select fields normalize unique non-empty values', function (): void {

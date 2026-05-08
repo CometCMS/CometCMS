@@ -3,18 +3,28 @@
     class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
   >
     <!-- Left: selection count + select-all -->
-    <label
-      class="inline-flex items-center gap-2 text-sm font-medium text-slate-700 shrink-0"
+    <div
+      class="flex flex-wrap items-center gap-2 text-sm font-medium text-slate-700"
     >
-      <input
-        type="checkbox"
-        class="form-checkbox rounded border-slate-300 text-theme-600"
-        :checked="allPageSelected"
-        :disabled="pageCount === 0"
-        @change="emit('toggle-page-selection', $event.target.checked)"
-      />
-      <span>{{ t("bulk.selected", { count: selectedCount }) }}</span>
-    </label>
+      <label class="inline-flex items-center gap-2 shrink-0">
+        <input
+          type="checkbox"
+          class="form-checkbox rounded border-slate-300 text-theme-600"
+          :checked="allPageSelected"
+          :disabled="pageCount === 0 || applying"
+          @change="emit('toggle-page-selection', $event.target.checked)"
+        />
+        <span>{{ t("bulk.selected", { count: selectedCount }) }}</span>
+      </label>
+      <button
+        type="button"
+        class="btn-secondary text-sm disabled:cursor-not-allowed disabled:opacity-50"
+        :disabled="pageCount === 0 || applying || allResultsSelected"
+        @click="emit('select-all')"
+      >
+        {{ t("bulk.selectAll") }}
+      </button>
+    </div>
 
     <!-- Right: bulk actions -->
     <div class="flex flex-col gap-2 sm:flex-row sm:items-center flex-wrap">
@@ -147,6 +157,7 @@ const props = defineProps({
   categories: { type: Array, default: () => [] },
   selectedCount: { type: Number, default: 0 },
   allPageSelected: { type: Boolean, default: false },
+  allResultsSelected: { type: Boolean, default: false },
   pageCount: { type: Number, default: 0 },
   applying: { type: Boolean, default: false },
 });
@@ -155,6 +166,7 @@ const emit = defineEmits([
   "apply",
   "delete-selected",
   "clear-selection",
+  "select-all",
   "toggle-page-selection",
 ]);
 const { t } = useI18n();
@@ -167,6 +179,11 @@ const fieldValue = ref("");
 const fields = computed(() => [
   { key: "category", label: t("media.category"), kind: "category" },
   { key: "visibility", label: t("media.visibility"), kind: "visibility" },
+  {
+    key: "regenerate-thumbnails",
+    label: t("media.regenerateThumbs"),
+    kind: "action",
+  },
 ]);
 
 const selectedField = computed(
@@ -176,6 +193,7 @@ const selectedField = computed(
 function defaultValueFor(key) {
   if (key === "category") return "";
   if (key === "visibility") return "public";
+  if (key === "regenerate-thumbnails") return true;
   return null;
 }
 
@@ -185,6 +203,7 @@ const canApply = computed(() => {
   if (!selectedField.value) return false;
   if (props.selectedCount === 0) return false;
   if (selectedField.value.kind === "category") return true; // empty = "No category" is valid
+  if (selectedField.value.kind === "action") return true;
   if (selectedField.value.kind === "visibility")
     return fieldValue.value !== null && fieldValue.value !== "";
   return fieldValue.value !== null && fieldValue.value !== "";

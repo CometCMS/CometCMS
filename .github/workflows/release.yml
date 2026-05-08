@@ -3,16 +3,19 @@ name: Release Package
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version, with or without leading v'
+        description: "Release version, with or without leading v"
         required: true
         type: string
 
 permissions:
   contents: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   package:

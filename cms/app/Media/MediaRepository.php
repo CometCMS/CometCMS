@@ -582,14 +582,21 @@ final class MediaRepository
         return $this->ensureThumbnail($file);
     }
 
-    public function regenerateThumbnails(): array
+    public function regenerateThumbnails(array $files = []): array
     {
         $generated = 0;
         $failed = 0;
         $skipped = 0;
         $enabled = (bool) comet_config('media.thumbnails.enabled', true);
+        $targets = $files === [] ? (scandir($this->mediaDir) ?: []) : $files;
 
-        foreach (scandir($this->mediaDir) ?: [] as $file) {
+        foreach ($targets as $file) {
+            if (!is_string($file) || $file === '') {
+                continue;
+            }
+
+            $file = basename(rawurldecode($file));
+
             if ($file === '' || $file[0] === '.' || !is_file($this->path($file))) {
                 continue;
             }

@@ -84,6 +84,22 @@
                     })
                   }}
                 </p>
+                <div class="mt-1 text-xs text-slate-500">
+                  {{ formatBytes(status.latest.asset.size) }}
+                </div>
+                <div
+                  v-if="status.latest.checksum_asset"
+                  class="mt-2 text-xs text-green-700"
+                >
+                  {{
+                    t("updates.checksumAvailable", {
+                      name: status.latest.checksum_asset.name,
+                    })
+                  }}
+                </div>
+                <div v-else class="mt-2 text-xs text-amber-700">
+                  {{ t("updates.noChecksum") }}
+                </div>
               </div>
               <a
                 :href="status.latest.url"
@@ -107,27 +123,17 @@
             </div>
 
             <div
-              v-if="status.latest.asset"
-              class="mt-4 rounded-lg bg-slate-50 border border-slate-200 p-4"
+              v-if="status.update_available && status.latest.changelog"
+              class="mt-4 rounded-lg border border-slate-200 bg-white p-4"
             >
-              <div class="text-sm font-medium text-slate-700">
-                {{ status.latest.asset.name }}
-              </div>
-              <div class="mt-1 text-xs text-slate-500">
-                {{ formatBytes(status.latest.asset.size) }}
-              </div>
-              <div
-                v-if="status.latest.checksum_asset"
-                class="mt-2 text-xs text-green-700"
-              >
-                {{
-                  t("updates.checksumAvailable", {
-                    name: status.latest.checksum_asset.name,
-                  })
-                }}
-              </div>
-              <div v-else class="mt-2 text-xs text-amber-700">
-                {{ t("updates.noChecksum") }}
+              <h3 class="text-sm font-semibold text-slate-800">
+                {{ t("updates.changelog") }}
+              </h3>
+              <p class="mt-1 text-xs text-slate-500">
+                {{ t("updates.changelogSource") }}
+              </p>
+              <div class="updates-changelog mt-3 overflow-auto">
+                <EditorContent :editor="changelogEditor" />
               </div>
             </div>
 
@@ -208,12 +214,15 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import ConfirmModal from "../components/ConfirmModal.vue";
 import { api } from "../api/index.js";
 import { useAuthStore } from "../stores/auth.js";
 import { useToastStore } from "../stores/toast.js";
 import { useI18n } from "../i18n/index.js";
+import { useEditor, EditorContent } from "@tiptap/vue-3";
+import StarterKit from "@tiptap/starter-kit";
+import { marked } from "marked";
 
 const auth = useAuthStore();
 const toast = useToastStore();
@@ -225,6 +234,27 @@ const downloading = ref(false);
 const installing = ref(false);
 const showInstallModal = ref(false);
 const status = ref(null);
+
+const changelogEditor = useEditor({
+  extensions: [StarterKit],
+  content: "",
+  editable: false,
+});
+
+watch(
+  () => status.value?.latest?.changelog ?? "",
+  (value) => {
+    if (!changelogEditor.value) return;
+
+    const html = marked.parse(String(value ?? ""), { async: false });
+    changelogEditor.value.commands.setContent(html || "<p></p>", false);
+  },
+  { immediate: true },
+);
+
+onBeforeUnmount(() => {
+  changelogEditor.value?.destroy();
+});
 
 const preservedPaths = computed(() =>
   status.value?.preserved_paths?.length
@@ -328,3 +358,76 @@ function formatBytes(bytes) {
   return `${size.toFixed(unit === 0 ? 0 : 1)} ${units[unit]}`;
 }
 </script>
+
+<style scoped>
+.updates-changelog :deep(.ProseMirror) {
+  outline: none;
+}
+
+.updates-changelog :deep(.ProseMirror h1) {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0.5rem 0;
+}
+
+.updates-changelog :deep(.ProseMirror h2) {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0.5rem 0;
+}
+
+.updates-changelog :deep(.ProseMirror h3) {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0.5rem 0;
+}
+
+.updates-changelog :deep(.ProseMirror p) {
+  margin: 0.4rem 0;
+}
+
+.updates-changelog :deep(.ProseMirror ul),
+.updates-changelog :deep(.ProseMirror ol) {
+  margin: 0.4rem 0;
+  padding-left: 1.25rem;
+}
+
+.updates-changelog :deep(.ProseMirror li) {
+  margin: 0.15rem 0;
+}
+
+.updates-changelog :deep(.ProseMirror a) {
+  color: rgb(37 99 235);
+  text-decoration: underline;
+}
+
+.updates-changelog :deep(.ProseMirror blockquote) {
+  border-left: 3px solid rgb(203 213 225);
+  margin: 0.5rem 0;
+  padding-left: 0.75rem;
+  color: rgb(71 85 105);
+}
+
+.updates-changelog :deep(.ProseMirror code) {
+  background: rgb(226 232 240);
+  border-radius: 0.25rem;
+  padding: 0.05rem 0.3rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8125rem;
+}
+
+.updates-changelog :deep(.ProseMirror pre) {
+  background: rgb(15 23 42);
+  color: rgb(226 232 240);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  margin: 0.6rem 0;
+  overflow-x: auto;
+}
+
+.updates-changelog :deep(.ProseMirror pre code) {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+</style>
