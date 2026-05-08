@@ -11,7 +11,7 @@ DIST ?= dist
 ## Start the PHP CMS and Vite UI together.
 dev:
 	@printf "CometCMS dev\n  PHP:  http://$(PHP_HOST):$(PHP_PORT)/admin\n  Vite: http://$(VITE_HOST):$(VITE_PORT)\n\n"
-	@php -S $(PHP_HOST):$(PHP_PORT) -d upload_max_filesize=20M -d post_max_size=21M -t cms cms/router.php & \
+	@php -S $(PHP_HOST):$(PHP_PORT) -d upload_max_filesize=128M -d post_max_size=128M -t cms cms/router.php & \
 	php_pid=$$!; \
 	npm --workspace web run dev -- --host $(VITE_HOST) --port $(VITE_PORT) & \
 	vite_pid=$$!; \
@@ -30,8 +30,8 @@ build:
 	COMET_ADMIN_OUT_DIR="$(CURDIR)/$(DIST)/admin" npm --workspace web run build
 	mkdir -p $(DIST)/storage
 	cp cms/storage/.htaccess $(DIST)/storage/
-	for dir in sessions content content-types users media logs backups updates \
-	           cache cache/api cache/login-throttle revisions revisions/content trash trash/content trash/media; do \
+	for dir in sessions users roles api-tokens logs backups updates cache cache/login-throttle \
+	           workspaces; do \
 	    mkdir -p "$(DIST)/storage/$$dir"; \
 	    touch "$(DIST)/storage/$$dir/.gitkeep"; \
 	done

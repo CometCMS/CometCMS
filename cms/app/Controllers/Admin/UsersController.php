@@ -15,6 +15,16 @@ final class UsersController extends BaseController
         $this->json(['data' => array_map([$this, 'safeUser'], $this->users->all())]);
     }
 
+    public function show(string $userId): never
+    {
+        $this->requirePermission('users.read', ['type' => 'user', 'user_id' => $userId]);
+        $user = $this->users->find($userId);
+        if ($user === null) {
+            $this->json(['error' => ['code' => 'not_found', 'message' => 'User not found.']], 404);
+        }
+        $this->json(['data' => $this->safeUser($user)]);
+    }
+
     public function store(): never
     {
         $actor = $this->requirePermission('users.create', ['type' => 'user']);

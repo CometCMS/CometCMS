@@ -12,11 +12,13 @@ use CometCMS\Logging\Logger;
 use CometCMS\Storage\JsonStore;
 use CometCMS\Trash\TrashStore;
 use CometCMS\Webhooks\WebhookDispatcher;
+use CometCMS\Workspaces\WorkspaceContext;
 
 final class ContentRepository
 {
     private JsonStore $store;
     private JsonStore $revisions;
+    private WorkspaceContext $workspace;
 
     public function __construct(
         private readonly ContentTypeRepository $types = new ContentTypeRepository(),
@@ -24,14 +26,20 @@ final class ContentRepository
         private readonly Logger $logger = new Logger(),
         private readonly ApiCache $cache = new ApiCache(),
         private readonly WebhookDispatcher $webhooks = new WebhookDispatcher(),
+        ?WorkspaceContext $workspace = null,
     ) {
-        $this->store = new JsonStore(COMET_STORAGE . '/content');
-        $this->revisions = new JsonStore(COMET_STORAGE . '/revisions/content');
+        $this->workspace = $workspace ?? WorkspaceContext::active();
+        WorkspaceContext::setActive($this->workspace->slug());
+        $this->workspace->ensure();
+        $this->store = new JsonStore($this->workspace->path('content'));
+        $this->revisions = new JsonStore($this->workspace->path('revisions') . '/content');
     }
 
-    public static function make(): self
+    public static function make(?WorkspaceContext $workspace = null): self
     {
-        return new self(new ContentTypeRepository(), FieldRegistry::builtins(), new Logger(), ApiCache::fromConfig(), new WebhookDispatcher());
+        $workspace ??= WorkspaceContext::active();
+
+        return new self(new ContentTypeRepository($workspace), FieldRegistry::builtins(), new Logger(), ApiCache::fromConfig($workspace), new WebhookDispatcher(), $workspace);
     }
 
     public function collections(): array
@@ -391,7 +399,7 @@ final class ContentRepository
         $entry['deleted_at'] = Security::now();
         $entry['deleted_by'] = $user['id'] ?? null;
         $this->store->write($entry, $collection, $id);
-        (new TrashStore())->putContent($collection, $id, $entry);
+        (new TrashStore($this->workspace))->putContent($collection, $id, $entry);
         $this->afterWrite('content.deleted', $collection, $id, $user ?? []);
     }
 
@@ -400,7 +408,7 @@ final class ContentRepository
         $entry = $this->find($collection, $id, true);
 
         if ($entry === null) {
-            $entry = (new TrashStore())->findContent($collection, $id);
+            $entry = (new TrashStore($this->workspace))->findContent($collection, $id);
         }
 
         if ($entry === null) {
@@ -425,7 +433,7 @@ final class ContentRepository
         if ($targetId !== $id) {
             $this->store->delete($collection, $id);
         }
-        (new TrashStore())->removeContent($collection, $id);
+        (new TrashStore($this->workspace))->removeContent($collection, $id);
         $this->afterWrite('content.restored', $collection, $targetId, $user ?? []);
 
         return $entry;
@@ -434,7 +442,7 @@ final class ContentRepository
     public function purge(string $collection, string $id, ?array $user = null): void
     {
         $this->store->delete($collection, $id);
-        (new TrashStore())->removeContent($collection, $id);
+        (new TrashStore($this->workspace))->removeContent($collection, $id);
         $this->cache->clear();
         $this->logger->warning('content purged', ['type' => $collection, 'id' => $id, 'user_id' => $user['id'] ?? null]);
     }

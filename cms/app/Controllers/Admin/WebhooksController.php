@@ -89,6 +89,7 @@ final class WebhooksController extends BaseController
     {
         $url = trim((string) ($webhook['url'] ?? ''));
         $secret = trim((string) ($webhook['secret'] ?? ''));
+        $name = trim((string) ($webhook['name'] ?? ''));
         $events = array_values(array_filter(
             array_map('strval', (array) ($webhook['events'] ?? [])),
             fn(string $e): bool => in_array($e, self::WEBHOOK_EVENTS, true),
@@ -102,6 +103,6 @@ final class WebhooksController extends BaseController
             return null;
         }
 
-        return ['url' => $url, 'secret' => $secret, 'events' => $events, 'enabled' => ($webhook['enabled'] ?? true) !== false];
+        return ['url' => $url, 'secret' => $secret, 'name' => $name, 'events' => $events, 'enabled' => ($webhook['enabled'] ?? true) !== false];
     }
 }

@@ -6,6 +6,9 @@ namespace CometCMS\Controllers\Admin;
 
 use CometCMS\Auth\LoginThrottle;
 use CometCMS\Core\Http;
+use CometCMS\Core\Security;
+use CometCMS\Storage\SettingsStore;
+use CometCMS\Workspaces\WorkspaceContext;
 
 final class AuthController extends BaseController
 {
@@ -93,13 +96,41 @@ final class AuthController extends BaseController
             $this->json(['error' => ['code' => 'validation_failed', 'message' => 'Choose a username and a password with at least 8 characters.']], 422);
         }
 
+        // Determine workspace label and slug
+        $workspaceInput = trim((string) ($body['workspace'] ?? ''));
+        $workspaceLabel = $workspaceInput !== '' ? $workspaceInput : 'Default';
+        $slugInput      = trim((string) ($body['workspace_slug'] ?? ''));
+        $workspaceSlug  = $slugInput !== '' ? Security::slug($slugInput) : Security::slug($workspaceLabel);
+
+        if ($workspaceSlug === '') {
+            $this->json(['error' => ['code' => 'validation_failed', 'message' => 'Invalid workspace slug.']], 422);
+        }
+
         try {
             $this->users->create($username, $password, 'admin');
         } catch (\Throwable $e) {
             $this->json(['error' => ['code' => 'error', 'message' => $e->getMessage()]], 422);
         }
 
+        // Initialise the workspace, replacing any auto-created 'default' entry
+        $store    = new SettingsStore();
+        $settings = $store->all();
+        $now      = Security::now();
+        $settings['workspaces'] = [[
+            'slug'       => $workspaceSlug,
+            'label'      => $workspaceLabel,
+            'archived'   => false,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]];
+        $settings['default_workspace'] = $workspaceSlug;
+        $store->save($settings);
+
+        $context = new WorkspaceContext($workspaceSlug);
+        $context->ensure();
+        WorkspaceContext::setActive($workspaceSlug);
+
         $this->auth->attempt($username, $password);
-        $this->json(['data' => $this->safeUser($this->auth->user())], 201, true);
+        $this->json(['data' => $this->safeUser($this->auth->user()), 'meta' => ['workspace' => $workspaceSlug]], 201, true);
     }
 }

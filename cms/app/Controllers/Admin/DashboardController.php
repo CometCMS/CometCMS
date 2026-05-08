@@ -95,10 +95,11 @@ final class DashboardController extends BaseController
         $this->requirePermission('activity.read', ['resource' => 'activity:*']);
 
         $logPath = COMET_STORAGE . '/logs/comet.log';
-        $limit   = max(1, min(100, (int) ($_GET['limit'] ?? 25)));
-        $offset  = max(0, (int) ($_GET['offset'] ?? 0));
-        $level   = isset($_GET['level']) && $_GET['level'] !== '' ? (string) $_GET['level'] : null;
-        $type    = isset($_GET['type'])  && $_GET['type']  !== '' ? (string) $_GET['type']  : null;
+        $limit     = max(1, min(100, (int) ($_GET['limit'] ?? 25)));
+        $offset    = max(0, (int) ($_GET['offset'] ?? 0));
+        $level     = isset($_GET['level'])     && $_GET['level']     !== '' ? (string) $_GET['level']     : null;
+        $type      = isset($_GET['type'])      && $_GET['type']      !== '' ? (string) $_GET['type']      : null;
+        $workspace = isset($_GET['workspace']) && $_GET['workspace'] !== '' ? (string) $_GET['workspace'] : null;
 
         $typePrefixes = [
             'content' => ['content.'],
@@ -143,6 +144,10 @@ final class DashboardController extends BaseController
                 if (!$matched) {
                     continue;
                 }
+            }
+
+            if ($workspace !== null && ($entry['context']['workspace'] ?? '') !== $workspace) {
+                continue;
             }
 
             $entries[] = $entry;

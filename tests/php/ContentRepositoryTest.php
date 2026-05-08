@@ -332,8 +332,8 @@ test('content repository duplicates localized entries with all translations', fu
 });
 
 test('content repository replaces media filenames in root translations and repeaters', function (): void {
-    file_put_contents(COMET_STORAGE . '/media/old.jpg', 'old');
-    file_put_contents(COMET_STORAGE . '/media/new.jpg', 'new');
+    file_put_contents(comet_test_workspace_path() . '/media/old.jpg', 'old');
+    file_put_contents(comet_test_workspace_path() . '/media/new.jpg', 'new');
 
     comet_content_test_save_posts_schema([
         'locales' => ['en', 'de'],

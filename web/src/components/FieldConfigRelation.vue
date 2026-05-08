@@ -21,10 +21,10 @@
 </template>
 
 <script setup>
-import SearchableSelect from './SearchableSelect.vue'
+import SearchableSelect from "./SearchableSelect.vue";
 
 defineProps({
-  field:        { type: Object, required: true },
-  contentTypes: { type: Array,  default: () => [] },
-})
+  field: { type: Object, required: true },
+  contentTypes: { type: Array, default: () => [] },
+});
 </script>

@@ -52,13 +52,13 @@
 </template>
 
 <script setup>
-import { rangeDefaults } from '../composables/fieldBuilderUtils.js'
+import { rangeDefaults } from "../composables/fieldBuilderUtils.js";
 
 const props = defineProps({
   field: { type: Object, required: true },
-})
+});
 
 function normalize() {
-  Object.assign(props.field, rangeDefaults(props.field))
+  Object.assign(props.field, rangeDefaults(props.field));
 }
 </script>

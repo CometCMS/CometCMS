@@ -67,6 +67,20 @@ function comet_test_reset_storage(): void
             COMET_STORAGE . '/logs',
             COMET_STORAGE . '/backups',
             COMET_STORAGE . '/updates',
+            COMET_STORAGE . '/workspaces',
+            COMET_STORAGE . '/workspaces/default',
+            COMET_STORAGE . '/workspaces/default/content',
+            COMET_STORAGE . '/workspaces/default/content-types',
+            COMET_STORAGE . '/workspaces/default/media',
+            COMET_STORAGE . '/workspaces/default/media-thumbs',
+            COMET_STORAGE . '/workspaces/default/media-meta',
+            COMET_STORAGE . '/workspaces/default/revisions',
+            COMET_STORAGE . '/workspaces/default/revisions/content',
+            COMET_STORAGE . '/workspaces/default/trash',
+            COMET_STORAGE . '/workspaces/default/trash/content',
+            COMET_STORAGE . '/workspaces/default/trash/media',
+            COMET_STORAGE . '/workspaces/default/cache',
+            COMET_STORAGE . '/workspaces/default/cache/api',
         ] as $directory
     ) {
         if (!is_dir($directory)) {
@@ -75,6 +89,12 @@ function comet_test_reset_storage(): void
     }
 
     $_SESSION = [];
+    \CometCMS\Workspaces\WorkspaceContext::reset();
+}
+
+function comet_test_workspace_path(string $workspace = 'default'): string
+{
+    return COMET_STORAGE . '/workspaces/' . $workspace;
 }
 
 function comet_test_remove_directory(string $path): void

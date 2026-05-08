@@ -6,14 +6,18 @@ namespace CometCMS\Trash;
 
 use CometCMS\Core\Security;
 use CometCMS\Storage\JsonStore;
+use CometCMS\Workspaces\WorkspaceContext;
 
 final class TrashStore
 {
     private JsonStore $content;
 
-    public function __construct()
+    public function __construct(?WorkspaceContext $workspace = null)
     {
-        $this->content = new JsonStore(COMET_STORAGE . '/trash/content');
+        $workspace ??= WorkspaceContext::active();
+        WorkspaceContext::setActive($workspace->slug());
+        $workspace->ensure();
+        $this->content = new JsonStore($workspace->path('trash') . '/content');
     }
 
     public function putContent(string $collection, string $id, array $entry): void
@@ -38,4 +42,3 @@ final class TrashStore
         $this->content->delete($collection, $id);
     }
 }
-

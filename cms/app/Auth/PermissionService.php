@@ -128,6 +128,7 @@ final class PermissionService
 
         if ($type === 'content') {
             $collection = (string) ($context['collection'] ?? '*');
+            $workspace = (string) ($context['workspace'] ?? '');
             $entry = is_array($context['entry'] ?? null) ? $context['entry'] : [];
             $id = (string) ($context['id'] ?? $entry['id'] ?? $entry['slug'] ?? '*');
             $slug = (string) ($entry['slug'] ?? '');
@@ -139,25 +140,60 @@ final class PermissionService
                 $candidates[] = 'content:' . $collection . ':' . $slug;
             }
 
-            return array_values(array_unique(array_merge($candidates, [
+            $resources = array_values(array_unique(array_merge($candidates, [
                 'content:' . $collection . ':*',
                 'content:' . $collection,
                 'content:*',
                 '*',
             ])));
+
+            if ($workspace !== '') {
+                $workspaceResources = [];
+                foreach ($resources as $resource) {
+                    if ($resource !== '*') {
+                        $workspaceResources[] = 'workspace:' . $workspace . ':' . $resource;
+                    }
+                }
+
+                return array_values(array_unique(array_merge($workspaceResources, $resources)));
+            }
+
+            return $resources;
         }
 
         if ($type === 'schema') {
             $name = (string) ($context['name'] ?? '*');
-            return ['schema:' . $name, 'schema:*', '*'];
+            $workspace = (string) ($context['workspace'] ?? '');
+            $resources = ['schema:' . $name, 'schema:*', '*'];
+
+            if ($workspace !== '') {
+                return array_values(array_unique(array_merge([
+                    'workspace:' . $workspace . ':schema:' . $name,
+                    'workspace:' . $workspace . ':schema:*',
+                ], $resources)));
+            }
+
+            return $resources;
         }
 
         if ($type === 'media') {
             $file = (string) ($context['file'] ?? '*');
             $category = trim((string) ($context['category'] ?? ''));
+            $workspace = (string) ($context['workspace'] ?? '');
             $resources = ['media:' . $file, 'media:*', '*'];
             if ($category !== '') {
                 array_unshift($resources, 'media:category:' . $category);
+            }
+
+            if ($workspace !== '') {
+                $workspaceResources = [];
+                foreach ($resources as $resource) {
+                    if ($resource !== '*') {
+                        $workspaceResources[] = 'workspace:' . $workspace . ':' . $resource;
+                    }
+                }
+
+                return array_values(array_unique(array_merge($workspaceResources, $resources)));
             }
             return $resources;
         }
@@ -170,6 +206,11 @@ final class PermissionService
         if ($type === 'token') {
             $id = (string) ($context['token_id'] ?? $context['user_id'] ?? '*');
             return ['tokens:' . $id, 'tokens:*', '*'];
+        }
+
+        if ($type === 'workspace') {
+            $slug = (string) ($context['slug'] ?? '*');
+            return ['workspaces:' . $slug, 'workspaces:*', '*'];
         }
 
         $resource = (string) ($context['resource'] ?? $type . ':*');

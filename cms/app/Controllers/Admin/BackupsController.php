@@ -136,10 +136,26 @@ final class BackupsController extends BaseController
             $this->json(['error' => ['code' => 'backup_not_found', 'message' => $e->getMessage()]], 404);
         }
 
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+
         header('Content-Type: application/zip');
         header('Content-Disposition: attachment; filename="' . basename($path) . '"');
         header('Content-Length: ' . (string) filesize($path));
-        readfile($path);
+
+        $fh = fopen($path, 'rb');
+        if ($fh === false) {
+            $this->json(['error' => ['code' => 'backup_read_failed', 'message' => 'Could not open backup file.']], 500);
+        }
+
+        while (!feof($fh)) {
+            print fread($fh, 8192);
+            ob_flush();
+            flush();
+        }
+
+        fclose($fh);
         exit;
     }
 

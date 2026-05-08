@@ -2,13 +2,22 @@
   <div>
     <div class="flex items-center justify-between mb-6">
       <div>
-        <router-link to="/users" class="text-sm text-slate-500 hover:text-slate-800 transition-colors">
-          {{ t('roles.usersTokens') }}
+        <router-link
+          to="/users"
+          class="text-sm text-slate-500 hover:text-slate-800 transition-colors"
+        >
+          {{ t("roles.usersTokens") }}
         </router-link>
-        <h1 class="text-2xl font-bold text-slate-900 mt-1">{{ t('roles.title') }}</h1>
+        <h1 class="text-2xl font-bold text-slate-900 mt-1">
+          {{ t("roles.title") }}
+        </h1>
       </div>
-      <button v-if="auth.can('roles.create')" @click="openCreate" class="btn-primary">
-        {{ t('roles.new') }}
+      <button
+        v-if="auth.can('roles.create')"
+        @click="openCreate"
+        class="btn-primary"
+      >
+        {{ t("roles.new") }}
       </button>
     </div>
 
@@ -16,27 +25,41 @@
 
     <div v-else class="space-y-4">
       <div v-if="showCreate" class="card p-5">
-        <h2 class="text-sm font-semibold text-slate-700 mb-4">{{ t('roles.createTitle') }}</h2>
+        <h2 class="text-sm font-semibold text-slate-700 mb-4">
+          {{ t("roles.createTitle") }}
+        </h2>
         <div class="grid gap-4 md:grid-cols-2">
           <div>
-            <label class="form-label">{{ t('roles.name') }}</label>
-            <input v-model="createForm.label" class="form-input w-full rounded-lg border-slate-300 text-sm"
-              placeholder="Publisher" />
+            <label class="form-label">{{ t("roles.name") }}</label>
+            <input
+              v-model="createForm.label"
+              class="form-input w-full rounded-lg border-slate-300 text-sm"
+              placeholder="Publisher"
+            />
           </div>
           <div>
-            <label class="form-label">{{ t('roles.roleId') }}</label>
-            <input v-model="createForm.id" class="form-input w-full rounded-lg border-slate-300 text-sm"
-              placeholder="publisher" />
+            <label class="form-label">{{ t("roles.roleId") }}</label>
+            <input
+              v-model="createForm.id"
+              class="form-input w-full rounded-lg border-slate-300 text-sm"
+              placeholder="publisher"
+            />
           </div>
           <div class="md:col-span-2">
-            <label class="form-label">{{ t('roles.permissionGrants') }}</label>
+            <label class="form-label">{{ t("roles.permissionGrants") }}</label>
             <PermissionGrantsEditor v-model="createForm.permissions" />
           </div>
         </div>
-        <p v-if="createError" class="mt-3 text-sm text-red-600">{{ createError }}</p>
+        <p v-if="createError" class="mt-3 text-sm text-red-600">
+          {{ createError }}
+        </p>
         <div class="mt-4 flex gap-2">
-          <button @click="handleCreate" class="btn-primary">{{ t('roles.create') }}</button>
-          <button @click="showCreate = false" class="btn-secondary">{{ t('common.cancel') }}</button>
+          <button @click="handleCreate" class="btn-primary">
+            {{ t("roles.create") }}
+          </button>
+          <button @click="showCreate = false" class="btn-secondary">
+            {{ t("common.cancel") }}
+          </button>
         </div>
       </div>
 
@@ -47,13 +70,21 @@
             <p class="text-xs text-slate-400">{{ role.id }}</p>
           </div>
           <div class="flex gap-2">
-            <button v-if="auth.can('roles.update')" :disabled="role.locked" @click="openEdit(role)"
-              class="btn-secondary text-xs py-1 px-3 disabled:opacity-50 disabled:cursor-not-allowed">
-              {{ t('roles.edit') }}
+            <button
+              v-if="auth.can('roles.update')"
+              :disabled="role.locked"
+              @click="openEdit(role)"
+              class="btn-secondary text-xs py-1 px-3 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {{ t("roles.edit") }}
             </button>
-            <button v-if="auth.can('roles.delete')" :disabled="role.locked" @click="handleDelete(role)"
-              class="btn-danger text-xs py-1 px-3 disabled:opacity-50 disabled:cursor-not-allowed">
-              {{ t('roles.delete') }}
+            <button
+              v-if="auth.can('roles.delete')"
+              :disabled="role.locked"
+              @click="handleDelete(role)"
+              class="btn-danger text-xs py-1 px-3 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {{ t("roles.delete") }}
             </button>
           </div>
         </div>
@@ -62,33 +93,55 @@
           <PermissionBadges :permissions="role.permissions" />
         </div>
 
-        <div v-if="editForm.id === role.id" class="mt-4 border-t border-slate-100 pt-4">
+        <div
+          v-if="editForm.id === role.id"
+          class="mt-4 border-t border-slate-100 pt-4"
+        >
           <div class="grid gap-4 md:grid-cols-2">
             <div>
-              <label class="form-label">{{ t('roles.name') }}</label>
-              <input v-model="editForm.label" class="form-input w-full rounded-lg border-slate-300 text-sm" />
+              <label class="form-label">{{ t("roles.name") }}</label>
+              <input
+                v-model="editForm.label"
+                class="form-input w-full rounded-lg border-slate-300 text-sm"
+              />
             </div>
             <div>
-              <label class="form-label">{{ t('roles.roleId') }}</label>
-              <input :value="editForm.id" disabled
-                class="form-input w-full rounded-lg border-slate-200 bg-slate-50 text-sm" />
+              <label class="form-label">{{ t("roles.roleId") }}</label>
+              <input
+                :value="editForm.id"
+                disabled
+                class="form-input w-full rounded-lg border-slate-200 bg-slate-50 text-sm"
+              />
             </div>
             <div class="md:col-span-2">
-              <label class="form-label">{{ t('roles.permissionGrants') }}</label>
+              <label class="form-label">{{
+                t("roles.permissionGrants")
+              }}</label>
               <PermissionGrantsEditor v-model="editForm.permissions" />
             </div>
           </div>
-          <p v-if="editError" class="mt-3 text-sm text-red-600">{{ editError }}</p>
+          <p v-if="editError" class="mt-3 text-sm text-red-600">
+            {{ editError }}
+          </p>
           <div class="mt-4 flex gap-2">
-            <button @click="handleUpdate(role.id)" class="btn-primary">{{ t('roles.saveChanges') }}</button>
-            <button @click="editForm.id = null" class="btn-secondary">{{ t('common.cancel') }}</button>
+            <button @click="handleUpdate(role.id)" class="btn-primary">
+              {{ t("roles.saveChanges") }}
+            </button>
+            <button @click="editForm.id = null" class="btn-secondary">
+              {{ t("common.cancel") }}
+            </button>
           </div>
         </div>
       </div>
     </div>
 
-    <ConfirmModal v-model="showDeleteModal" :title="t('roles.deleteConfirm', { name: deleteTargetRole?.label })"
-      :confirm-label="t('roles.delete')" :loading="deletingRole" @confirm="executeDelete" />
+    <ConfirmModal
+      v-model="showDeleteModal"
+      :title="t('roles.deleteConfirm', { name: deleteTargetRole?.label })"
+      :confirm-label="t('roles.delete')"
+      :loading="deletingRole"
+      @confirm="executeDelete"
+    />
   </div>
 </template>
 

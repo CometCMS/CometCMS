@@ -11,10 +11,18 @@
           :style="{ maxWidth: width }"
         >
           <!-- Header -->
-          <div class="px-6 py-4 border-b border-slate-200 flex items-start justify-between gap-3 shrink-0">
+          <div
+            class="px-6 py-4 border-b border-slate-200 flex items-start justify-between gap-3 shrink-0"
+          >
             <div class="min-w-0">
-              <h2 class="text-lg font-semibold text-slate-900 leading-tight truncate">{{ title }}</h2>
-              <p v-if="subtitle" class="text-xs text-slate-500 mt-0.5">{{ subtitle }}</p>
+              <h2
+                class="text-lg font-semibold text-slate-900 leading-tight truncate"
+              >
+                {{ title }}
+              </h2>
+              <p v-if="subtitle" class="text-xs text-slate-500 mt-0.5">
+                {{ subtitle }}
+              </p>
             </div>
             <button
               type="button"
@@ -38,12 +46,12 @@
 <script setup>
 defineProps({
   modelValue: { type: Boolean, required: true },
-  title: { type: String, default: '' },
-  subtitle: { type: String, default: '' },
-  width: { type: String, default: '36rem' },
-})
+  title: { type: String, default: "" },
+  subtitle: { type: String, default: "" },
+  width: { type: String, default: "36rem" },
+});
 
-defineEmits(['update:modelValue'])
+defineEmits(["update:modelValue"]);
 </script>
 
 <style scoped>

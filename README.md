@@ -39,37 +39,36 @@ No SSH. No CLI. No `composer install`. No environment variables required. Runs o
 
 ## Public REST API
 
-The API lives at `/api/v1`. No authentication is required for public reads. A machine-readable OpenAPI contract is available at `docs/public/api/openapi.yaml` and is served in the docs as `/api/openapi.yaml`.
+Public API endpoints must include a workspace slug: `/api/v1/workspaces/{workspace}/...`. No authentication is required for public reads. A machine-readable OpenAPI contract is available at `docs/public/api/openapi.yaml` and is served in the docs as `/api/openapi.yaml`.
 
 ### Health
 
 ```
-GET /api/v1/health
+GET /api/v1/workspaces/{workspace}/health
 ```
 
 ### Content
 
 ```
-GET    /api/v1/content-types                            # list content type schemas
-GET    /api/v1/content-types/{collection}               # single content type schema
-GET    /api/v1/content/{collection}                     # list entries (published only)
-GET    /api/v1/content/{collection}/{identifier}        # single entry by slug or stable id
-POST   /api/v1/content/{collection}                     # create entry (token required)
-PUT    /api/v1/content/{collection}/{identifier}        # update entry (token required)
-DELETE /api/v1/content/{collection}/{identifier}        # soft-delete entry (token required)
+GET /api/v1/workspaces/{workspace}/content-types
+GET /api/v1/workspaces/{workspace}/content/{collection}
+GET /api/v1/workspaces/{workspace}/content/{collection}/{identifier}
+POST /api/v1/workspaces/{workspace}/content/{collection}
+PUT /api/v1/workspaces/{workspace}/content/{collection}/{identifier}
+DELETE /api/v1/workspaces/{workspace}/content/{collection}/{identifier}
 ```
 
 Entry payloads use `id` for a stable opaque identifier and `slug` for the URL-safe slug. `{identifier}` may be either value.
 
-Content types can be repeatable collections or single pages. Single pages use one fixed entry whose slug matches the content type name, e.g. `GET /api/v1/content/start-page/start-page`.
+Content types can be repeatable collections or single pages. Single pages use one fixed entry whose slug matches the content type name, e.g. `GET /api/v1/workspaces/{workspace}/content/start-page/start-page`.
 
 Public reads return only `published` entries, or `scheduled` entries whose `published_at` is in the past. `draft`, `protected`, `archived`, and soft-deleted entries are hidden unless an authenticated token is used.
 
 ### Media
 
 ```
-GET /api/v1/media          # list uploaded files (with optional ?category=... and pagination)
-GET /media/{filename}      # serve a media file directly
+GET /api/v1/workspaces/{workspace}/media          # list uploaded files (with optional ?category=... and pagination)
+GET /media/{workspace}/{filename}
 ```
 
 ### Authentication
@@ -107,9 +106,9 @@ Use `filter[...]` for all field queries. Boolean fields accept `true`/`false` (a
 Localized content types expose `locales` and `default_locale` in their schema. Add `?locale={code}` to list or single-entry reads to resolve translated `title` and field values before search, filters, sorting, and relation expansion are applied. Without `locale`, responses use the content type's default-locale fallback copy.
 
 ```http
-GET /api/v1/content/blogpost?filter[is_promo_material]=true
-GET /api/v1/content/blogpost?filter[category]=launch
-GET /api/v1/content/blogpost?filter[id]=7K4p9xQ2mR
+GET /api/v1/workspaces/{workspace}/content/blogpost?filter[is_promo_material]=true
+GET /api/v1/workspaces/{workspace}/content/blogpost?filter[category]=launch
+GET /api/v1/workspaces/{workspace}/content/blogpost?filter[id]=7K4p9xQ2mR
 ```
 
 ### Response envelope
@@ -132,7 +131,7 @@ Successful JSON responses are wrapped in `data`; list responses and secondary in
 Relation fields can be expanded with `?include=field1,field2` (one level deep):
 
 ```
-GET /api/v1/content/posts/my-post?include=author,categories
+GET /api/v1/workspaces/{workspace}/content/posts/my-post?include=author,categories
 ```
 
 ## Webhooks
@@ -176,12 +175,12 @@ Roles can be customized or created in **Users → Edit user roles**.
 
 ### Screenshots
 
-| Dashboard | Content types |
-| --------- | ------------- |
+| Dashboard                                                                          | Content types                                                                                  |
+| ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
 | <img src="docs/screenshots/view-dashboard.png" alt="Dashboard view" width="420" /> | <img src="docs/screenshots/view-content-types.png" alt="Content types overview" width="420" /> |
 
-| Media library | Role permissions |
-| ------------- | ---------------- |
+| Media library                                                                      | Role permissions                                                                                             |
+| ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
 | <img src="docs/screenshots/view-media.png" alt="Media library view" width="420" /> | <img src="docs/screenshots/view-user-role-permissions.png" alt="User role permissions editor" width="420" /> |
 
 ## Storage layout
@@ -190,15 +189,16 @@ All data lives in `cms/storage/` (not web-accessible):
 
 ```
 storage/
-  content/{collection}/{slug}.json   - content entries
-  content-types/{name}.json          - content type schemas
+  workspaces/{workspace}/content/{collection}/{slug}.json
+  workspaces/{workspace}/content-types/{name}.json
+  workspaces/{workspace}/media/
+  workspaces/{workspace}/media-meta/
+  workspaces/{workspace}/revisions/content/
+  workspaces/{workspace}/trash/
   users/{username}.json              - user accounts
   roles/{name}.json                  - customized role definitions
-  media/                             - uploaded files
-  revisions/content/                 - revision history
-  trash/                             - soft-deleted entries
   backups/                           - saved backup ZIP files
-  cache/api/                         - public API response cache
+  workspaces/{workspace}/cache/api/  - public API response cache
   updates/                           - downloaded update packages
   settings.json                      - runtime settings (webhooks etc.)
   logs/comet.log
@@ -257,13 +257,8 @@ To wipe all data and return to the setup screen, just delete the storage folder.
 ```bash
 rm -f cms/storage/users/*.json
 rm -f cms/storage/roles/*.json
-rm -rf cms/storage/content/*
-rm -rf cms/storage/content-types/*
-rm -f cms/storage/media/*
+rm -rf cms/storage/workspaces/*
 rm -f cms/storage/sessions/*
-rm -rf cms/storage/cache/api/*
-rm -rf cms/storage/trash/content/*
-rm -rf cms/storage/trash/media/*
 rm -f cms/storage/logs/*.log
 rm -f cms/storage/backups/*.zip
 rm -rf cms/storage/updates/*

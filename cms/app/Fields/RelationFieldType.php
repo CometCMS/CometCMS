@@ -6,6 +6,7 @@ namespace CometCMS\Fields;
 
 use CometCMS\Core\Security;
 use CometCMS\Storage\JsonStore;
+use CometCMS\Workspaces\WorkspaceContext;
 
 final class RelationFieldType extends AbstractFieldType
 {
@@ -34,7 +35,7 @@ final class RelationFieldType extends AbstractFieldType
         }
 
         $values = $multiple ? $this->values($value) : $this->singleValues($value);
-        $store = new JsonStore(COMET_STORAGE . '/content');
+        $store = new JsonStore(WorkspaceContext::active()->path('content'));
 
         foreach ($values as $id) {
             if ($id === '' || $store->read($target, $id) === null) {
@@ -59,7 +60,7 @@ final class RelationFieldType extends AbstractFieldType
         $target = (string) ($config['target'] ?? '');
         $multiple = (bool) ($config['multiple'] ?? false);
         $selected = $multiple ? (array) $value : [(string) $value];
-        $entries = $target !== '' ? (new JsonStore(COMET_STORAGE . '/content'))->all($target) : [];
+        $entries = $target !== '' ? (new JsonStore(WorkspaceContext::active()->path('content')))->all($target) : [];
         $html = '<select name="' . Security::e($name) . ($multiple ? '[]' : '') . '"' . ($multiple ? ' multiple size="6"' : '') . '><option value=""></option>';
 
         foreach ($entries as $entry) {

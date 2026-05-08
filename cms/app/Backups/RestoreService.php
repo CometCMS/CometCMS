@@ -10,9 +10,19 @@ use CometCMS\Auth\UserRepository;
 use CometCMS\Core\Security;
 use CometCMS\Logging\Logger;
 use CometCMS\Storage\SettingsStore;
+use CometCMS\Workspaces\WorkspaceContext;
 
 final class RestoreService
 {
+    private WorkspaceContext $workspace;
+
+    public function __construct(?WorkspaceContext $workspace = null)
+    {
+        $this->workspace = $workspace ?? WorkspaceContext::active();
+        WorkspaceContext::setActive($this->workspace->slug());
+        $this->workspace->ensure();
+    }
+
     private const ALLOWED_PARTS = [
         'content_types',
         'content',
@@ -206,6 +216,7 @@ final class RestoreService
             'manifest' => [
                 'cms' => $manifest['cms'] ?? null,
                 'version' => $manifest['version'] ?? null,
+                'workspace' => $manifest['workspace'] ?? null,
                 'created_at' => $manifest['created_at'] ?? null,
                 'parts' => array_values(array_filter(
                     array_map('strval', (array) ($manifest['parts'] ?? [])),
@@ -233,11 +244,11 @@ final class RestoreService
     {
         foreach (
             [
-                'content-types/' => ['content_types', COMET_STORAGE . '/content-types/'],
-                'content/' => ['content', COMET_STORAGE . '/content/'],
-                'revisions/' => ['content', COMET_STORAGE . '/revisions/'],
-                'media/' => ['media', COMET_STORAGE . '/media/'],
-                'media-meta/' => ['media', COMET_STORAGE . '/media-meta/'],
+                'content-types/' => ['content_types', $this->workspace->path('content-types') . '/'],
+                'content/' => ['content', $this->workspace->path('content') . '/'],
+                'revisions/' => ['content', $this->workspace->path('revisions') . '/'],
+                'media/' => ['media', $this->workspace->path('media') . '/'],
+                'media-meta/' => ['media', $this->workspace->path('media-meta') . '/'],
             ] as $prefix => [$part, $target]
         ) {
             if (str_starts_with($name, $prefix)) {
@@ -499,6 +510,7 @@ final class RestoreService
             $clean[] = [
                 'url' => $url,
                 'secret' => $secret,
+                'name' => trim((string) ($webhook['name'] ?? '')),
                 'events' => array_values(array_unique(array_map('strval', (array) ($webhook['events'] ?? [])))),
                 'enabled' => ($webhook['enabled'] ?? true) !== false,
             ];

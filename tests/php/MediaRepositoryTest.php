@@ -6,7 +6,7 @@ use CometCMS\Media\MediaRepository;
 
 function comet_media_test_file(string $name, string $body = 'file'): void
 {
-    file_put_contents(COMET_STORAGE . '/media/' . $name, $body);
+    file_put_contents(comet_test_workspace_path() . '/media/' . $name, $body);
 }
 
 test('media repository manages nested categories and updates assigned files', function (): void {
@@ -55,7 +55,7 @@ test('media repository preserves metadata when renaming and supports bulk update
     assert_same('Hero alt', $renamed['alt']);
     assert_same('Hero title', $renamed['title']);
     assert_same('private', $renamed['visibility']);
-    assert_false(is_file(COMET_STORAGE . '/media/old.jpg'));
+    assert_false(is_file(comet_test_workspace_path() . '/media/old.jpg'));
 
     assert_same(['hero.jpg', 'other.jpg'], array_column($repository->updateVisibilityForMany(['hero.jpg', 'other.jpg', 'missing.jpg'], 'private'), 'name'));
     assert_same(['hero.jpg', 'other.jpg'], array_column($repository->files('', null, 'all', 'name', 'private'), 'name'));

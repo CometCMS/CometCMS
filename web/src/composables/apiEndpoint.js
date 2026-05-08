@@ -1,3 +1,5 @@
+import { getActiveWorkspace } from "../api/index.js";
+
 const API_ROOT = "/api/v1";
 const ADMIN_API_ROOT = "/admin/api";
 
@@ -9,20 +11,41 @@ export function adminApiBase(origin = defaultOrigin()) {
   return `${origin}${ADMIN_API_ROOT}`;
 }
 
+/**
+ * Returns the workspace-scoped API root.
+ * Always uses the URL-prefix form:
+ *   /api/v1/workspaces/{slug}
+ */
+export function workspacedApiBase(origin = defaultOrigin()) {
+  const workspace = getActiveWorkspace();
+  if (!workspace) {
+    return apiBase(origin);
+  }
+  return `${origin}${API_ROOT}/workspaces/${encodePathSegment(workspace)}`;
+}
+
 export function buildApiUrl(path, params = {}, origin = defaultOrigin()) {
   return buildUrl(apiBase(origin), path, params);
+}
+
+export function buildWorkspacedApiUrl(path, params = {}, origin = defaultOrigin()) {
+  return buildUrl(workspacedApiBase(origin), path, params);
 }
 
 export function buildAdminApiUrl(path, params = {}, origin = defaultOrigin()) {
   return buildUrl(adminApiBase(origin), path, params);
 }
 
-export function contentTypesAdminEndpoint(origin) {
-  return buildAdminApiUrl("/content-types", {}, origin);
+export function contentTypesEndpoint(origin) {
+  return buildWorkspacedApiUrl("/content-types", {}, origin);
 }
 
 export function usersAdminEndpoint(origin) {
   return buildAdminApiUrl("/users", {}, origin);
+}
+
+export function userAdminEndpoint(id, origin) {
+  return buildAdminApiUrl(`/users/${encodePathSegment(id)}`, {}, origin);
 }
 
 function buildUrl(base, path, params = {}) {
@@ -38,14 +61,14 @@ function buildUrl(base, path, params = {}) {
 }
 
 export function contentTypeEndpoint(name, origin) {
-  return buildApiUrl(`/content-types/${encodePathSegment(name)}`, {}, origin);
+  return buildWorkspacedApiUrl(`/content-types/${encodePathSegment(name)}`, {}, origin);
 }
 
 export function contentCollectionEndpoint(
   { collection, limit, offset, sortKey, sortDir, q, locale },
   origin,
 ) {
-  return buildApiUrl(
+  return buildWorkspacedApiUrl(
     `/content/${encodePathSegment(collection)}`,
     {
       limit,
@@ -62,7 +85,7 @@ export function contentEntryEndpoint(
   { collection, entryId, locale },
   origin,
 ) {
-  return buildApiUrl(
+  return buildWorkspacedApiUrl(
     `/content/${encodePathSegment(collection)}/${encodePathSegment(entryId)}`,
     { locale },
     origin,
@@ -70,7 +93,7 @@ export function contentEntryEndpoint(
 }
 
 export function mediaListEndpoint({ limit, offset, q, category }, origin) {
-  return buildApiUrl(
+  return buildWorkspacedApiUrl(
     "/media",
     {
       limit,
@@ -83,7 +106,7 @@ export function mediaListEndpoint({ limit, offset, q, category }, origin) {
 }
 
 export function mediaDetailEndpoint(filename, origin) {
-  return buildApiUrl("/media", { q: filename }, origin);
+  return buildWorkspacedApiUrl("/media", { q: filename }, origin);
 }
 
 export function signedSort(sortKey, sortDir) {

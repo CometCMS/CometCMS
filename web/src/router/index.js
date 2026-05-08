@@ -90,6 +90,11 @@ const routes = [
     component: () => import('../views/ApiExplorerView.vue'),
     meta: { requiresAuth: true },
   },
+  {
+    path: '/workspaces',
+    component: () => import('../views/WorkspacesView.vue'),
+    meta: { requiresAuth: true },
+  },
 ]
 
 const router = createRouter({

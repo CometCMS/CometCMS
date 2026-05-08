@@ -1,58 +1,81 @@
 <template>
   <div>
     <div class="flex items-center justify-between mb-6">
-      <h1 class="text-2xl font-bold text-slate-900">{{ t('tokens.title') }}</h1>
+      <h1 class="text-2xl font-bold text-slate-900">{{ t("tokens.title") }}</h1>
       <button @click="openTokenForm" class="btn-primary">
-        {{ t('tokens.newToken') }}
+        {{ t("tokens.newToken") }}
       </button>
     </div>
 
     <div v-if="showTokenForm" class="card p-6 mb-6 space-y-4">
-      <h2 class="text-sm font-semibold text-slate-700">{{ t('tokens.createToken') }}</h2>
+      <h2 class="text-sm font-semibold text-slate-700">
+        {{ t("tokens.createToken") }}
+      </h2>
       <div class="grid gap-4 md:grid-cols-2">
         <div>
-          <label class="form-label">{{ t('tokens.tokenName') }}</label>
-          <input v-model="tokenForm.name" type="text" :placeholder="t('tokens.tokenPlaceholder')"
-            class="form-input w-full rounded-lg border-slate-300 text-sm" />
+          <label class="form-label">{{ t("tokens.tokenName") }}</label>
+          <input
+            v-model="tokenForm.name"
+            type="text"
+            :placeholder="t('tokens.tokenPlaceholder')"
+            class="form-input w-full rounded-lg border-slate-300 text-sm"
+          />
         </div>
         <div>
-          <label class="form-label">{{ t('tokens.description') }}</label>
-          <input v-model="tokenForm.description" type="text" :placeholder="t('tokens.descriptionPlaceholder')"
-            class="form-input w-full rounded-lg border-slate-300 text-sm" />
+          <label class="form-label">{{ t("tokens.description") }}</label>
+          <input
+            v-model="tokenForm.description"
+            type="text"
+            :placeholder="t('tokens.descriptionPlaceholder')"
+            class="form-input w-full rounded-lg border-slate-300 text-sm"
+          />
         </div>
       </div>
       <div>
-        <label class="form-label">{{ t('tokens.permissionGrants') }}</label>
+        <label class="form-label">{{ t("tokens.permissionGrants") }}</label>
         <PermissionGrantsEditor v-model="tokenForm.permissions" />
       </div>
       <div class="flex gap-2">
         <button @click="handleCreateToken" class="btn-primary">
-          {{ t('tokens.create') }}
+          {{ t("tokens.create") }}
         </button>
         <button @click="showTokenForm = false" class="btn-secondary">
-          {{ t('common.cancel') }}
+          {{ t("common.cancel") }}
         </button>
       </div>
     </div>
 
     <div v-if="newTokenValue" class="mb-6 p-4 bg-green-50 rounded-lg">
       <p class="text-sm text-green-700 font-semibold mb-1">
-        {{ t('tokens.tokenCreatedCopy') }}
+        {{ t("tokens.tokenCreatedCopy") }}
       </p>
-      <code class="text-xs break-all text-green-900 font-mono">{{ newTokenValue }}</code>
+      <code class="text-xs break-all text-green-900 font-mono">{{
+        newTokenValue
+      }}</code>
     </div>
 
     <LoadingSpinner v-if="loading" />
 
     <div v-else class="card p-5">
       <div v-if="tokens.length === 0" class="text-sm text-slate-400">
-        {{ t('tokens.noTokens') }}
+        {{ t("tokens.noTokens") }}
       </div>
-      <TokenCard v-for="token in tokens" :key="token.id" :token="token" @revoke="handleRevokeToken(token.id)" />
+      <TokenCard
+        v-for="token in tokens"
+        :key="token.id"
+        :token="token"
+        @revoke="handleRevokeToken(token.id)"
+      />
     </div>
 
-    <ConfirmModal v-model="showRevokeModal" :title="t('tokens.revokeConfirm')" :message="t('tokens.revokeMessage')"
-      :confirm-label="t('tokens.revoke')" :loading="revokingToken" @confirm="confirmRevokeToken" />
+    <ConfirmModal
+      v-model="showRevokeModal"
+      :title="t('tokens.revokeConfirm')"
+      :message="t('tokens.revokeMessage')"
+      :confirm-label="t('tokens.revoke')"
+      :loading="revokingToken"
+      @confirm="confirmRevokeToken"
+    />
   </div>
 </template>
 

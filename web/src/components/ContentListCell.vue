@@ -64,156 +64,160 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick } from 'vue'
-import { Icon } from '@iconify/vue'
-import FieldValueInput from './FieldValueInput.vue'
-import MediaPickerModal from './MediaPickerModal.vue'
+import { ref, computed, nextTick } from "vue";
+import { Icon } from "@iconify/vue";
+import FieldValueInput from "./FieldValueInput.vue";
+import MediaPickerModal from "./MediaPickerModal.vue";
 
 const props = defineProps({
   column: { type: Object, required: true },
   entry: { type: Object, required: true },
   users: { type: Array, default: () => [] },
   saving: { type: Boolean, default: false },
-})
+});
 
-const emit = defineEmits(['save'])
+const emit = defineEmits(["save"]);
 
-const EDITABLE_CORE_KEYS = new Set([
-  'status',
-])
+const EDITABLE_CORE_KEYS = new Set(["status"]);
 
 const EDITABLE_FIELD_TYPES = new Set([
-  'text',
-  'select',
-  'number',
-  'range',
-  'date',
-  'datetime',
-  'boolean',
-  'color',
-  'media',
-])
+  "text",
+  "select",
+  "number",
+  "range",
+  "date",
+  "datetime",
+  "boolean",
+  "color",
+  "media",
+]);
 
 const columnDescriptor = computed(() => {
-  const { column } = props
+  const { column } = props;
 
-  if (column.kind === 'core') {
+  if (column.kind === "core") {
     if (!EDITABLE_CORE_KEYS.has(column.key)) {
-      return { editable: false }
+      return { editable: false };
     }
     return {
       editable: true,
       fieldMeta: { kind: column.key },
       fieldKey: column.key,
-      getValue: (entry) => entry[column.key] ?? '',
-    }
+      getValue: (entry) => entry[column.key] ?? "",
+    };
   }
 
-  if (column.kind === 'field' && EDITABLE_FIELD_TYPES.has(column.type)) {
+  if (column.kind === "field" && EDITABLE_FIELD_TYPES.has(column.type)) {
     return {
       editable: true,
       fieldMeta: { kind: column.type, config: column.config },
       fieldKey: column.fieldKey,
       getValue: (entry) => {
-        const key = column.fieldKey
-        if (Object.prototype.hasOwnProperty.call(entry, key)) return entry[key]
-        if (Object.prototype.hasOwnProperty.call(entry.data ?? {}, key)) return entry.data[key]
-        return null
+        const key = column.fieldKey;
+        if (Object.prototype.hasOwnProperty.call(entry, key)) return entry[key];
+        if (Object.prototype.hasOwnProperty.call(entry.data ?? {}, key))
+          return entry.data[key];
+        return null;
       },
-    }
+    };
   }
 
-  return { editable: false }
-})
+  return { editable: false };
+});
 
-const isEditable = computed(() => columnDescriptor.value.editable)
-const fieldMeta = computed(() => columnDescriptor.value.fieldMeta ?? null)
-const currentValue = computed(() => columnDescriptor.value.getValue?.(props.entry) ?? null)
-const isMediaField = computed(() => props.column.kind === 'field' && props.column.type === 'media')
-const mediaMultiple = computed(() => !!props.column.config?.multiple)
-const mediaDraft = computed(() => normalizeMediaValues(draft.value))
+const isEditable = computed(() => columnDescriptor.value.editable);
+const fieldMeta = computed(() => columnDescriptor.value.fieldMeta ?? null);
+const currentValue = computed(
+  () => columnDescriptor.value.getValue?.(props.entry) ?? null,
+);
+const isMediaField = computed(
+  () => props.column.kind === "field" && props.column.type === "media",
+);
+const mediaMultiple = computed(() => !!props.column.config?.multiple);
+const mediaDraft = computed(() => normalizeMediaValues(draft.value));
 
-const editing = ref(false)
-const draft = ref(null)
-const inputRef = ref(null)
+const editing = ref(false);
+const draft = ref(null);
+const inputRef = ref(null);
 
 function startEdit() {
-  if (!isEditable.value || props.saving) return
-  draft.value = currentValue.value
-  editing.value = true
-  if (isMediaField.value) return
+  if (!isEditable.value || props.saving) return;
+  draft.value = currentValue.value;
+  editing.value = true;
+  if (isMediaField.value) return;
   nextTick(() => {
-    const el = inputRef.value?.$el ?? inputRef.value
+    const el = inputRef.value?.$el ?? inputRef.value;
     const input =
-      el?.querySelector?.('input, select, textarea') ??
-      (el?.tagName ? el : null)
-    input?.focus()
-  })
+      el?.querySelector?.("input, select, textarea") ??
+      (el?.tagName ? el : null);
+    input?.focus();
+  });
 }
 
 function cancel() {
-  editing.value = false
+  editing.value = false;
 }
 
 function commit() {
-  if (!editing.value || props.saving) return
-  editing.value = false
-  emit('save', {
+  if (!editing.value || props.saving) return;
+  editing.value = false;
+  emit("save", {
     entryId: props.entry.id,
     fieldKey: columnDescriptor.value.fieldKey,
     value: draft.value,
-  })
+  });
 }
 
 function commitMedia(value) {
-  if (!editing.value || props.saving) return
-  editing.value = false
-  emit('save', {
+  if (!editing.value || props.saving) return;
+  editing.value = false;
+  emit("save", {
     entryId: props.entry.id,
     fieldKey: columnDescriptor.value.fieldKey,
     value: normalizeMediaValues(value),
-  })
+  });
 }
 
 function normalizeMediaValues(value) {
-  const source = Array.isArray(value) ? value : splitMediaValue(value)
-  return Array.from(new Set(source.map(extractMediaFilename).filter(Boolean)))
+  const source = Array.isArray(value) ? value : splitMediaValue(value);
+  return Array.from(new Set(source.map(extractMediaFilename).filter(Boolean)));
 }
 
 function splitMediaValue(value) {
-  if (value === null || value === undefined) return []
-  const raw = String(value).trim()
-  if (raw === '') return []
+  if (value === null || value === undefined) return [];
+  const raw = String(value).trim();
+  if (raw === "") return [];
 
-  if (raw.startsWith('[') && raw.endsWith(']')) {
+  if (raw.startsWith("[") && raw.endsWith("]")) {
     try {
-      const parsed = JSON.parse(raw)
-      if (Array.isArray(parsed)) return parsed
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
     } catch {
       // Fall through to comma-separated parsing.
     }
   }
 
-  return raw.split(',').map((item) => item.trim())
+  return raw.split(",").map((item) => item.trim());
 }
 
 function extractMediaFilename(value) {
-  let raw = value && typeof value === 'object'
-    ? String(value.name ?? value.filename ?? value.url ?? '')
-    : String(value ?? '')
+  let raw =
+    value && typeof value === "object"
+      ? String(value.name ?? value.filename ?? value.url ?? "")
+      : String(value ?? "");
 
-  raw = raw.trim()
-  if (raw === '') return ''
+  raw = raw.trim();
+  if (raw === "") return "";
 
   try {
-    raw = decodeURIComponent(raw)
+    raw = decodeURIComponent(raw);
   } catch {
     // Keep raw value if it is not URI encoded.
   }
 
-  const normalizedPath = raw.split(/[?#]/, 1)[0].replace(/\\+/g, '/')
-  const parts = normalizedPath.split('/').filter(Boolean)
+  const normalizedPath = raw.split(/[?#]/, 1)[0].replace(/\\+/g, "/");
+  const parts = normalizedPath.split("/").filter(Boolean);
 
-  return parts.length > 0 ? parts[parts.length - 1] : ''
+  return parts.length > 0 ? parts[parts.length - 1] : "";
 }
 </script>

@@ -6,7 +6,26 @@ define('COMET_ROOT', dirname(__DIR__));
 define('COMET_APP', COMET_ROOT . '/app');
 define('COMET_STORAGE', COMET_ROOT . '/storage');
 
+function comet_bootstrap_failure(string $title, string $message, array $details = []): never
+{
+    if (function_exists('comet_entry_failure')) {
+        comet_entry_failure($title, $message, $details);
+    }
+
+    error_log('CometCMS bootstrap error: ' . $title . ' - ' . $message . ' ' . json_encode($details, JSON_UNESCAPED_SLASHES));
+    http_response_code(500);
+    header('Content-Type: text/plain; charset=utf-8');
+    echo $title . "\n\n" . $message;
+    exit;
+}
+
 $cometConfig = require COMET_ROOT . '/config/config.php';
+
+if (!is_array($cometConfig)) {
+    comet_bootstrap_failure('Invalid configuration', 'config/config.php must return a PHP array.', [
+        'file' => COMET_ROOT . '/config/config.php',
+    ]);
+}
 
 // Merge runtime settings from storage/settings.json (takes precedence over config.php)
 $_settingsFile = COMET_STORAGE . '/settings.json';
@@ -73,29 +92,42 @@ foreach (
         COMET_STORAGE . '/users',
         COMET_STORAGE . '/api-tokens',
         COMET_STORAGE . '/roles',
-        COMET_STORAGE . '/content',
-        COMET_STORAGE . '/media',
-        COMET_STORAGE . '/media-thumbs',
-        COMET_STORAGE . '/media-meta',
         COMET_STORAGE . '/sessions',
         COMET_STORAGE . '/cache',
-        COMET_STORAGE . '/cache/api',
         COMET_STORAGE . '/cache/login-throttle',
-        COMET_STORAGE . '/content-types',
-        COMET_STORAGE . '/revisions',
-        COMET_STORAGE . '/revisions/content',
-        COMET_STORAGE . '/trash',
-        COMET_STORAGE . '/trash/content',
-        COMET_STORAGE . '/trash/media',
         COMET_STORAGE . '/logs',
         COMET_STORAGE . '/backups',
         COMET_STORAGE . '/updates',
+        COMET_STORAGE . '/workspaces',
     ] as $directory
 ) {
     if (!is_dir($directory)) {
-        mkdir($directory, 0775, true);
+        $lastError = null;
+        set_error_handler(static function (int $severity, string $message) use (&$lastError): bool {
+            $lastError = $message;
+            return true;
+        });
+        $created = mkdir($directory, 0775, true);
+        restore_error_handler();
+
+        if (!$created && !is_dir($directory)) {
+            comet_bootstrap_failure('Storage is not writable', 'CometCMS could not create a required storage directory.', [
+                'directory' => $directory,
+                'error' => $lastError,
+                'hint' => 'Make storage/ writable by the web server user.',
+            ]);
+        }
+    }
+
+    if (!is_writable($directory)) {
+        comet_bootstrap_failure('Storage is not writable', 'CometCMS cannot write to a required storage directory.', [
+            'directory' => $directory,
+            'hint' => 'Make storage/ writable by the web server user.',
+        ]);
     }
 }
+
+(new \CometCMS\Auth\RoleRepository())->seed();
 
 $scriptBase = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '')), '/');
 $cookiePath = $scriptBase === '' ? '/' : $scriptBase;
@@ -112,6 +144,11 @@ $needsSession = !str_starts_with($requestPath, '/api/')
     && !str_starts_with($requestPath, '/media-thumbs/');
 
 session_name((string) comet_config('security.session_name', 'cometcms_admin'));
+
+if (session_status() !== PHP_SESSION_ACTIVE && session_module_name() !== 'files') {
+    session_module_name('files');
+}
+
 session_save_path(COMET_STORAGE . '/sessions');
 session_set_cookie_params([
     'lifetime' => 0,
@@ -122,5 +159,19 @@ session_set_cookie_params([
 ]);
 
 if ($needsSession && session_status() !== PHP_SESSION_ACTIVE) {
-    session_start();
+    $lastError = null;
+    set_error_handler(static function (int $severity, string $message) use (&$lastError): bool {
+        $lastError = $message;
+        return true;
+    });
+    $started = session_start();
+    restore_error_handler();
+
+    if (!$started) {
+        comet_bootstrap_failure('Session storage is not writable', 'CometCMS could not start an admin session.', [
+            'session_path' => COMET_STORAGE . '/sessions',
+            'error' => $lastError,
+            'hint' => 'Make storage/sessions writable by the web server user.',
+        ]);
+    }
 }

@@ -227,7 +227,14 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from "vue";
+import {
+  ref,
+  computed,
+  onMounted,
+  onBeforeUnmount,
+  watch,
+  nextTick,
+} from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { Icon } from "@iconify/vue";
 import FieldBuilder from "../components/FieldBuilder.vue";
@@ -243,6 +250,7 @@ import { useAuthStore } from "../stores/auth.js";
 import { useApiEndpointStore } from "../stores/apiEndpoint.js";
 import { contentTypeEndpoint } from "../composables/apiEndpoint.js";
 import { useI18n } from "../i18n/index.js";
+import { toSlug } from "../composables/fieldBuilderUtils.js";
 
 const route = useRoute();
 const router = useRouter();
@@ -480,9 +488,7 @@ function validateCustomFields(fields) {
 
 function fixSlugOnBlur() {
   if (!isNew.value || !form.value.name) return;
-  let v = form.value.name.toLowerCase().trim();
-  v = v.replace(/[^a-z0-9_-]+/g, "-");
-  v = v.replace(/^[-_]+|[-_]+$/g, "");
+  const v = toSlug(form.value.name);
   if (v) form.value.name = v;
 }
 

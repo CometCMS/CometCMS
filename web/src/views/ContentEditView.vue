@@ -1,31 +1,51 @@
 <template>
   <div>
     <div class="editor-sticky-header flex items-center gap-3">
-      <router-link :to="backLink" class="text-slate-500 hover:text-slate-800 transition-colors">
+      <router-link
+        :to="backLink"
+        class="text-slate-500 hover:text-slate-800 transition-colors"
+      >
         <Icon icon="mdi:chevron-left" class="w-5 h-5" />
       </router-link>
       <h1 class="text-2xl font-bold text-slate-900 truncate">
         {{ editorTitle }}
       </h1>
       <div class="ml-auto flex items-center gap-2">
-        <button v-if="!isNew" @click="openRevisions" class="btn-secondary" type="button">
+        <button
+          v-if="!isNew"
+          @click="openRevisions"
+          class="btn-secondary"
+          type="button"
+        >
           {{ t("contentEdit.history") }}
         </button>
-        <span v-if="isReadOnly"
-          class="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600 ring-1 ring-slate-200">
+        <span
+          v-if="isReadOnly"
+          class="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600 ring-1 ring-slate-200"
+        >
           {{ t("contentEdit.preview") }}
         </span>
-        <button v-if="canSaveEntry" type="submit" :disabled="saving" class="btn-primary relative" form="entry-form">
+        <button
+          v-if="canSaveEntry"
+          type="submit"
+          :disabled="saving"
+          class="btn-primary relative"
+          form="entry-form"
+        >
           {{ saving ? t("common.saving") : saveLabel }}
-          <span v-if="isDirty && !saving"
-            class="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-400 ring-2 ring-white"></span>
+          <span
+            v-if="isDirty && !saving"
+            class="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-400 ring-2 ring-white"
+          ></span>
         </button>
       </div>
     </div>
 
     <!-- Restore revision banner -->
-    <div v-if="previewingRevision"
-      class="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between gap-4">
+    <div
+      v-if="previewingRevision"
+      class="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between gap-4"
+    >
       <p class="text-sm text-amber-800">
         {{
           t("contentEdit.restoreBanner", {
@@ -33,17 +53,25 @@
           })
         }}
       </p>
-      <button type="button" @click="cancelRestore"
-        class="text-xs text-amber-700 hover:text-amber-900 underline shrink-0">
+      <button
+        type="button"
+        @click="cancelRestore"
+        class="text-xs text-amber-700 hover:text-amber-900 underline shrink-0"
+      >
         {{ t("contentEdit.cancelRestore") }}
       </button>
     </div>
 
-    <div v-if="loadError" class="p-3 bg-red-50 text-red-700 rounded-lg text-sm mb-4">
+    <div
+      v-if="loadError"
+      class="p-3 bg-red-50 text-red-700 rounded-lg text-sm mb-4"
+    >
       {{ loadError }}
     </div>
-    <div v-else-if="isReadOnly"
-      class="mb-4 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
+    <div
+      v-else-if="isReadOnly"
+      class="mb-4 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600"
+    >
       {{ t("contentEdit.readOnlyDescription") }}
     </div>
 
@@ -54,72 +82,117 @@
           t("contentEdit.locales")
         }}</span>
         <template v-for="loc in orderedContentTypeLocales" :key="loc">
-          <span v-if="hasTranslation(loc)" data-locale-menu-root :class="[
-            'group/locale relative inline-flex items-center gap-1 rounded-full text-xs font-medium ring-1 ring-inset transition-colors',
-            currentLocale === loc
-              ? 'bg-theme-600 text-white ring-theme-600'
-              : 'bg-white text-slate-600 ring-slate-300',
-          ]">
-            <button type="button" @click="switchLocale(loc)"
-              class="pl-3 py-1 hover:opacity-80 transition-opacity inline-flex items-center gap-1">
-              <span>{{ localeLabel(loc) }}</span>
-              <span v-if="loc === defaultLocale" class="text-[10px] uppercase tracking-wide opacity-75">{{
-                t("contentEdit.default") }}</span>
-            </button>
-            <button type="button" :class="[
-              'mr-1 flex h-5 w-5 items-center justify-center rounded-full opacity-0 transition hover:opacity-100 focus:opacity-100 group-hover/locale:opacity-100',
+          <span
+            v-if="hasTranslation(loc)"
+            data-locale-menu-root
+            :class="[
+              'group/locale relative inline-flex items-center gap-1 rounded-full text-xs font-medium ring-1 ring-inset transition-colors',
               currentLocale === loc
-                ? 'hover:bg-white/15'
-                : 'hover:bg-slate-100',
-            ]" :title="t('contentEdit.localeActions')" @click.stop="toggleLocaleMenu(loc)">
+                ? 'bg-theme-600 text-white ring-theme-600'
+                : 'bg-white text-slate-600 ring-slate-300',
+            ]"
+          >
+            <button
+              type="button"
+              @click="switchLocale(loc)"
+              class="pl-3 py-1 hover:opacity-80 transition-opacity inline-flex items-center gap-1"
+            >
+              <span>{{ localeLabel(loc) }}</span>
+              <span
+                v-if="loc === defaultLocale"
+                class="text-[10px] uppercase tracking-wide opacity-75"
+                >{{ t("contentEdit.default") }}</span
+              >
+            </button>
+            <button
+              type="button"
+              :class="[
+                'mr-1 flex h-5 w-5 items-center justify-center rounded-full opacity-0 transition hover:opacity-100 focus:opacity-100 group-hover/locale:opacity-100',
+                currentLocale === loc
+                  ? 'hover:bg-white/15'
+                  : 'hover:bg-slate-100',
+              ]"
+              :title="t('contentEdit.localeActions')"
+              @click.stop="toggleLocaleMenu(loc)"
+            >
               <Icon icon="mdi:dots-horizontal" class="w-4 h-4" />
             </button>
-            <div v-if="localeMenu === loc"
-              class="absolute left-0 top-8 z-20 w-60 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 text-sm text-slate-700 shadow-lg">
-              <button type="button"
+            <div
+              v-if="localeMenu === loc"
+              class="absolute left-0 top-8 z-20 w-60 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 text-sm text-slate-700 shadow-lg"
+            >
+              <button
+                type="button"
                 class="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-400 disabled:hover:bg-white"
-                :disabled="isReadOnly || loc === defaultLocale" @click.stop="syncLocaleFromDefault(loc)">
+                :disabled="isReadOnly || loc === defaultLocale"
+                @click.stop="syncLocaleFromDefault(loc)"
+              >
                 <Icon icon="mdi:sync" class="h-4 w-4" />
                 {{ t("contentEdit.syncContentDefault") }}
               </button>
-              <button type="button"
+              <button
+                type="button"
                 class="flex w-full items-center gap-2 px-3 py-2 text-left text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:text-red-300 disabled:hover:bg-white"
-                :disabled="isReadOnly || loc === defaultLocale || deletingTranslation
-                  " @click.stop="handleDeleteTranslation(loc)">
+                :disabled="
+                  isReadOnly || loc === defaultLocale || deletingTranslation
+                "
+                @click.stop="handleDeleteTranslation(loc)"
+              >
                 <Icon icon="mdi:trash-can-outline" class="h-4 w-4" />
                 {{ t("contentEdit.remove") }}
               </button>
             </div>
           </span>
-          <span v-else data-locale-menu-root :class="[
-            'group/locale relative inline-flex items-center gap-1 rounded-full text-xs font-medium ring-1 ring-dashed transition-colors',
-            currentLocale === loc
-              ? 'bg-theme-50 text-theme-600 ring-theme-300'
-              : 'bg-slate-50 text-slate-400 ring-slate-300 hover:ring-theme-400 hover:text-theme-500',
-          ]">
-            <button type="button" :disabled="isReadOnly" @click="createTranslation(loc)"
-              class="pl-3 py-1 inline-flex items-center gap-1 disabled:cursor-default">
+          <span
+            v-else
+            data-locale-menu-root
+            :class="[
+              'group/locale relative inline-flex items-center gap-1 rounded-full text-xs font-medium ring-1 ring-dashed transition-colors',
+              currentLocale === loc
+                ? 'bg-theme-50 text-theme-600 ring-theme-300'
+                : 'bg-slate-50 text-slate-400 ring-slate-300 hover:ring-theme-400 hover:text-theme-500',
+            ]"
+          >
+            <button
+              type="button"
+              :disabled="isReadOnly"
+              @click="createTranslation(loc)"
+              class="pl-3 py-1 inline-flex items-center gap-1 disabled:cursor-default"
+            >
               <Icon icon="mdi:plus" class="w-3 h-3" />
               <span>{{ localeLabel(loc) }}</span>
-              <span v-if="loc === defaultLocale" class="text-[10px] uppercase tracking-wide">{{ t("contentEdit.default")
-              }}</span>
+              <span
+                v-if="loc === defaultLocale"
+                class="text-[10px] uppercase tracking-wide"
+                >{{ t("contentEdit.default") }}</span
+              >
             </button>
-            <button type="button"
+            <button
+              type="button"
               class="mr-1 flex h-5 w-5 items-center justify-center rounded-full opacity-0 transition hover:bg-slate-100 hover:opacity-100 focus:opacity-100 group-hover/locale:opacity-100"
-              :title="t('contentEdit.localeActions')" @click.stop="toggleLocaleMenu(loc)">
+              :title="t('contentEdit.localeActions')"
+              @click.stop="toggleLocaleMenu(loc)"
+            >
               <Icon icon="mdi:dots-horizontal" class="w-4 h-4" />
             </button>
-            <div v-if="localeMenu === loc"
-              class="absolute left-0 top-8 z-20 w-60 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 text-sm text-slate-700 shadow-lg">
-              <button type="button"
+            <div
+              v-if="localeMenu === loc"
+              class="absolute left-0 top-8 z-20 w-60 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 text-sm text-slate-700 shadow-lg"
+            >
+              <button
+                type="button"
                 class="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-400 disabled:hover:bg-white"
-                :disabled="isReadOnly || loc === defaultLocale" @click.stop="syncLocaleFromDefault(loc)">
+                :disabled="isReadOnly || loc === defaultLocale"
+                @click.stop="syncLocaleFromDefault(loc)"
+              >
                 <Icon icon="mdi:sync" class="h-4 w-4" />
                 {{ t("contentEdit.syncContentDefault") }}
               </button>
-              <button type="button"
+              <button
+                type="button"
                 class="flex w-full items-center gap-2 px-3 py-2 text-left text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:text-red-300 disabled:hover:bg-white"
-                disabled>
+                disabled
+              >
                 <Icon icon="mdi:trash-can-outline" class="h-4 w-4" />
                 {{ t("contentEdit.remove") }}
               </button>
@@ -127,8 +200,10 @@
           </span>
         </template>
       </div>
-      <p v-if="unsupportedTranslationLocales.length > 0"
-        class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+      <p
+        v-if="unsupportedTranslationLocales.length > 0"
+        class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2"
+      >
         {{
           t("contentEdit.unsupportedLocales", {
             locales: unsupportedTranslationLocales.join(", "),
@@ -137,7 +212,12 @@
       </p>
     </div>
 
-    <form v-if="!loadError" id="entry-form" @submit.prevent="handleSave" class="space-y-6">
+    <form
+      v-if="!loadError"
+      id="entry-form"
+      @submit.prevent="handleSave"
+      class="space-y-6"
+    >
       <!-- Core fields -->
       <div class="card p-6 space-y-4">
         <h2 class="text-sm font-semibold text-slate-700">
@@ -147,25 +227,38 @@
         <div class="grid grid-cols-2 gap-4">
           <div>
             <label class="form-label">{{ t("contentEdit.status") }}</label>
-            <select v-model="form.status" :disabled="isReadOnly"
-              class="form-select w-full rounded-lg border-slate-300 text-sm">
+            <select
+              v-model="form.status"
+              :disabled="isReadOnly"
+              class="form-select w-full rounded-lg border-slate-300 text-sm"
+            >
               <option v-for="s in statuses" :key="s" :value="s">{{ s }}</option>
             </select>
           </div>
 
           <div v-if="isNew && contentTypeLocales.length > 0">
             <label class="form-label">{{ t("contentEdit.locale") }}</label>
-            <select v-model="form.locale" :disabled="isReadOnly"
-              class="form-select w-full rounded-lg border-slate-300 text-sm">
-              <option v-for="loc in orderedContentTypeLocales" :key="loc" :value="loc">
+            <select
+              v-model="form.locale"
+              :disabled="isReadOnly"
+              class="form-select w-full rounded-lg border-slate-300 text-sm"
+            >
+              <option
+                v-for="loc in orderedContentTypeLocales"
+                :key="loc"
+                :value="loc"
+              >
                 {{ loc }}
               </option>
             </select>
           </div>
           <div v-else>
             <label class="form-label">{{ t("contentEdit.author") }}</label>
-            <select v-model="form.author_id" :disabled="isReadOnly"
-              class="form-select w-full rounded-lg border-slate-300 text-sm">
+            <select
+              v-model="form.author_id"
+              :disabled="isReadOnly"
+              class="form-select w-full rounded-lg border-slate-300 text-sm"
+            >
               <option :value="null" disabled>
                 {{ t("contentEdit.select") }}
               </option>
@@ -177,8 +270,13 @@
 
           <div class="col-span-2">
             <label class="form-label">{{ t("contentEdit.title") }}</label>
-            <input v-model="form.title" type="text" required :readonly="isReadOnly"
-              class="form-input w-full rounded-lg border-slate-300 text-sm" />
+            <input
+              v-model="form.title"
+              type="text"
+              required
+              :readonly="isReadOnly"
+              class="form-input w-full rounded-lg border-slate-300 text-sm"
+            />
           </div>
 
           <div v-if="!isSingleton">
@@ -188,29 +286,44 @@
                 t("contentEdit.slugGenerated")
               }}</span>
             </label>
-            <input v-model="form.slug" type="text" :readonly="isReadOnly"
-              class="form-input w-full rounded-lg border-slate-300 text-sm" />
-            <p v-if="contentTypeLocales.length > 0" class="mt-1 text-xs text-slate-500">
+            <input
+              v-model="form.slug"
+              type="text"
+              :readonly="isReadOnly"
+              class="form-input w-full rounded-lg border-slate-300 text-sm"
+            />
+            <p
+              v-if="contentTypeLocales.length > 0"
+              class="mt-1 text-xs text-slate-500"
+            >
               {{ t("contentEdit.slugShared") }}
             </p>
           </div>
 
           <div>
             <label class="form-label">
-              <template v-if="form.status === 'published' && isScheduled">{{ t("contentEdit.scheduledFor") }}
+              <template v-if="form.status === 'published' && isScheduled"
+                >{{ t("contentEdit.scheduledFor") }}
                 <span class="text-slate-400 font-normal ml-1">{{
                   t("contentEdit.autoPublishes")
-                }}</span></template>
+                }}</span></template
+              >
               <template v-else>{{ t("contentEdit.publishedAt") }}</template>
             </label>
-            <input v-model="form.published_at" type="datetime-local" :readonly="isReadOnly"
-              class="form-input w-full rounded-lg border-slate-300 text-sm" />
+            <input
+              v-model="form.published_at"
+              type="datetime-local"
+              :readonly="isReadOnly"
+              class="form-input w-full rounded-lg border-slate-300 text-sm"
+            />
           </div>
         </div>
 
         <!-- Entry metadata (read-only) -->
-        <div v-if="!isNew"
-          class="pt-2 border-t border-slate-100 grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs text-slate-500">
+        <div
+          v-if="!isNew"
+          class="pt-2 border-t border-slate-100 grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs text-slate-500"
+        >
           <div class="flex gap-1.5">
             <span class="font-medium text-slate-400 shrink-0">{{
               t("contentEdit.created")
@@ -232,52 +345,97 @@
           <h2 class="text-sm font-semibold text-slate-700">
             {{ t("contentEdit.fields") }}
           </h2>
-          <router-link v-if="canEditContentType" :to="contentTypeEditLink"
+          <router-link
+            v-if="canEditContentType"
+            :to="contentTypeEditLink"
             class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
-            :title="t('contentEdit.editContentType')" :aria-label="t('contentEdit.editContentType')">
+            :title="t('contentEdit.editContentType')"
+            :aria-label="t('contentEdit.editContentType')"
+          >
             <Icon icon="mdi:cog-outline" class="h-5 w-5" />
           </router-link>
         </div>
 
         <div class="grid grid-cols-1 gap-6 md:grid-cols-12">
-          <div v-for="(config, fieldName) in customSchema" :key="fieldName" :class="fieldLayoutClass(config)">
-            <BaseField :name="fieldName" :config="config" :error="fieldErrors[fieldName]"
-              :readonly="isReadOnly || isReadonlyUniversalField(config)">
-              <FieldInput :name="fieldName" :config="config" v-model="form[fieldName]"
-                :readonly="isReadOnly || isReadonlyUniversalField(config)" />
+          <div
+            v-for="(config, fieldName) in customSchema"
+            :key="fieldName"
+            :class="fieldLayoutClass(config)"
+          >
+            <BaseField
+              :name="fieldName"
+              :config="config"
+              :error="fieldErrors[fieldName]"
+              :readonly="isReadOnly || isReadonlyUniversalField(config)"
+            >
+              <FieldInput
+                :name="fieldName"
+                :config="config"
+                v-model="form[fieldName]"
+                :readonly="isReadOnly || isReadonlyUniversalField(config)"
+              />
             </BaseField>
           </div>
         </div>
       </div>
 
-      <div v-if="saveError" class="p-3 bg-red-50 text-red-700 rounded-lg text-sm">
+      <div
+        v-if="saveError"
+        class="p-3 bg-red-50 text-red-700 rounded-lg text-sm"
+      >
         {{ saveError }}
       </div>
 
       <div v-if="!isNew && canDeleteEntry" class="flex justify-end">
-        <button type="button" @click="showDeleteModal = true" class="btn-danger">
+        <button
+          type="button"
+          @click="showDeleteModal = true"
+          class="btn-danger"
+        >
           {{ deleteLabel }}
         </button>
       </div>
     </form>
 
-    <ConfirmModal v-model="showDeleteModal" :title="t('contentEdit.moveTrashTitle')" :message="deleteMessage"
-      :confirm-label="t('contentEdit.moveTrashConfirm')" :loading="deleting" @confirm="handleDelete" />
+    <ConfirmModal
+      v-model="showDeleteModal"
+      :title="t('contentEdit.moveTrashTitle')"
+      :message="deleteMessage"
+      :confirm-label="t('contentEdit.moveTrashConfirm')"
+      :loading="deleting"
+      @confirm="handleDelete"
+    />
 
-    <ConfirmModal v-model="showDeleteTranslationModal" :title="t('contentEdit.deleteLocaleTitle', { locale: pendingDeleteLocale })
-      " :message="t('contentEdit.deleteLocaleMessage')" :confirm-label="t('contentEdit.deleteLocaleConfirm')"
-      :loading="deletingTranslation" @confirm="confirmDeleteTranslation" />
+    <ConfirmModal
+      v-model="showDeleteTranslationModal"
+      :title="
+        t('contentEdit.deleteLocaleTitle', { locale: pendingDeleteLocale })
+      "
+      :message="t('contentEdit.deleteLocaleMessage')"
+      :confirm-label="t('contentEdit.deleteLocaleConfirm')"
+      :loading="deletingTranslation"
+      @confirm="confirmDeleteTranslation"
+    />
 
-    <SlidePanel v-model="showRevisions" :title="t('contentEdit.entryHistory')"
-      :subtitle="`${revisions.length} ${t(revisions.length === 1 ? 'contentEdit.savedRevision' : 'contentEdit.savedRevisions')}`">
-      <div v-if="revisionError" class="m-4 p-3 bg-red-50 text-red-700 rounded-lg text-sm">
+    <SlidePanel
+      v-model="showRevisions"
+      :title="t('contentEdit.entryHistory')"
+      :subtitle="`${revisions.length} ${t(revisions.length === 1 ? 'contentEdit.savedRevision' : 'contentEdit.savedRevisions')}`"
+    >
+      <div
+        v-if="revisionError"
+        class="m-4 p-3 bg-red-50 text-red-700 rounded-lg text-sm"
+      >
         {{ revisionError }}
       </div>
 
       <div v-if="loadingRevisions" class="p-6 text-sm text-slate-500">
         {{ t("contentEdit.loading") }}
       </div>
-      <div v-else-if="revisions.length === 0" class="p-6 text-sm text-slate-500">
+      <div
+        v-else-if="revisions.length === 0"
+        class="p-6 text-sm text-slate-500"
+      >
         {{ t("contentEdit.noRevisions") }}
       </div>
 
@@ -286,10 +444,14 @@
         <article class="p-5 space-y-3">
           <div class="flex items-start justify-between gap-4">
             <div class="min-w-0">
-              <h3 class="text-sm font-semibold text-slate-900 flex items-center gap-2">
+              <h3
+                class="text-sm font-semibold text-slate-900 flex items-center gap-2"
+              >
                 {{ form.title || form.slug }}
-                <span class="text-xs font-medium bg-theme-100 text-theme-700 px-1.5 py-0.5 rounded">{{
-                  t("contentEdit.current") }}</span>
+                <span
+                  class="text-xs font-medium bg-theme-100 text-theme-700 px-1.5 py-0.5 rounded"
+                  >{{ t("contentEdit.current") }}</span
+                >
               </h3>
               <p class="text-xs text-slate-500 capitalize">{{ form.status }}</p>
             </div>
@@ -297,10 +459,18 @@
           <div v-if="revisions.length > 0">
             <template v-if="currentVsFirstDiff.length > 0">
               <ul class="text-xs space-y-1">
-                <li v-for="change in currentVsFirstDiff" :key="change.field" class="flex items-baseline gap-1 min-w-0">
-                  <span class="text-slate-400 shrink-0 font-medium">{{ change.field }}:</span>
-                  <span class="text-slate-400 line-through truncate max-w-[100px]">{{ formatRevVal(change.from)
-                  }}</span>
+                <li
+                  v-for="change in currentVsFirstDiff"
+                  :key="change.field"
+                  class="flex items-baseline gap-1 min-w-0"
+                >
+                  <span class="text-slate-400 shrink-0 font-medium"
+                    >{{ change.field }}:</span
+                  >
+                  <span
+                    class="text-slate-400 line-through truncate max-w-[100px]"
+                    >{{ formatRevVal(change.from) }}</span
+                  >
                   <span class="text-slate-400 shrink-0">→</span>
                   <span class="text-slate-700 truncate max-w-[100px]">{{
                     formatRevVal(change.to)
@@ -314,7 +484,11 @@
           </div>
         </article>
 
-        <article v-for="(revision, index) in revisions" :key="revision.id" class="p-5 space-y-3">
+        <article
+          v-for="(revision, index) in revisions"
+          :key="revision.id"
+          class="p-5 space-y-3"
+        >
           <div class="flex items-start justify-between gap-4">
             <div class="min-w-0">
               <h3 class="text-sm font-semibold text-slate-900">
@@ -325,12 +499,19 @@
                 {{ revision.status }}
               </p>
               <!-- Author -->
-              <div v-if="userMap[revision.created_by]" class="flex items-center gap-1.5 mt-1">
+              <div
+                v-if="userMap[revision.created_by]"
+                class="flex items-center gap-1.5 mt-1"
+              >
                 <div
-                  class="w-4 h-4 rounded-full overflow-hidden bg-theme-600 flex items-center justify-center text-white text-xs font-semibold select-none shrink-0">
-                  <img v-if="userMap[revision.created_by].has_avatar"
-                    :src="`/admin/api/users/${revision.created_by}/avatar`" class="w-full h-full object-cover"
-                    :alt="userMap[revision.created_by].username" />
+                  class="w-4 h-4 rounded-full overflow-hidden bg-theme-600 flex items-center justify-center text-white text-xs font-semibold select-none shrink-0"
+                >
+                  <img
+                    v-if="userMap[revision.created_by].has_avatar"
+                    :src="`/admin/api/users/${revision.created_by}/avatar`"
+                    class="w-full h-full object-cover"
+                    :alt="userMap[revision.created_by].username"
+                  />
                   <span v-else style="font-size: 9px">{{
                     userMap[revision.created_by].username?.[0]?.toUpperCase()
                   }}</span>
@@ -339,18 +520,29 @@
                   userMap[revision.created_by].username
                 }}</span>
               </div>
-              <div v-else-if="revision.created_by" class="flex items-center gap-1.5 mt-1">
-                <div class="w-4 h-4 rounded-full bg-slate-300 flex items-center justify-center shrink-0">
+              <div
+                v-else-if="revision.created_by"
+                class="flex items-center gap-1.5 mt-1"
+              >
+                <div
+                  class="w-4 h-4 rounded-full bg-slate-300 flex items-center justify-center shrink-0"
+                >
                   <span style="font-size: 9px" class="text-slate-500">?</span>
                 </div>
-                <span class="text-xs text-slate-400">{{ revision.created_by }}
+                <span class="text-xs text-slate-400"
+                  >{{ revision.created_by }}
                   <span class="italic">{{
                     t("contentEdit.deletedUser")
-                  }}</span></span>
+                  }}</span></span
+                >
               </div>
             </div>
-            <button v-if="canSaveEntry" type="button" class="btn-secondary text-xs py-1.5 px-3 shrink-0"
-              @click="restoreRevision(revision)">
+            <button
+              v-if="canSaveEntry"
+              type="button"
+              class="btn-secondary text-xs py-1.5 px-3 shrink-0"
+              @click="restoreRevision(revision)"
+            >
               {{ t("contentEdit.restore") }}
             </button>
           </div>
@@ -359,10 +551,18 @@
           <div v-if="index < revisions.length - 1">
             <template v-if="revisionDiff(index).length > 0">
               <ul class="text-xs space-y-1">
-                <li v-for="change in revisionDiff(index)" :key="change.field" class="flex items-baseline gap-1 min-w-0">
-                  <span class="text-slate-400 shrink-0 font-medium">{{ change.field }}:</span>
-                  <span class="text-slate-400 line-through truncate max-w-[100px]">{{ formatRevVal(change.from)
-                  }}</span>
+                <li
+                  v-for="change in revisionDiff(index)"
+                  :key="change.field"
+                  class="flex items-baseline gap-1 min-w-0"
+                >
+                  <span class="text-slate-400 shrink-0 font-medium"
+                    >{{ change.field }}:</span
+                  >
+                  <span
+                    class="text-slate-400 line-through truncate max-w-[100px]"
+                    >{{ formatRevVal(change.from) }}</span
+                  >
                   <span class="text-slate-400 shrink-0">→</span>
                   <span class="text-slate-700 truncate max-w-[100px]">{{
                     formatRevVal(change.to)

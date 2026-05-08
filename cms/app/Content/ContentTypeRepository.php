@@ -7,15 +7,21 @@ namespace CometCMS\Content;
 use CometCMS\Core\Security;
 use CometCMS\Storage\JsonStore;
 use CometCMS\Storage\SettingsStore;
+use CometCMS\Workspaces\WorkspaceContext;
 
 final class ContentTypeRepository
 {
     private JsonStore $store;
     private SettingsStore $settings;
 
-    public function __construct()
+    private WorkspaceContext $workspace;
+
+    public function __construct(?WorkspaceContext $workspace = null)
     {
-        $this->store = new JsonStore(COMET_STORAGE . '/content-types');
+        $this->workspace = $workspace ?? WorkspaceContext::active();
+        WorkspaceContext::setActive($this->workspace->slug());
+        $this->workspace->ensure();
+        $this->store = new JsonStore($this->workspace->path('content-types'));
         $this->settings = new SettingsStore();
     }
 
@@ -37,7 +43,7 @@ final class ContentTypeRepository
             }
         }
 
-        foreach ((new JsonStore(COMET_STORAGE . '/content'))->directories() as $collection) {
+        foreach ((new JsonStore($this->workspace->path('content')))->directories() as $collection) {
             $types[$collection] ??= $this->fallback($collection);
         }
 
@@ -85,7 +91,7 @@ final class ContentTypeRepository
             return true;
         }
 
-        return is_dir(COMET_STORAGE . '/content/' . $name);
+        return is_dir($this->workspace->path('content') . '/' . $name);
     }
 
     public function save(array $schema): void
@@ -135,9 +141,9 @@ final class ContentTypeRepository
 
         // Also remove the content directory so the type does not reappear
         // as a phantom fallback type in all().
-        $this->deleteDirectory(COMET_STORAGE . '/content/' . $name);
-        $this->deleteDirectory(COMET_STORAGE . '/trash/content/' . $name);
-        $this->deleteDirectory(COMET_STORAGE . '/revisions/content/' . $name);
+        $this->deleteDirectory($this->workspace->path('content') . '/' . $name);
+        $this->deleteDirectory($this->workspace->path('trash') . '/content/' . $name);
+        $this->deleteDirectory($this->workspace->path('revisions') . '/content/' . $name);
     }
 
     private function deleteDirectory(string $path): void
@@ -194,7 +200,8 @@ final class ContentTypeRepository
     private function contentTypeOrder(): array
     {
         $settings = $this->settings->all();
-        $order = is_array($settings['content_type_order'] ?? null) ? $settings['content_type_order'] : [];
+        $key = 'content_type_order_' . $this->workspace->slug();
+        $order = is_array($settings[$key] ?? null) ? $settings[$key] : [];
 
         return array_values(array_filter(array_map(
             static fn(mixed $name): string => Security::slug((string) $name),
@@ -205,7 +212,7 @@ final class ContentTypeRepository
     private function saveContentTypeOrder(array $order): void
     {
         $settings = $this->settings->all();
-        $settings['content_type_order'] = array_values($order);
+        $settings['content_type_order_' . $this->workspace->slug()] = array_values($order);
         $this->settings->save($settings);
     }
 

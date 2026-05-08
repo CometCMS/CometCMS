@@ -13,6 +13,7 @@ use CometCMS\Content\ContentTypeRepository;
 use CometCMS\Core\Http;
 use CometCMS\Core\Security;
 use CometCMS\Logging\Logger;
+use CometCMS\Workspaces\WorkspaceContext;
 
 abstract class BaseController
 {
@@ -25,6 +26,25 @@ abstract class BaseController
 
     public function __construct(protected readonly Http $http)
     {
+        try {
+            WorkspaceContext::fromRequest();
+        } catch (\Throwable $e) {
+            $path = (string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
+            $workspaceExempt = str_starts_with($path, '/admin/api/workspaces')
+                || $path === '/admin/api/me'
+                || $path === '/admin/api/login'
+                || $path === '/admin/api/logout'
+                || $path === '/admin/api/setup';
+            if (!$workspaceExempt) {
+                http_response_code(404);
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode(['error' => ['code' => 'not_found', 'message' => $e->getMessage()]], JSON_UNESCAPED_SLASHES);
+                exit;
+            }
+
+            WorkspaceContext::reset();
+        }
+
         $this->users = new UserRepository();
         $this->tokens = new ApiTokenRepository();
         $this->auth = new Auth($this->users);
@@ -56,6 +76,7 @@ abstract class BaseController
     {
         $user = $this->requireUser();
         $context['principal'] = $user;
+        $context['workspace'] ??= WorkspaceContext::active()->slug();
 
         if (!$this->permissions->allows($user, $action, $context)) {
             $this->json(['error' => ['code' => 'forbidden', 'message' => 'You do not have permission to perform this action.']], 403);

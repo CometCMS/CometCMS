@@ -6,8 +6,14 @@
       @click="toggle"
       class="form-input w-full text-left flex items-center gap-2 rounded-lg border-slate-300 text-sm cursor-pointer"
     >
-      <Icon :icon="modelValue || placeholder" class="w-5 h-5 text-slate-600 shrink-0" />
-      <span class="flex-1 truncate" :class="modelValue ? 'text-slate-700' : 'text-slate-400'">
+      <Icon
+        :icon="modelValue || placeholder"
+        class="w-5 h-5 text-slate-600 shrink-0"
+      />
+      <span
+        class="flex-1 truncate"
+        :class="modelValue ? 'text-slate-700' : 'text-slate-400'"
+      >
         {{ modelValue || placeholder }}
       </span>
       <Icon
@@ -36,7 +42,10 @@
 
       <!-- Icon grid -->
       <div class="p-2 max-h-64 overflow-y-auto">
-        <div v-if="filteredIcons.length === 0" class="py-6 text-center text-sm text-slate-400">
+        <div
+          v-if="filteredIcons.length === 0"
+          class="py-6 text-center text-sm text-slate-400"
+        >
           No icons found
         </div>
         <div v-else class="grid grid-cols-9 gap-0.5">
@@ -75,173 +84,175 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
-import { Icon } from '@iconify/vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
+import { Icon } from "@iconify/vue";
 
 defineProps({
-  modelValue:  { type: String, default: '' },
-  placeholder: { type: String, default: 'mdi:file-document-outline' },
-})
+  modelValue: { type: String, default: "" },
+  placeholder: { type: String, default: "mdi:file-document-outline" },
+});
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(["update:modelValue"]);
 
 // ── icon catalog ─────────────────────────────────────────────────────────────
 
 const ALL_ICONS = [
   // Documents & writing
-  'mdi:file-document-outline',
-  'mdi:file-text-outline',
-  'mdi:text-box-outline',
-  'mdi:note-text-outline',
-  'mdi:newspaper-variant-outline',
-  'mdi:book-open-page-variant-outline',
-  'mdi:book-outline',
-  'mdi:bookshelf',
-  'mdi:script-text-outline',
-  'mdi:pencil-outline',
-  'mdi:format-list-bulleted',
-  'mdi:format-list-numbered',
-  'mdi:format-quote-open',
-  'mdi:typewriter',
-  'mdi:fountain-pen-tip',
+  "mdi:file-document-outline",
+  "mdi:file-text-outline",
+  "mdi:text-box-outline",
+  "mdi:note-text-outline",
+  "mdi:newspaper-variant-outline",
+  "mdi:book-open-page-variant-outline",
+  "mdi:book-outline",
+  "mdi:bookshelf",
+  "mdi:script-text-outline",
+  "mdi:pencil-outline",
+  "mdi:format-list-bulleted",
+  "mdi:format-list-numbered",
+  "mdi:format-quote-open",
+  "mdi:typewriter",
+  "mdi:fountain-pen-tip",
   // Media
-  'mdi:image-outline',
-  'mdi:image-multiple-outline',
-  'mdi:video-outline',
-  'mdi:music-note-outline',
-  'mdi:camera-outline',
-  'mdi:headphones',
-  'mdi:microphone-outline',
-  'mdi:podcast',
-  'mdi:youtube',
-  'mdi:play-circle-outline',
-  'mdi:television-play',
+  "mdi:image-outline",
+  "mdi:image-multiple-outline",
+  "mdi:video-outline",
+  "mdi:music-note-outline",
+  "mdi:camera-outline",
+  "mdi:headphones",
+  "mdi:microphone-outline",
+  "mdi:podcast",
+  "mdi:youtube",
+  "mdi:play-circle-outline",
+  "mdi:television-play",
   // Commerce & products
-  'mdi:cart-outline',
-  'mdi:store-outline',
-  'mdi:tag-outline',
-  'mdi:tag-multiple-outline',
-  'mdi:currency-usd',
-  'mdi:barcode-scan',
-  'mdi:gift-outline',
-  'mdi:truck-outline',
-  'mdi:receipt-outline',
-  'mdi:wallet-outline',
-  'mdi:credit-card-outline',
+  "mdi:cart-outline",
+  "mdi:store-outline",
+  "mdi:tag-outline",
+  "mdi:tag-multiple-outline",
+  "mdi:currency-usd",
+  "mdi:barcode-scan",
+  "mdi:gift-outline",
+  "mdi:truck-outline",
+  "mdi:receipt-outline",
+  "mdi:wallet-outline",
+  "mdi:credit-card-outline",
   // People & organisation
-  'mdi:account-outline',
-  'mdi:account-group-outline',
-  'mdi:account-circle-outline',
-  'mdi:account-box-outline',
-  'mdi:contacts-outline',
-  'mdi:office-building-outline',
-  'mdi:briefcase-outline',
-  'mdi:domain',
-  'mdi:sitemap-outline',
+  "mdi:account-outline",
+  "mdi:account-group-outline",
+  "mdi:account-circle-outline",
+  "mdi:account-box-outline",
+  "mdi:contacts-outline",
+  "mdi:office-building-outline",
+  "mdi:briefcase-outline",
+  "mdi:domain",
+  "mdi:sitemap-outline",
   // Calendar & time
-  'mdi:calendar-outline',
-  'mdi:calendar-month-outline',
-  'mdi:clock-outline',
-  'mdi:alarm',
-  'mdi:timer-outline',
-  'mdi:history',
+  "mdi:calendar-outline",
+  "mdi:calendar-month-outline",
+  "mdi:clock-outline",
+  "mdi:alarm",
+  "mdi:timer-outline",
+  "mdi:history",
   // Location & travel
-  'mdi:map-marker-outline',
-  'mdi:compass-outline',
-  'mdi:map-outline',
-  'mdi:earth',
-  'mdi:airplane',
-  'mdi:navigation-outline',
+  "mdi:map-marker-outline",
+  "mdi:compass-outline",
+  "mdi:map-outline",
+  "mdi:earth",
+  "mdi:airplane",
+  "mdi:navigation-outline",
   // Technology
-  'mdi:code-tags',
-  'mdi:api',
-  'mdi:database-outline',
-  'mdi:server-outline',
-  'mdi:cloud-outline',
-  'mdi:wifi',
-  'mdi:shield-outline',
-  'mdi:bug-outline',
-  'mdi:memory',
+  "mdi:code-tags",
+  "mdi:api",
+  "mdi:database-outline",
+  "mdi:server-outline",
+  "mdi:cloud-outline",
+  "mdi:wifi",
+  "mdi:shield-outline",
+  "mdi:bug-outline",
+  "mdi:memory",
   // Communication
-  'mdi:email-outline',
-  'mdi:chat-outline',
-  'mdi:phone-outline',
-  'mdi:comment-outline',
-  'mdi:message-outline',
-  'mdi:forum-outline',
-  'mdi:bullhorn-outline',
+  "mdi:email-outline",
+  "mdi:chat-outline",
+  "mdi:phone-outline",
+  "mdi:comment-outline",
+  "mdi:message-outline",
+  "mdi:forum-outline",
+  "mdi:bullhorn-outline",
   // Misc / UI
-  'mdi:star-outline',
-  'mdi:heart-outline',
-  'mdi:bookmark-outline',
-  'mdi:link-variant',
-  'mdi:cog-outline',
-  'mdi:bell-outline',
-  'mdi:home-outline',
-  'mdi:magnify',
-  'mdi:information-outline',
-  'mdi:help-circle-outline',
-  'mdi:flag-outline',
-  'mdi:trophy-outline',
-  'mdi:lightning-bolt-outline',
-  'mdi:fire',
-  'mdi:chart-bar',
-  'mdi:chart-line',
-  'mdi:palette-outline',
-  'mdi:brush-outline',
-  'mdi:puzzle-outline',
-  'mdi:tools',
-  'mdi:folder-outline',
-  'mdi:folder-multiple-outline',
-  'mdi:layers-outline',
-  'mdi:view-grid-outline',
-  'mdi:table-large',
-]
+  "mdi:star-outline",
+  "mdi:heart-outline",
+  "mdi:bookmark-outline",
+  "mdi:link-variant",
+  "mdi:cog-outline",
+  "mdi:bell-outline",
+  "mdi:home-outline",
+  "mdi:magnify",
+  "mdi:information-outline",
+  "mdi:help-circle-outline",
+  "mdi:flag-outline",
+  "mdi:trophy-outline",
+  "mdi:lightning-bolt-outline",
+  "mdi:fire",
+  "mdi:chart-bar",
+  "mdi:chart-line",
+  "mdi:palette-outline",
+  "mdi:brush-outline",
+  "mdi:puzzle-outline",
+  "mdi:tools",
+  "mdi:folder-outline",
+  "mdi:folder-multiple-outline",
+  "mdi:layers-outline",
+  "mdi:view-grid-outline",
+  "mdi:table-large",
+];
 
 // ── state ─────────────────────────────────────────────────────────────────────
 
-const containerRef   = ref(null)
-const searchInputRef = ref(null)
-const isOpen         = ref(false)
-const query          = ref('')
+const containerRef = ref(null);
+const searchInputRef = ref(null);
+const isOpen = ref(false);
+const query = ref("");
 
 const filteredIcons = computed(() => {
-  const q = query.value.trim().toLowerCase()
-  if (!q) return ALL_ICONS
-  return ALL_ICONS.filter((icon) => icon.toLowerCase().includes(q))
-})
+  const q = query.value.trim().toLowerCase();
+  if (!q) return ALL_ICONS;
+  return ALL_ICONS.filter((icon) => icon.toLowerCase().includes(q));
+});
 
 // ── open / close ──────────────────────────────────────────────────────────────
 
 function toggle() {
-  isOpen.value ? close() : open()
+  isOpen.value ? close() : open();
 }
 
 async function open() {
-  isOpen.value = true
-  query.value  = ''
-  await nextTick()
-  searchInputRef.value?.focus()
+  isOpen.value = true;
+  query.value = "";
+  await nextTick();
+  searchInputRef.value?.focus();
 }
 
 function close() {
-  isOpen.value = false
-  query.value  = ''
+  isOpen.value = false;
+  query.value = "";
 }
 
 function select(icon) {
-  emit('update:modelValue', icon)
-  close()
+  emit("update:modelValue", icon);
+  close();
 }
 
 // ── click-outside ─────────────────────────────────────────────────────────────
 
 function onClickOutside(e) {
   if (containerRef.value && !containerRef.value.contains(e.target)) {
-    close()
+    close();
   }
 }
 
-onMounted(() => document.addEventListener('mousedown', onClickOutside))
-onBeforeUnmount(() => document.removeEventListener('mousedown', onClickOutside))
+onMounted(() => document.addEventListener("mousedown", onClickOutside));
+onBeforeUnmount(() =>
+  document.removeEventListener("mousedown", onClickOutside),
+);
 </script>

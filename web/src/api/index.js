@@ -1,9 +1,33 @@
 // CSRF token is seeded from the PHP-rendered meta tag on first load,
 // then kept up-to-date from the X-CSRF-Token response header.
-let csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ?? ''
+let csrfToken = (typeof document !== 'undefined' ? document.querySelector('meta[name="csrf-token"]')?.content : null) ?? ''
+let activeWorkspace = (typeof localStorage !== 'undefined' ? localStorage.getItem('cometcms.workspace') : null) || ''
+let defaultWorkspace = ''
+
+export function getActiveWorkspace() {
+  return activeWorkspace || defaultWorkspace || 'default'
+}
+
+export function setActiveWorkspace(workspace) {
+  activeWorkspace = workspace || defaultWorkspace || 'default'
+  localStorage.setItem('cometcms.workspace', activeWorkspace)
+}
+
+export function getDefaultWorkspace() {
+  return defaultWorkspace || activeWorkspace || 'default'
+}
+
+export function setDefaultWorkspace(workspace) {
+  defaultWorkspace = workspace || activeWorkspace || 'default'
+
+  if (!activeWorkspace) {
+    setActiveWorkspace(defaultWorkspace)
+  }
+}
 
 async function request(method, path, body = null) {
   const headers = { 'X-Requested-With': 'XMLHttpRequest' }
+  headers['X-Comet-Workspace'] = getActiveWorkspace()
 
   if (csrfToken) {
     headers['X-CSRF-Token'] = csrfToken
@@ -61,33 +85,18 @@ function withQuery(path, params = {}) {
   return query ? `${path}?${query}` : path
 }
 
-// Download a blob by triggering a browser save dialog.
-async function downloadBlob(method, path) {
-  const res = await fetch(`/admin/api${path}`, {
-    method,
-    headers: csrfToken ? { 'X-CSRF-Token': csrfToken, 'X-Requested-With': 'XMLHttpRequest' } : { 'X-Requested-With': 'XMLHttpRequest' },
-    credentials: 'same-origin',
-  })
-
-  const newToken = res.headers.get('X-CSRF-Token')
-  if (newToken) csrfToken = newToken
-
-  if (!res.ok) {
-    const json = await res.json()
-    const err = new Error(json.error?.message ?? 'Request failed')
-    err.status = res.status
-    throw err
-  }
-
-  const blob = await res.blob()
-  const filename =
-    res.headers.get('Content-Disposition')?.match(/filename="([^"]+)"/)?.[1] ?? 'backup.zip'
-  const url = URL.createObjectURL(blob)
-  const a   = document.createElement('a')
-  a.href     = url
-  a.download = filename
+// Trigger a browser-native download. This avoids buffering the full ZIP in JS
+// memory before the save dialog appears.
+function downloadViaNavigation(path) {
+  const workspace = getActiveWorkspace()
+  const separator = path.includes('?') ? '&' : '?'
+  const workspaceQuery = workspace ? `${separator}workspace=${encodeURIComponent(workspace)}` : ''
+  const a = document.createElement('a')
+  a.href = `/admin/api${path}${workspaceQuery}`
+  a.style.display = 'none'
+  document.body.appendChild(a)
   a.click()
-  URL.revokeObjectURL(url)
+  a.remove()
 }
 
 export const api = {
@@ -95,8 +104,17 @@ export const api = {
   me:     ()                  => request('GET',    '/me'),
   login:  (username, password)=> request('POST',   '/login',  { username, password }),
   logout: ()                  => request('POST',   '/logout'),
-  setup:  (username, password)=> request('POST',   '/setup',  { username, password }),
+  setup:  (username, password, workspace, workspaceSlug)=> request('POST',   '/setup',  { username, password, workspace, workspace_slug: workspaceSlug }),
   appInfo: ()                  => request('GET',    '/app'),
+  workspaces: {
+    list:       () => request('GET', '/workspaces'),
+    create:     (data) => request('POST', '/workspaces', data),
+    update:     (slug, data) => request('PUT', `/workspaces/${slug}`, data),
+    archive:    (slug) => request('DELETE', `/workspaces/${slug}`),
+    setDefault: (slug) => request('POST', `/workspaces/${slug}/default`),
+    uploadIcon: (slug, formData) => request('POST', `/workspaces/${slug}/icon`, formData),
+    deleteIcon: (slug) => request('DELETE', `/workspaces/${slug}/icon`),
+  },
 
   // Dashboard
   dashboard: () => request('GET', '/dashboard'),
@@ -167,6 +185,7 @@ export const api = {
   // Users
   users: {
     list:        ()                  => request('GET',    '/users'),
+    get:         (id)                => request('GET',    `/users/${id}`),
     create:      (data)              => request('POST',   '/users', data),
     update:      (id, data)          => request('PUT',    `/users/${id}`, data),
     delete:      (id)                => request('DELETE', `/users/${id}`),
@@ -195,7 +214,7 @@ export const api = {
     inspect:  (name) => request('GET', `/backups/${encodeURIComponent(name)}/inspect`),
     restore:  (name, data) => request('POST', `/backups/${encodeURIComponent(name)}/restore`, data),
     note:     (name, note) => request('PUT', `/backups/${encodeURIComponent(name)}/note`, { note }),
-    download: (name) => downloadBlob('GET', `/backups/${encodeURIComponent(name)}/download`),
+    download: (name) => downloadViaNavigation(`/backups/${encodeURIComponent(name)}/download`),
     delete:   (name) => request('DELETE', `/backups/${encodeURIComponent(name)}`),
   },
 

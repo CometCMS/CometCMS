@@ -602,7 +602,7 @@ const ht = useHeightTransition();
 import { useContentStore } from "../stores/content.js";
 import { useToastStore } from "../stores/toast.js";
 import { useApiEndpointStore } from "../stores/apiEndpoint.js";
-import { api } from "../api/index.js";
+import { api, getActiveWorkspace } from "../api/index.js";
 import { contentCollectionEndpoint } from "../composables/apiEndpoint.js";
 import { useI18n } from "../i18n/index.js";
 
@@ -1257,7 +1257,7 @@ function isImage(value) {
 }
 
 function mediaThumbUrl(value) {
-  return `/media-thumbs/${encodeURIComponent(String(value))}`;
+  return `/media-thumbs/${encodeURIComponent(getActiveWorkspace())}/${encodeURIComponent(String(value))}`;
 }
 
 function mediaValuesFor(entry, key) {
@@ -1344,7 +1344,10 @@ function selectOptionMap(config = {}) {
   const options = config?.options;
   if (options && typeof options === "object" && !Array.isArray(options)) {
     return Object.fromEntries(
-      Object.entries(options).map(([key, label]) => [String(key), String(label)]),
+      Object.entries(options).map(([key, label]) => [
+        String(key),
+        String(label),
+      ]),
     );
   }
 
@@ -1359,7 +1362,7 @@ function formatSelectField(value, config = {}, trimmed = true) {
   const labels = selectOptionMap(config);
   const labelFor = (item) => {
     const key = String(item ?? "").trim();
-    return key ? labels[key] ?? key : "";
+    return key ? (labels[key] ?? key) : "";
   };
 
   const text = Array.isArray(value)

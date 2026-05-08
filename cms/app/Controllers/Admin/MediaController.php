@@ -10,6 +10,7 @@ use CometCMS\Core\Http;
 use CometCMS\Core\MimeDetector;
 use CometCMS\Core\Security;
 use CometCMS\Media\MediaRepository;
+use CometCMS\Workspaces\WorkspaceContext;
 
 final class MediaController extends BaseController
 {
@@ -92,11 +93,11 @@ final class MediaController extends BaseController
             $base = Security::slug(pathinfo($original, PATHINFO_FILENAME)) ?: 'upload';
             $name = $base;
             $suffix = 2;
-            while (file_exists(COMET_STORAGE . '/media/' . $name . $ext)) {
+            while (file_exists($this->media->directory() . '/' . $name . $ext)) {
                 $name = $base . '-' . $suffix;
                 $suffix++;
             }
-            $target = COMET_STORAGE . '/media/' . $name . $ext;
+            $target = $this->media->directory() . '/' . $name . $ext;
 
             if (!move_uploaded_file((string) $file['tmp_name'], $target)) {
                 $this->json(['error' => ['code' => 'upload_failed', 'message' => 'Could not store uploaded file.']], 500);
@@ -445,9 +446,10 @@ final class MediaController extends BaseController
 
     private function withMediaUrl(array $file): array
     {
-        $file['url'] = $this->http->url('/media/' . rawurlencode((string) $file['name']));
+        $workspace = WorkspaceContext::active()->slug();
+        $file['url'] = $this->http->url('/media/' . rawurlencode($workspace) . '/' . rawurlencode((string) $file['name']));
         $file['thumb_url'] = ($file['thumb'] ?? null) !== null
-            ? $this->http->url('/media-thumbs/' . rawurlencode((string) $file['name']))
+            ? $this->http->url('/media-thumbs/' . rawurlencode($workspace) . '/' . rawurlencode((string) $file['name']))
             : $file['url'];
 
         return $file;

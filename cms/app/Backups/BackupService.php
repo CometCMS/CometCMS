@@ -10,9 +10,19 @@ use CometCMS\Auth\RoleRepository;
 use CometCMS\Core\Security;
 use CometCMS\Logging\Logger;
 use CometCMS\Storage\SettingsStore;
+use CometCMS\Workspaces\WorkspaceContext;
 
 final class BackupService
 {
+    private WorkspaceContext $workspace;
+
+    public function __construct(?WorkspaceContext $workspace = null)
+    {
+        $this->workspace = $workspace ?? WorkspaceContext::active();
+        WorkspaceContext::setActive($this->workspace->slug());
+        $this->workspace->ensure();
+    }
+
     private const ALLOWED_PARTS = [
         'content_types',
         'content',
@@ -55,17 +65,17 @@ final class BackupService
         $webhookCount = 0;
 
         if (in_array('content_types', $parts, true)) {
-            $contentTypeCount = $this->addDirectory($zip, COMET_STORAGE . '/content-types', 'content-types');
+            $contentTypeCount = $this->addDirectory($zip, $this->workspace->path('content-types'), 'content-types');
         }
 
         if (in_array('content', $parts, true)) {
-            $contentCount = $this->addDirectory($zip, COMET_STORAGE . '/content', 'content');
-            $revisionCount = $this->addDirectory($zip, COMET_STORAGE . '/revisions', 'revisions');
+            $contentCount = $this->addDirectory($zip, $this->workspace->path('content'), 'content');
+            $revisionCount = $this->addDirectory($zip, $this->workspace->path('revisions'), 'revisions');
         }
 
         if (in_array('media', $parts, true)) {
-            $mediaCount = $this->addDirectory($zip, COMET_STORAGE . '/media', 'media');
-            $mediaMetaCount = $this->addDirectory($zip, COMET_STORAGE . '/media-meta', 'media-meta');
+            $mediaCount = $this->addDirectory($zip, $this->workspace->path('media'), 'media');
+            $mediaMetaCount = $this->addDirectory($zip, $this->workspace->path('media-meta'), 'media-meta');
         }
 
         if (in_array('users', $parts, true)) {
@@ -84,9 +94,10 @@ final class BackupService
         $manifest = [
             'cms' => 'CometCMS',
             'version' => comet_version(),
+            'workspace' => $this->workspace->slug(),
             'created_at' => Security::now(),
             'parts' => $parts,
-            'content_types' => array_map(static fn(array $type): string => (string) $type['name'], (new ContentTypeRepository())->all()),
+            'content_types' => array_map(static fn(array $type): string => (string) $type['name'], (new ContentTypeRepository($this->workspace))->all()),
             'content_type_count' => $contentTypeCount,
             'media_count' => $mediaCount,
             'media_meta_count' => $mediaMetaCount,

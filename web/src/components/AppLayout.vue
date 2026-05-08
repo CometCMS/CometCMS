@@ -26,6 +26,100 @@
             <Icon icon="mdi:close" class="w-5 h-5" />
           </button>
         </div>
+        <div
+          v-if="workspaces.length > 0 && auth.can('workspaces.read')"
+          class="px-3 pb-2 relative"
+          ref="switcherRef"
+        >
+          <button
+            @click="workspaceSwitcherOpen = !workspaceSwitcherOpen"
+            class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-lg transition-colors hover:bg-white/10 group"
+          >
+            <div
+              class="w-7 h-7 shrink-0 rounded-md overflow-hidden bg-theme-600 flex items-center justify-center text-white text-[10px] font-bold select-none leading-none"
+            >
+              <img
+                v-if="activeWorkspace.has_icon"
+                :src="`/admin/api/workspaces/${selectedWorkspace}/icon?v=${iconVersions[selectedWorkspace] ?? 0}`"
+                class="w-full h-full object-cover"
+                :alt="activeWorkspaceLabel"
+              />
+              <span v-else>{{ workspaceInitials }}</span>
+            </div>
+            <div class="flex-1 min-w-0 text-left">
+              <div
+                class="text-xs font-semibold truncate leading-tight"
+                style="color: rgb(var(--color-sidebar-text))"
+              >
+                {{ activeWorkspaceLabel }}
+              </div>
+            </div>
+            <Icon
+              icon="mdi:unfold-more-horizontal"
+              class="w-4 h-4 opacity-40 shrink-0 group-hover:opacity-70 transition-opacity"
+              style="color: rgb(var(--color-sidebar-text))"
+            />
+          </button>
+
+          <Transition name="ws-dropdown">
+            <div
+              v-if="workspaceSwitcherOpen"
+              class="absolute left-1 right-1 top-full z-50 mt-0.5 rounded-lg border border-slate-200 bg-white shadow-lg overflow-hidden"
+            >
+              <div class="py-1">
+                <button
+                  v-for="workspace in workspaces"
+                  :key="workspace.slug"
+                  @click="switchWorkspace(workspace.slug)"
+                  class="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-left transition-colors"
+                  :class="
+                    workspace.slug === selectedWorkspace
+                      ? 'bg-theme-50 text-theme-700'
+                      : 'text-slate-700 hover:bg-slate-50'
+                  "
+                >
+                  <div
+                    class="w-6 h-6 shrink-0 rounded-md overflow-hidden bg-theme-600 flex items-center justify-center text-white text-[10px] font-bold select-none leading-none"
+                  >
+                    <img
+                      v-if="workspace.has_icon"
+                      :src="`/admin/api/workspaces/${workspace.slug}/icon?v=${iconVersions[workspace.slug] ?? 0}`"
+                      class="w-full h-full object-cover"
+                      :alt="workspace.label"
+                    />
+                    <span v-else>{{
+                      workspaceInitials_(workspace.label)
+                    }}</span>
+                  </div>
+                  <span class="flex-1 truncate font-medium">{{
+                    workspace.label
+                  }}</span>
+                  <Icon
+                    v-if="workspace.slug === selectedWorkspace"
+                    icon="mdi:check"
+                    class="w-3.5 h-3.5 shrink-0 text-theme-600"
+                  />
+                </button>
+              </div>
+              <template v-if="auth.can('workspaces.manage')">
+                <div class="border-t border-slate-100" />
+                <div class="py-1">
+                  <router-link
+                    to="/workspaces"
+                    @click="
+                      workspaceSwitcherOpen = false;
+                      sidebarOpen = false;
+                    "
+                    class="flex items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition-colors"
+                  >
+                    <Icon icon="mdi:cog-outline" class="w-3.5 h-3.5" />
+                    {{ t("workspaces.manageCta") }}
+                  </router-link>
+                </div>
+              </template>
+            </div>
+          </Transition>
+        </div>
 
         <nav class="flex-1 px-3 space-y-0.5 overflow-y-auto pb-4">
           <router-link
@@ -171,7 +265,6 @@
             <Icon icon="mdi:key-chain" class="w-4 h-4 opacity-60" />
             {{ t("app.nav.apiTokens") }}
           </router-link>
-
         </nav>
 
         <!-- User footer -->
@@ -265,13 +358,18 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { Icon } from "@iconify/vue";
 import { useAuthStore } from "../stores/auth.js";
 import { useToastStore } from "../stores/toast.js";
 import { useContentTypesStore } from "../stores/contentTypes.js";
-import { api } from "../api/index.js";
+import {
+  api,
+  getActiveWorkspace,
+  setActiveWorkspace,
+  setDefaultWorkspace,
+} from "../api/index.js";
 import { logoForTheme } from "../theme.js";
 import { useI18n } from "../i18n/index.js";
 import ApiEndpointFooter from "./ApiEndpointFooter.vue";
@@ -286,6 +384,44 @@ const defaultPageIcon = "mdi:file-document-edit-outline";
 const avatarVersion = ref(Date.now());
 const appVersion = ref("");
 const sidebarOpen = ref(false);
+const workspaces = ref([]);
+const selectedWorkspace = ref(getActiveWorkspace());
+const workspaceSwitcherOpen = ref(false);
+const switcherRef = ref(null);
+const iconVersions = ref({});
+const workspaceSyncEvent = "cometcms:workspaces-updated";
+const activeWorkspace = computed(
+  () =>
+    workspaces.value.find((w) => w.slug === selectedWorkspace.value) ?? {
+      slug: selectedWorkspace.value,
+      has_icon: false,
+    },
+);
+const activeWorkspaceLabel = computed(
+  () => activeWorkspace.value?.label ?? selectedWorkspace.value,
+);
+const workspaceInitials = computed(() =>
+  workspaceInitials_(activeWorkspaceLabel.value),
+);
+
+function workspaceInitials_(label) {
+  return String(label ?? "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0].toUpperCase())
+    .join("");
+}
+
+function handleSwitcherOutsideClick(e) {
+  if (switcherRef.value && !switcherRef.value.contains(e.target)) {
+    workspaceSwitcherOpen.value = false;
+  }
+}
+
+function handleWorkspaceSync() {
+  fetchWorkspaces();
+}
 const assetBase = import.meta.env.BASE_URL;
 const logoSrc = computed(() => logoForTheme(auth.user?.theme, assetBase));
 const allSidebarTypes = computed(() =>
@@ -305,9 +441,52 @@ const pageTypes = computed(() =>
 );
 
 onMounted(() => {
+  if (auth.can("workspaces.read")) {
+    fetchWorkspaces();
+  }
   typesStore.fetch();
   fetchAppInfo();
+  document.addEventListener("click", handleSwitcherOutsideClick);
+  window.addEventListener(workspaceSyncEvent, handleWorkspaceSync);
 });
+
+onBeforeUnmount(() => {
+  document.removeEventListener("click", handleSwitcherOutsideClick);
+  window.removeEventListener(workspaceSyncEvent, handleWorkspaceSync);
+});
+
+async function fetchWorkspaces() {
+  try {
+    const res = await api.workspaces.list();
+    workspaces.value = res.data ?? [];
+    const defaultWs = workspaces.value.find((w) => w.default);
+    if (defaultWs) {
+      setDefaultWorkspace(defaultWs.slug);
+    }
+    if (
+      !workspaces.value.some(
+        (workspace) => workspace.slug === selectedWorkspace.value,
+      )
+    ) {
+      selectedWorkspace.value =
+        defaultWs?.slug ?? workspaces.value[0]?.slug ?? selectedWorkspace.value;
+      setActiveWorkspace(selectedWorkspace.value);
+    }
+  } catch {
+    workspaces.value = [];
+  }
+}
+
+async function switchWorkspace(slug) {
+  workspaceSwitcherOpen.value = false;
+  if (slug === selectedWorkspace.value) return;
+  selectedWorkspace.value = slug;
+  setActiveWorkspace(slug);
+  typesStore.invalidate();
+  await auth.refresh();
+  await typesStore.fetch();
+  router.push("/dashboard");
+}
 
 async function fetchAppInfo() {
   try {
@@ -345,6 +524,20 @@ async function handleLogout() {
 .sidebar-enter-from,
 .sidebar-leave-to {
   transform: translateX(-100%);
+}
+
+/* Workspace dropdown */
+.ws-dropdown-enter-active,
+.ws-dropdown-leave-active {
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
+}
+
+.ws-dropdown-enter-from,
+.ws-dropdown-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
 }
 
 /* Backdrop fade */

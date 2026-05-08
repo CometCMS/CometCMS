@@ -16,6 +16,16 @@ See [API Tokens](../guide/api-tokens) for how to create tokens and assign permis
 https://yourdomain.com/api/v1
 ```
 
+All Public API endpoints require a workspace segment in the URL:
+
+```text
+https://yourdomain.com/api/v1/workspaces/{workspace}
+```
+
+Requests to unscoped `/api/v1/...` content, content-type, and media routes are rejected with `workspace_required`.
+
+For example, `GET /api/v1/workspaces/site-a/content/posts` reads posts from the `site-a` workspace. Direct media URLs for scoped responses use `/media/{workspace}/{filename}` and `/media-thumbs/{workspace}/{filename}`.
+
 ## Response shape
 
 Successful JSON responses are always wrapped in `data`. List responses and secondary response metadata use `meta`.
@@ -52,7 +62,7 @@ The machine-readable public API contract is available as [`openapi.yaml`](/api/o
 
 ## Health
 
-### `GET /api/v1/health`
+### `GET /api/v1/workspaces/{workspace}/health`
 
 Returns a health check response.
 
@@ -63,15 +73,15 @@ The response includes runtime extension capabilities that affect key features:
 
 ## Content types
 
-### `GET /api/v1/content-types`
+### `GET /api/v1/workspaces/{workspace}/content-types`
 
 Returns all content type schemas.
 
-### `GET /api/v1/content-types/{collection}`
+### `GET /api/v1/workspaces/{workspace}/content-types/{collection}`
 
 Returns one content type schema.
 
-### `POST /api/v1/content-types`
+### `POST /api/v1/workspaces/{workspace}/content-types`
 
 Creates a new content type schema.
 
@@ -79,7 +89,7 @@ Creates a new content type schema.
 
 Request body fields: `name` (required), `label`, `icon`, `singleton`, `fields`, `locales`, `default_locale`.
 
-### `PUT /api/v1/content-types/{collection}`
+### `PUT /api/v1/workspaces/{workspace}/content-types/{collection}`
 
 Updates an existing content type schema.
 
@@ -89,7 +99,7 @@ Existing entries are not modified — new fields will be absent until entries ar
 
 Setting `singleton: true` makes the content type a single page. Single pages allow at most one active entry and use the content type name as their fixed slug.
 
-### `DELETE /api/v1/content-types/{collection}`
+### `DELETE /api/v1/workspaces/{workspace}/content-types/{collection}`
 
 Permanently deletes a content type and all its entries. This action is irreversible.
 
@@ -97,11 +107,11 @@ Permanently deletes a content type and all its entries. This action is irreversi
 
 ## Content entries
 
-### `GET /api/v1/content/{collection}`
+### `GET /api/v1/workspaces/{workspace}/content/{collection}`
 
 Returns entries in a collection.
 
-For single page content types, fetch the fixed entry with `GET /api/v1/content/{collection}/{collection}` instead of using the list endpoint.
+For single page content types, fetch the fixed entry with `GET /api/v1/workspaces/{workspace}/content/{collection}/{collection}` instead of using the list endpoint.
 
 Without a token, only `published` entries and `scheduled` entries whose `published_at` is in the past are returned. With a token that has `content.read` on the collection, drafts and protected entries are included.
 
@@ -131,13 +141,13 @@ For localized content types, `locale` resolves translated `title` and field valu
 Sorting is type-aware for numeric values and ISO-style dates, then falls back to case-insensitive string sorting.
 
 ```http
-GET /api/v1/content/blogpost?filter[is_promo_material]=true
-GET /api/v1/content/blogpost?filter[category]=launch
-GET /api/v1/content/blogpost?filter[id]=7K4p9xQ2mR
-GET /api/v1/content/pages?locale=de
+GET /api/v1/workspaces/site-a/content/blogpost?filter[is_promo_material]=true
+GET /api/v1/workspaces/site-a/content/blogpost?filter[category]=launch
+GET /api/v1/workspaces/site-a/content/blogpost?filter[id]=7K4p9xQ2mR
+GET /api/v1/workspaces/site-a/content/pages?locale=de
 ```
 
-### `GET /api/v1/content/{collection}/{identifier}`
+### `GET /api/v1/workspaces/{workspace}/content/{collection}/{identifier}`
 
 Returns one entry. `{identifier}` may be either the entry slug or the stable opaque `id` returned in the payload. Add `?locale={code}` to resolve localized field values.
 
@@ -167,7 +177,7 @@ Public reads return only public entries. Reading drafts, protected entries, or e
 
 `id` is stable and opaque. `slug` is the human-readable URL key and may change.
 
-### `POST /api/v1/content/{collection}`
+### `POST /api/v1/workspaces/{workspace}/content/{collection}`
 
 Creates a new entry.
 
@@ -183,7 +193,7 @@ When a content type field defines a supported `default`, omitted values are crea
 
 For single page content types, creation is allowed only while no active entry exists. The entry slug is forced to the content type name.
 
-### `PUT /api/v1/content/{collection}/{identifier}`
+### `PUT /api/v1/workspaces/{workspace}/content/{collection}/{identifier}`
 
 Updates an existing entry by slug or stable ID.
 
@@ -193,7 +203,7 @@ Updating an entry to `status: "published"` also requires `content.publish` on th
 
 For localized content types, include `locale` in the body to update that locale variant. Slug, status, author, and publish date remain shared by the entry.
 
-### `DELETE /api/v1/content/{collection}/{identifier}`
+### `DELETE /api/v1/workspaces/{workspace}/content/{collection}/{identifier}`
 
 Soft-deletes an entry by slug or stable ID.
 
@@ -209,7 +219,7 @@ Soft-deletes an entry by slug or stable ID.
 
 ## Media
 
-### `GET /api/v1/media`
+### `GET /api/v1/workspaces/{workspace}/media`
 
 Returns uploaded media files. Without authentication, only **public** files are returned. With a token that has `media.read`, all files (including private ones) are returned.
 
@@ -241,7 +251,7 @@ Each file object includes the following fields:
 | `uploaded_at` | ISO 8601 upload timestamp, or `null`                 |
 | `uploaded_by` | User ID of the uploader, or `null`                   |
 
-### `POST /api/v1/media`
+### `POST /api/v1/workspaces/{workspace}/media`
 
 Uploads one or more media files as multipart `media[]` parts.
 
@@ -249,7 +259,7 @@ Uploads one or more media files as multipart `media[]` parts.
 
 Optional form field: `category`. Use a nested path such as `Brand / Logos` to assign a subcategory.
 
-### `PUT /api/v1/media/{filename}/meta`
+### `PUT /api/v1/workspaces/{workspace}/media/{filename}/meta`
 
 Updates the `alt` text and `title` of a media file. Send empty strings to clear them.
 
@@ -257,17 +267,17 @@ Updates the `alt` text and `title` of a media file. Send empty strings to clear 
 
 **Body:** `{ "alt": "A red apple on a white background", "title": "Product photo" }`
 
-### `PUT /api/v1/media/{filename}/visibility`
+### `PUT /api/v1/workspaces/{workspace}/media/{filename}/visibility`
 
 Sets the visibility of a media file to `"public"` (default) or `"private"`.
 
-Private files are excluded from unauthenticated `GET /api/v1/media` responses and return `401` when fetched directly via `GET /media/{filename}` without a valid token with `media.read` permission.
+Private files are excluded from unauthenticated `GET /api/v1/workspaces/{workspace}/media` responses and return `401` when fetched directly via `GET /media/{workspace}/{filename}` without a valid token with `media.read` permission.
 
 **Required permission:** `media.update` on `media:*`
 
 **Body:** `{ "visibility": "private" }`
 
-### `PUT /api/v1/media/bulk-visibility`
+### `PUT /api/v1/workspaces/{workspace}/media/bulk-visibility`
 
 Sets the visibility of multiple media files in one request.
 
@@ -275,7 +285,7 @@ Sets the visibility of multiple media files in one request.
 
 **Body:** `{ "files": ["photo.jpg", "doc.pdf"], "visibility": "private" }`
 
-### `POST /api/v1/media/categories`
+### `POST /api/v1/workspaces/{workspace}/media/categories`
 
 Creates a media category. Send a path in `name` or provide `parent` to create a subcategory.
 
@@ -294,7 +304,7 @@ Creates a media category. Send a path in `name` or provide `parent` to create a 
 }
 ```
 
-### `PUT /api/v1/media/categories/{category}`
+### `PUT /api/v1/workspaces/{workspace}/media/categories/{category}`
 
 Renames a media category and updates all files assigned to it or its subcategories.
 
@@ -302,13 +312,13 @@ Renames a media category and updates all files assigned to it or its subcategori
 
 **Body:** `{ "name": "New category name" }`
 
-### `DELETE /api/v1/media/categories/{category}`
+### `DELETE /api/v1/workspaces/{workspace}/media/categories/{category}`
 
 Deletes a media category and its subcategories. Files are not deleted; they are moved to no category.
 
 **Required permission:** `media.update` on `media:category:{category}`
 
-### `PUT /api/v1/media/{filename}/category`
+### `PUT /api/v1/workspaces/{workspace}/media/{filename}/category`
 
 Assigns a media file to a category. Send an empty category to clear it.
 
@@ -316,13 +326,13 @@ Assigns a media file to a category. Send an empty category to clear it.
 
 **Body:** `{ "category": "Brand / Logos" }`
 
-### `DELETE /api/v1/media/{filename}`
+### `DELETE /api/v1/workspaces/{workspace}/media/{filename}`
 
 Deletes a media file.
 
 **Required permission:** `media.delete` on `media:{filename}`
 
-### `GET /media/{filename}`
+### `GET /media/{workspace}/{filename}`
 
 Serves a media file directly. Returns `401` if the file's visibility is `"private"` and no valid bearer token with `media.read` on `media:{filename}` is provided.
 

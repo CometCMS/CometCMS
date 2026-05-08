@@ -18,7 +18,7 @@
 <script setup>
 defineProps({
   modelValue: { type: Boolean, default: false },
-  disabled:   { type: Boolean, default: false },
-})
-defineEmits(['update:modelValue'])
+  disabled: { type: Boolean, default: false },
+});
+defineEmits(["update:modelValue"]);
 </script>

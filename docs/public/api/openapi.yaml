@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: CometCMS Public API
   version: "1.0.0"
-  description: Stable HTTP API for headless content, media, and integration scripts.
+  description: Stable HTTP API for headless content, media, and integration scripts. Workspace-scoped routes are available under /api/v1/workspaces/{workspace} with the same content, schema, and media paths.
 servers:
   - url: https://yourdomain.com/api/v1
 security: []

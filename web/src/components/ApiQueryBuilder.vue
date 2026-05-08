@@ -1,6 +1,8 @@
 <template>
   <section class="card overflow-hidden">
-    <div class="flex flex-col gap-3 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-start sm:justify-between">
+    <div
+      class="flex flex-col gap-3 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-start sm:justify-between"
+    >
       <div>
         <div class="flex flex-wrap items-center gap-2">
           <h2 class="text-base font-semibold text-slate-900">
@@ -11,7 +13,11 @@
           Build a ready-to-use public API URL from your content model.
         </p>
       </div>
-      <button type="button" class="btn-secondary shrink-0 px-3 py-1.5 text-sm" @click="resetBuilder">
+      <button
+        type="button"
+        class="btn-secondary shrink-0 px-3 py-1.5 text-sm"
+        @click="resetBuilder"
+      >
         <Icon icon="mdi:refresh" class="h-4 w-4" />
         Reset
       </button>
@@ -20,34 +26,60 @@
     <div class="border-t border-slate-100 bg-slate-50/60 p-5">
       <div class="mb-2 flex items-center justify-between gap-3">
         <h3 class="text-sm font-semibold text-slate-900">Your API endpoint</h3>
-        <button type="button" class="btn-secondary px-3 py-1.5 text-sm" @click="copy(endpointUrl)">
+        <button
+          type="button"
+          class="btn-secondary px-3 py-1.5 text-sm"
+          @click="copy(endpointUrl)"
+        >
           <Icon icon="mdi:content-copy" class="h-4 w-4" />
           Copy URL
         </button>
       </div>
 
-      <div class="flex min-h-12 items-center gap-3 rounded-lg bg-slate-950 px-3 py-2 text-sm text-slate-100">
-        <span class="shrink-0 font-mono text-xs font-semibold text-theme-300">GET</span>
+      <div
+        class="flex min-h-12 items-center gap-3 rounded-lg bg-slate-950 px-3 py-2 text-sm text-slate-100"
+      >
+        <span class="shrink-0 font-mono text-xs font-semibold text-theme-300"
+          >GET</span
+        >
         <code
-          class="min-w-0 flex-1 overflow-x-auto whitespace-nowrap font-mono text-xs leading-6">{{ endpointUrl }}</code>
+          class="min-w-0 flex-1 overflow-x-auto whitespace-nowrap font-mono text-xs leading-6"
+          >{{ endpointUrl }}</code
+        >
       </div>
 
-      <div class="mt-3 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+      <div
+        class="mt-3 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"
+      >
         <div class="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-          <span>Method:
+          <span
+            >Method:
             <span
-              class="rounded-full bg-white px-2 py-0.5 font-semibold text-slate-700 ring-1 ring-slate-200">GET</span></span>
-          <span>Format:
+              class="rounded-full bg-white px-2 py-0.5 font-semibold text-slate-700 ring-1 ring-slate-200"
+              >GET</span
+            ></span
+          >
+          <span
+            >Format:
             <span
-              class="rounded-full bg-white px-2 py-0.5 font-semibold text-slate-700 ring-1 ring-slate-200">JSON</span></span>
-          <span v-if="authMode === 'bearer'">Auth:
+              class="rounded-full bg-white px-2 py-0.5 font-semibold text-slate-700 ring-1 ring-slate-200"
+              >JSON</span
+            ></span
+          >
+          <span v-if="authMode === 'bearer'"
+            >Auth:
             <span
-              class="rounded-full bg-white px-2 py-0.5 font-semibold text-slate-700 ring-1 ring-slate-200">Bearer</span></span>
+              class="rounded-full bg-white px-2 py-0.5 font-semibold text-slate-700 ring-1 ring-slate-200"
+              >Bearer</span
+            ></span
+          >
         </div>
 
-        <button type="button"
+        <button
+          type="button"
           class="inline-flex items-center gap-1.5 text-sm font-medium text-theme-700 hover:text-theme-800"
-          @click="copy(curlCommand)">
+          @click="copy(curlCommand)"
+        >
           <Icon icon="mdi:console-line" class="h-4 w-4" />
           Copy curl
         </button>
@@ -59,7 +91,9 @@
         <div class="border-b border-slate-100 p-5 lg:border-r">
           <div class="mb-4 flex items-start gap-3">
             <span
-              class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-theme-600 text-xs font-bold text-white">1</span>
+              class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-theme-600 text-xs font-bold text-white"
+              >1</span
+            >
             <div>
               <h3 class="text-sm font-semibold text-slate-900">
                 What do you want to fetch?
@@ -71,71 +105,122 @@
           </div>
 
           <div class="grid gap-3">
-            <div v-for="resource in resources" :key="resource.value" class="space-y-2">
-              <button type="button"
+            <div
+              v-for="resource in resources"
+              :key="resource.value"
+              class="space-y-2"
+            >
+              <button
+                type="button"
                 class="flex w-full items-center justify-between gap-3 rounded-lg border p-3 text-left transition"
-                :class="selectedResource === resource.value
+                :class="
+                  selectedResource === resource.value
                     ? 'border-theme-500 bg-theme-50/60 ring-1 ring-theme-500'
                     : 'border-slate-200 bg-white hover:border-theme-200 hover:bg-slate-50'
-                  " @click="selectResource(resource.value)">
+                "
+                @click="selectResource(resource.value)"
+              >
                 <span class="flex min-w-0 items-start gap-3">
-                  <Icon :icon="resource.icon" class="mt-0.5 h-5 w-5 shrink-0" :class="selectedResource === resource.value
-                      ? 'text-theme-600'
-                      : 'text-slate-500'
-                    " />
+                  <Icon
+                    :icon="resource.icon"
+                    class="mt-0.5 h-5 w-5 shrink-0"
+                    :class="
+                      selectedResource === resource.value
+                        ? 'text-theme-600'
+                        : 'text-slate-500'
+                    "
+                  />
                   <span>
-                    <span class="block text-sm font-semibold" :class="selectedResource === resource.value
-                        ? 'text-theme-800'
-                        : 'text-slate-800'
-                      ">{{ resource.label }}</span>
+                    <span
+                      class="block text-sm font-semibold"
+                      :class="
+                        selectedResource === resource.value
+                          ? 'text-theme-800'
+                          : 'text-slate-800'
+                      "
+                      >{{ resource.label }}</span
+                    >
                     <span class="mt-0.5 block text-sm text-slate-500">{{
                       resource.description
-                      }}</span>
-                    <span v-if="
-                      resource.value === 'content' && selectedCollectionLabel
-                    " class="mt-1 block text-xs font-semibold text-theme-700">
+                    }}</span>
+                    <span
+                      v-if="
+                        resource.value === 'content' && selectedCollectionLabel
+                      "
+                      class="mt-1 block text-xs font-semibold text-theme-700"
+                    >
                       Selected: {{ selectedCollectionLabel }}
                     </span>
                   </span>
                 </span>
-                <Icon v-if="resource.value === 'content'" :icon="isCollectionsExpanded && selectedResource === 'content'
-                    ? 'mdi:chevron-up'
-                    : 'mdi:chevron-down'
-                  " class="mt-0.5 h-5 w-5 shrink-0" :class="selectedResource === resource.value
+                <Icon
+                  v-if="resource.value === 'content'"
+                  :icon="
+                    isCollectionsExpanded && selectedResource === 'content'
+                      ? 'mdi:chevron-up'
+                      : 'mdi:chevron-down'
+                  "
+                  class="mt-0.5 h-5 w-5 shrink-0"
+                  :class="
+                    selectedResource === resource.value
                       ? 'text-theme-600'
                       : 'text-slate-500'
-                    " />
+                  "
+                />
               </button>
 
-              <div v-if="
-                resource.value === 'content' &&
-                selectedResource === 'content' &&
-                isCollectionsExpanded
-              " class="rounded-lg border border-slate-200 bg-white p-2">
-                <p v-if="collectionTypes.length > 0"
-                  class="px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <div
+                v-if="
+                  resource.value === 'content' &&
+                  selectedResource === 'content' &&
+                  isCollectionsExpanded
+                "
+                class="rounded-lg border border-slate-200 bg-white p-2"
+              >
+                <p
+                  v-if="collectionTypes.length > 0"
+                  class="px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-slate-500"
+                >
                   Collections
                 </p>
-                <p v-if="collections.length === 0" class="px-2 pb-1 text-sm text-slate-500">
+                <p
+                  v-if="collections.length === 0"
+                  class="px-2 pb-1 text-sm text-slate-500"
+                >
                   Create a content type first
                 </p>
                 <template v-else>
-                  <div v-if="collectionTypes.length > 0" class="flex flex-wrap gap-2">
-                    <button v-for="collection in collectionTypes" :key="collection.name" type="button"
+                  <div
+                    v-if="collectionTypes.length > 0"
+                    class="flex flex-wrap gap-2"
+                  >
+                    <button
+                      v-for="collection in collectionTypes"
+                      :key="collection.name"
+                      type="button"
                       class="rounded-md border px-3 py-1.5 text-sm transition"
-                      :class="collectionButtonClass(collection)" @click="selectCollection(collection.name)">
+                      :class="collectionButtonClass(collection)"
+                      @click="selectCollection(collection.name)"
+                    >
                       {{ collection.label || collection.name }}
                     </button>
                   </div>
 
                   <template v-if="singletonTypes.length > 0">
-                    <p class="px-2 pb-2 pt-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <p
+                      class="px-2 pb-2 pt-3 text-xs font-semibold uppercase tracking-wide text-slate-500"
+                    >
                       Single
                     </p>
                     <div class="flex flex-wrap gap-2">
-                      <button v-for="collection in singletonTypes" :key="collection.name" type="button"
+                      <button
+                        v-for="collection in singletonTypes"
+                        :key="collection.name"
+                        type="button"
                         class="rounded-md border px-3 py-1.5 text-sm transition"
-                        :class="collectionButtonClass(collection)" @click="selectCollection(collection.name)">
+                        :class="collectionButtonClass(collection)"
+                        @click="selectCollection(collection.name)"
+                      >
                         {{ collection.label || collection.name }}
                       </button>
                     </div>
@@ -149,7 +234,9 @@
         <div class="border-b border-slate-100 p-5 lg:col-span-2">
           <div class="mb-4 flex items-start gap-3">
             <span
-              class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-theme-600 text-xs font-bold text-white">2</span>
+              class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-theme-600 text-xs font-bold text-white"
+              >2</span
+            >
             <div>
               <h3 class="text-sm font-semibold text-slate-900">
                 Configure parameters
@@ -163,19 +250,34 @@
           <div v-if="selectedResource === 'content'" class="space-y-4">
             <div>
               <label class="form-label">Fetch mode</label>
-              <div class="grid grid-cols-2 rounded-lg border border-slate-200 bg-slate-50 p-1">
-                <button type="button" class="rounded-md px-3 py-2 text-sm font-medium transition" :class="contentMode === 'list'
-                    ? 'bg-white text-slate-900 shadow-sm'
-                    : isActiveSingleton
-                      ? 'text-slate-300'
-                      : 'text-slate-500 hover:text-slate-800'
-                  " :disabled="isActiveSingleton" @click="contentMode = 'list'">
+              <div
+                class="grid grid-cols-2 rounded-lg border border-slate-200 bg-slate-50 p-1"
+              >
+                <button
+                  type="button"
+                  class="rounded-md px-3 py-2 text-sm font-medium transition"
+                  :class="
+                    contentMode === 'list'
+                      ? 'bg-white text-slate-900 shadow-sm'
+                      : isActiveSingleton
+                        ? 'text-slate-300'
+                        : 'text-slate-500 hover:text-slate-800'
+                  "
+                  :disabled="isActiveSingleton"
+                  @click="contentMode = 'list'"
+                >
                   List
                 </button>
-                <button type="button" class="rounded-md px-3 py-2 text-sm font-medium transition" :class="contentMode === 'single'
-                    ? 'bg-white text-slate-900 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-800'
-                  " @click="contentMode = 'single'">
+                <button
+                  type="button"
+                  class="rounded-md px-3 py-2 text-sm font-medium transition"
+                  :class="
+                    contentMode === 'single'
+                      ? 'bg-white text-slate-900 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-800'
+                  "
+                  @click="contentMode = 'single'"
+                >
                   Single
                 </button>
               </div>
@@ -183,15 +285,26 @@
 
             <div v-if="isActiveSingleton">
               <label class="form-label">Fixed slug</label>
-              <input :value="collectionName" type="text" disabled
-                class="form-input w-full rounded-lg border-slate-300 bg-slate-50 text-sm text-slate-500" />
+              <input
+                :value="collectionName"
+                type="text"
+                disabled
+                class="form-input w-full rounded-lg border-slate-300 bg-slate-50 text-sm text-slate-500"
+              />
             </div>
 
             <div v-else-if="contentMode === 'single'">
               <label class="form-label">Slug or stable ID</label>
-              <SearchableSelect v-model="identifier" :options="entryOptions" :loading="entriesLoading"
-                :allow-free-input="true" :clearable="false" placeholder="my-entry-slug" @open="loadEntriesIfNeeded"
-                @search="onEntrySearch" />
+              <SearchableSelect
+                v-model="identifier"
+                :options="entryOptions"
+                :loading="entriesLoading"
+                :allow-free-input="true"
+                :clearable="false"
+                placeholder="my-entry-slug"
+                @open="loadEntriesIfNeeded"
+                @search="onEntrySearch"
+              />
               <p v-if="entriesError" class="mt-1 text-xs text-red-600">
                 {{ entriesError }}
               </p>
@@ -201,25 +314,42 @@
               <div class="grid gap-3 sm:grid-cols-2">
                 <div>
                   <label class="form-label">Limit</label>
-                  <input v-model.trim="limit" type="number" min="1" placeholder="20"
-                    class="form-input w-full rounded-lg border-slate-300 text-sm" />
+                  <input
+                    v-model.trim="limit"
+                    type="number"
+                    min="1"
+                    placeholder="20"
+                    class="form-input w-full rounded-lg border-slate-300 text-sm"
+                  />
                 </div>
                 <div>
                   <label class="form-label">Offset</label>
-                  <input v-model.trim="offset" type="number" min="0" placeholder="0"
-                    class="form-input w-full rounded-lg border-slate-300 text-sm" />
+                  <input
+                    v-model.trim="offset"
+                    type="number"
+                    min="0"
+                    placeholder="0"
+                    class="form-input w-full rounded-lg border-slate-300 text-sm"
+                  />
                 </div>
               </div>
 
               <div class="grid gap-3 sm:grid-cols-2">
                 <div>
                   <label class="form-label">Search</label>
-                  <input v-model.trim="search" type="text" placeholder="home page"
-                    class="form-input w-full rounded-lg border-slate-300 text-sm" />
+                  <input
+                    v-model.trim="search"
+                    type="text"
+                    placeholder="home page"
+                    class="form-input w-full rounded-lg border-slate-300 text-sm"
+                  />
                 </div>
                 <div>
                   <label class="form-label">Sort</label>
-                  <select v-model="sort" class="form-select w-full rounded-lg border-slate-300 text-sm">
+                  <select
+                    v-model="sort"
+                    class="form-select w-full rounded-lg border-slate-300 text-sm"
+                  >
                     <option value="-created_at">Newest first</option>
                     <option value="created_at">Oldest first</option>
                     <option value="title">Title A-Z</option>
@@ -232,15 +362,29 @@
               <div class="grid gap-3 sm:grid-cols-2">
                 <div>
                   <label class="form-label">Filter field</label>
-                  <select v-model="filterField" class="form-select w-full rounded-lg border-slate-300 text-sm">
+                  <select
+                    v-model="filterField"
+                    class="form-select w-full rounded-lg border-slate-300 text-sm"
+                  >
                     <option value="">No filter</option>
                     <optgroup label="System fields">
-                      <option v-for="field in systemFilterFields" :key="field.key" :value="field.key">
+                      <option
+                        v-for="field in systemFilterFields"
+                        :key="field.key"
+                        :value="field.key"
+                      >
                         {{ field.label }}
                       </option>
                     </optgroup>
-                    <optgroup v-if="contentFilterFields.length > 0" label="Content fields">
-                      <option v-for="field in contentFilterFields" :key="field.key" :value="field.key">
+                    <optgroup
+                      v-if="contentFilterFields.length > 0"
+                      label="Content fields"
+                    >
+                      <option
+                        v-for="field in contentFilterFields"
+                        :key="field.key"
+                        :value="field.key"
+                      >
                         {{ field.label }}
                       </option>
                     </optgroup>
@@ -248,29 +392,57 @@
                 </div>
                 <div>
                   <label class="form-label">Operator</label>
-                  <select v-model="filterOperator" class="form-select w-full rounded-lg border-slate-300 text-sm"
-                    :disabled="!filterField">
-                    <option v-for="operator in filterOperators" :key="operator.value" :value="operator.value">
+                  <select
+                    v-model="filterOperator"
+                    class="form-select w-full rounded-lg border-slate-300 text-sm"
+                    :disabled="!filterField"
+                  >
+                    <option
+                      v-for="operator in filterOperators"
+                      :key="operator.value"
+                      :value="operator.value"
+                    >
                       {{ operator.label }}
                     </option>
                   </select>
                 </div>
                 <div class="sm:col-span-2">
                   <label class="form-label">Value</label>
-                  <FieldValueInput v-if="selectedFilterField" v-model="filterValue" :field="selectedFilterValueField"
-                    :multiple="filterUsesMultiple" input-class="w-full" :placeholder="filterPlaceholder" />
-                  <input v-else type="text" disabled placeholder="Choose a field first"
-                    class="form-input w-full rounded-lg border-slate-300 text-sm" />
+                  <FieldValueInput
+                    v-if="selectedFilterField"
+                    v-model="filterValue"
+                    :field="selectedFilterValueField"
+                    :multiple="filterUsesMultiple"
+                    input-class="w-full"
+                    :placeholder="filterPlaceholder"
+                  />
+                  <input
+                    v-else
+                    type="text"
+                    disabled
+                    placeholder="Choose a field first"
+                    class="form-input w-full rounded-lg border-slate-300 text-sm"
+                  />
                 </div>
               </div>
             </template>
 
-            <div v-if="relationFields.length > 0" class="grid gap-3 sm:grid-cols-2">
+            <div
+              v-if="relationFields.length > 0"
+              class="grid gap-3 sm:grid-cols-2"
+            >
               <div>
                 <label class="form-label">Include relations</label>
-                <select v-model="include" class="form-select w-full rounded-lg border-slate-300 text-sm">
+                <select
+                  v-model="include"
+                  class="form-select w-full rounded-lg border-slate-300 text-sm"
+                >
                   <option value="">None</option>
-                  <option v-for="field in relationFields" :key="field" :value="field">
+                  <option
+                    v-for="field in relationFields"
+                    :key="field"
+                    :value="field"
+                  >
                     {{ field }}
                   </option>
                   <option value="__custom">Custom comma-separated list</option>
@@ -278,26 +450,44 @@
               </div>
               <div>
                 <label class="form-label">Custom include</label>
-                <input v-model.trim="customInclude" type="text" placeholder="author,categories"
-                  class="form-input w-full rounded-lg border-slate-300 text-sm" :disabled="include !== '__custom'" />
+                <input
+                  v-model.trim="customInclude"
+                  type="text"
+                  placeholder="author,categories"
+                  class="form-input w-full rounded-lg border-slate-300 text-sm"
+                  :disabled="include !== '__custom'"
+                />
               </div>
             </div>
 
             <div v-if="collectionLocales.length > 0">
               <label class="form-label">Locale</label>
-              <select v-model="locale" class="form-select w-full rounded-lg border-slate-300 text-sm">
+              <select
+                v-model="locale"
+                class="form-select w-full rounded-lg border-slate-300 text-sm"
+              >
                 <option value="">Default (no locale param)</option>
-                <option v-for="loc in collectionLocales" :key="loc" :value="loc">
+                <option
+                  v-for="loc in collectionLocales"
+                  :key="loc"
+                  :value="loc"
+                >
                   {{ loc }}
                 </option>
               </select>
             </div>
           </div>
 
-          <div v-else-if="selectedResource === 'content-types'" class="space-y-4">
+          <div
+            v-else-if="selectedResource === 'content-types'"
+            class="space-y-4"
+          >
             <div>
               <label class="form-label">Schema</label>
-              <select v-model="typeMode" class="form-select w-full rounded-lg border-slate-300 text-sm">
+              <select
+                v-model="typeMode"
+                class="form-select w-full rounded-lg border-slate-300 text-sm"
+              >
                 <option value="all">All content types</option>
                 <option value="single">One content type</option>
               </select>
@@ -305,12 +495,19 @@
 
             <div v-if="typeMode === 'single'">
               <label class="form-label">Content type</label>
-              <select v-model="selectedCollection" class="form-select w-full rounded-lg border-slate-300 text-sm"
-                :disabled="collections.length === 0">
+              <select
+                v-model="selectedCollection"
+                class="form-select w-full rounded-lg border-slate-300 text-sm"
+                :disabled="collections.length === 0"
+              >
                 <option v-if="collections.length === 0" value="">
                   Create a content type first
                 </option>
-                <option v-for="collection in collections" :key="collection.name" :value="collection.name">
+                <option
+                  v-for="collection in collections"
+                  :key="collection.name"
+                  :value="collection.name"
+                >
                   {{ collection.label || collection.name
                   }}{{ collection.singleton ? " (Single)" : "" }}
                 </option>
@@ -322,39 +519,66 @@
             <div class="grid gap-3 sm:grid-cols-2">
               <div>
                 <label class="form-label">Limit</label>
-                <input v-model.trim="limit" type="number" min="1" placeholder="20"
-                  class="form-input w-full rounded-lg border-slate-300 text-sm" />
+                <input
+                  v-model.trim="limit"
+                  type="number"
+                  min="1"
+                  placeholder="20"
+                  class="form-input w-full rounded-lg border-slate-300 text-sm"
+                />
               </div>
               <div>
                 <label class="form-label">Offset</label>
-                <input v-model.trim="offset" type="number" min="0" placeholder="0"
-                  class="form-input w-full rounded-lg border-slate-300 text-sm" />
+                <input
+                  v-model.trim="offset"
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  class="form-input w-full rounded-lg border-slate-300 text-sm"
+                />
               </div>
             </div>
 
             <div class="grid gap-3 sm:grid-cols-2">
               <div>
                 <label class="form-label">Search filename</label>
-                <input v-model.trim="search" type="text" placeholder="hero"
-                  class="form-input w-full rounded-lg border-slate-300 text-sm" />
+                <input
+                  v-model.trim="search"
+                  type="text"
+                  placeholder="hero"
+                  class="form-input w-full rounded-lg border-slate-300 text-sm"
+                />
               </div>
               <div>
                 <label class="form-label">Category</label>
-                <select v-model="mediaCategory" class="form-select w-full rounded-lg border-slate-300 text-sm"
-                  :disabled="mediaCategoriesLoading">
+                <select
+                  v-model="mediaCategory"
+                  class="form-select w-full rounded-lg border-slate-300 text-sm"
+                  :disabled="mediaCategoriesLoading"
+                >
                   <option value="">{{ mediaCategoryDefaultLabel }}</option>
-                  <option v-for="category in mediaCategoryOptions" :key="category.path" :value="category.path">
+                  <option
+                    v-for="category in mediaCategoryOptions"
+                    :key="category.path"
+                    :value="category.path"
+                  >
                     {{ category.optionLabel }}
                   </option>
                 </select>
-                <p v-if="mediaCategoriesError" class="mt-1 text-xs text-red-600">
+                <p
+                  v-if="mediaCategoriesError"
+                  class="mt-1 text-xs text-red-600"
+                >
                   {{ mediaCategoriesError }}
                 </p>
               </div>
             </div>
           </div>
 
-          <div v-else class="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
+          <div
+            v-else
+            class="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500"
+          >
             Select a resource in step 1 to configure parameters.
           </div>
         </div>
@@ -362,7 +586,9 @@
         <div class="border-b border-slate-100 p-5 lg:col-span-3">
           <div class="mb-4 flex items-start gap-3">
             <span
-              class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-theme-600 text-xs font-bold text-white">3</span>
+              class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-theme-600 text-xs font-bold text-white"
+              >3</span
+            >
             <div>
               <h3 class="text-sm font-semibold text-slate-900">
                 Authorization
@@ -376,7 +602,10 @@
           <div class="grid gap-4 lg:grid-cols-3">
             <div>
               <label class="form-label">Header</label>
-              <select v-model="authMode" class="form-select w-full rounded-lg border-slate-300 text-sm">
+              <select
+                v-model="authMode"
+                class="form-select w-full rounded-lg border-slate-300 text-sm"
+              >
                 <option value="none">No authorization</option>
                 <option value="bearer">Bearer token</option>
               </select>
@@ -385,26 +614,44 @@
             <div v-if="authMode === 'bearer'">
               <label class="form-label">Token</label>
               <div class="relative">
-                <input v-model.trim="token" :type="showToken ? 'text' : 'password'" placeholder="ctcms_..."
-                  class="form-input w-full rounded-lg border-slate-300 pr-10 text-sm" />
-                <button type="button"
+                <input
+                  v-model.trim="token"
+                  :type="showToken ? 'text' : 'password'"
+                  placeholder="ctcms_..."
+                  class="form-input w-full rounded-lg border-slate-300 pr-10 text-sm"
+                />
+                <button
+                  type="button"
                   class="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-slate-400 hover:text-slate-700"
-                  @click="showToken = !showToken">
-                  <Icon :icon="showToken ? 'mdi:eye-off-outline' : 'mdi:eye-outline'
-                    " class="h-4 w-4" />
+                  @click="showToken = !showToken"
+                >
+                  <Icon
+                    :icon="
+                      showToken ? 'mdi:eye-off-outline' : 'mdi:eye-outline'
+                    "
+                    class="h-4 w-4"
+                  />
                 </button>
               </div>
             </div>
 
-            <div class="rounded-lg border p-3 text-sm" :class="authMode === 'bearer'
-                ? 'border-green-200 bg-green-50 text-green-800'
-                : 'border-slate-200 bg-slate-50 text-slate-600'
-              ">
+            <div
+              class="rounded-lg border p-3 text-sm"
+              :class="
+                authMode === 'bearer'
+                  ? 'border-green-200 bg-green-50 text-green-800'
+                  : 'border-slate-200 bg-slate-50 text-slate-600'
+              "
+            >
               <div class="flex gap-2">
-                <Icon :icon="authMode === 'bearer'
-                    ? 'mdi:check'
-                    : 'mdi:information-outline'
-                  " class="mt-0.5 h-4 w-4 shrink-0" />
+                <Icon
+                  :icon="
+                    authMode === 'bearer'
+                      ? 'mdi:check'
+                      : 'mdi:information-outline'
+                  "
+                  class="mt-0.5 h-4 w-4 shrink-0"
+                />
                 <p>{{ authStatus }}</p>
               </div>
             </div>

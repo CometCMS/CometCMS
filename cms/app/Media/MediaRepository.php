@@ -5,18 +5,23 @@ declare(strict_types=1);
 namespace CometCMS\Media;
 
 use CometCMS\Core\MimeDetector;
+use CometCMS\Workspaces\WorkspaceContext;
 
 final class MediaRepository
 {
     private string $mediaDir;
     private string $thumbDir;
     private string $metadataPath;
+    private WorkspaceContext $workspace;
 
-    public function __construct()
+    public function __construct(?WorkspaceContext $workspace = null)
     {
-        $this->mediaDir = COMET_STORAGE . '/media';
-        $this->thumbDir = COMET_STORAGE . '/media-thumbs';
-        $this->metadataPath = COMET_STORAGE . '/media-meta/index.json';
+        $this->workspace = $workspace ?? WorkspaceContext::active();
+        WorkspaceContext::setActive($this->workspace->slug());
+        $this->workspace->ensure();
+        $this->mediaDir = $this->workspace->path('media');
+        $this->thumbDir = $this->workspace->path('media-thumbs');
+        $this->metadataPath = $this->workspace->path('media-meta') . '/index.json';
 
         if (!is_dir($this->thumbDir)) {
             mkdir($this->thumbDir, 0775, true);
@@ -25,6 +30,16 @@ final class MediaRepository
         if (!is_dir(dirname($this->metadataPath))) {
             mkdir(dirname($this->metadataPath), 0775, true);
         }
+    }
+
+    public function directory(): string
+    {
+        return $this->mediaDir;
+    }
+
+    public function filePath(string $file): string
+    {
+        return $this->path($file);
     }
 
     public function files(string $query = '', ?string $category = null, string $type = 'all', string $sort = 'newest', ?string $visibility = null): array

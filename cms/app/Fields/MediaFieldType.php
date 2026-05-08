@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace CometCMS\Fields;
 
+use CometCMS\Workspaces\WorkspaceContext;
+
 final class MediaFieldType extends AbstractFieldType
 {
     public function validate(mixed $value, array $config, array $context = []): array
@@ -19,7 +21,7 @@ final class MediaFieldType extends AbstractFieldType
         }
 
         foreach ($this->values($value, $config) as $file) {
-            if ($file === '' || !is_file(COMET_STORAGE . '/media/' . basename($file))) {
+            if ($file === '' || !is_file(WorkspaceContext::active()->path('media') . '/' . basename($file))) {
                 return $this->error('Media file does not exist: ' . $file, 'missing_media');
             }
         }

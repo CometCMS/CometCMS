@@ -84,7 +84,9 @@
                   class="inline-flex items-center gap-1 rounded bg-slate-100 px-1.5 py-0.5 text-slate-600"
                   :title="fieldLayoutLabel(field)"
                 >
-                  <span class="flex h-3 w-6 overflow-hidden rounded-sm bg-slate-300">
+                  <span
+                    class="flex h-3 w-6 overflow-hidden rounded-sm bg-slate-300"
+                  >
                     <span
                       class="h-full rounded-sm"
                       :style="fieldLayoutIndicatorStyle(field)"
@@ -130,6 +132,7 @@
                   'border-amber-400': isKeyRenamed(field),
                 }"
                 @blur="normalizeFieldKey(field, index)"
+                @input="onKeyInput(field)"
               />
               <p v-if="fieldErrors[index]" class="mt-1 text-xs text-red-600">
                 {{ fieldErrors[index] }}
@@ -207,21 +210,29 @@
               class="form-checkbox rounded border-slate-300 text-theme-600"
               @change="setFieldUniversal(field, $event.target.checked)"
             />
-            <span class="text-sm text-slate-600">Same value for all languages</span>
+            <span class="text-sm text-slate-600"
+              >Same value for all languages</span
+            >
           </label>
         </div>
 
         <!-- Editor layout -->
         <div v-if="!field._collapsed" class="mt-3 pl-7">
-          <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div
+            class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
+          >
             <div>
-              <label class="text-xs text-slate-500 block mb-0.5">{{ t("fieldBuilder.editorWidth") }}</label>
+              <label class="text-xs text-slate-500 block mb-0.5">{{
+                t("fieldBuilder.editorWidth")
+              }}</label>
               <p class="text-xs text-slate-400">
                 {{ t("fieldBuilder.editorWidthHint") }}
               </p>
             </div>
 
-            <div class="grid grid-cols-4 gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1">
+            <div
+              class="grid grid-cols-4 gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1"
+            >
               <button
                 v-for="option in layoutWidthOptions"
                 :key="option.value"
@@ -976,6 +987,7 @@ function addField() {
     _originalKey: "",
     _originalType: "text",
     _collapsed: false,
+    _keyTouched: false,
   });
 }
 
@@ -1006,10 +1018,15 @@ defineExpose({
 });
 
 function onLabelInput(field) {
-  // For brand-new fields (never saved), auto-derive the key from the label.
-  if (field._originalKey === "") {
+  // For brand-new fields (never saved), auto-derive the key from the label,
+  // but only while the user hasn't manually edited the key field yet.
+  if (field._originalKey === "" && !field._keyTouched) {
     field.key = normalizeKey(field.label || "");
   }
+}
+
+function onKeyInput(field) {
+  field._keyTouched = true;
 }
 
 function isKeyRenamed(field) {
@@ -1063,6 +1080,7 @@ function duplicateField(index) {
   clone._id = uid++;
   clone._originalKey = ""; // duplicate is a new field; no rename concern
   clone._originalType = clone.type; // type starts fresh from the cloned type
+  clone._keyTouched = false; // key can still be auto-derived after duplication
   clone._collapsed = false;
 
   if (Array.isArray(clone.subfields)) {

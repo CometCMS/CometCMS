@@ -4,5 +4,5 @@
 <script setup>
 defineProps({
   field: { type: Object, required: true },
-})
+});
 </script>

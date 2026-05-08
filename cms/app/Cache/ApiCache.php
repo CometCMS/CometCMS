@@ -4,24 +4,28 @@ declare(strict_types=1);
 
 namespace CometCMS\Cache;
 
+use CometCMS\Workspaces\WorkspaceContext;
+
 final class ApiCache
 {
+    private readonly string $path;
+
     public function __construct(
         private readonly bool $enabled = true,
         private readonly int $ttl = 300,
-        private readonly string $path = COMET_STORAGE . '/cache/api',
+        ?string $path = null,
     ) {
-        if (!is_dir($this->path)) {
-            mkdir($this->path, 0775, true);
-        }
+        $this->path = $path ?? WorkspaceContext::active()->path('cache') . '/api';
     }
 
-    public static function fromConfig(): self
+    public static function fromConfig(?WorkspaceContext $workspace = null): self
     {
+        $workspace ??= WorkspaceContext::active();
+
         return new self(
             (bool) comet_config('cache.enabled', true),
             (int) comet_config('cache.ttl', 300),
-            (string) comet_config('cache.path', COMET_STORAGE . '/cache/api'),
+            $workspace->path('cache') . '/api',
         );
     }
 
@@ -57,6 +61,10 @@ final class ApiCache
     {
         if (!$this->enabled) {
             return;
+        }
+
+        if (!is_dir($this->path)) {
+            mkdir($this->path, 0775, true);
         }
 
         file_put_contents($this->file($key), json_encode([

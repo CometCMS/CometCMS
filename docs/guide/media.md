@@ -27,7 +27,7 @@ Both fields are included in the public API response and are saved automatically 
 Each file can be set to **Public** (default) or **Private**:
 
 - **Public** — the file is served to everyone and appears in unauthenticated API responses.
-- **Private** — the file is hidden from unauthenticated `GET /api/v1/media` responses, and fetching the file directly via `GET /media/{filename}` requires a bearer token with `media.read` permission for that file.
+- **Private** — the file is hidden from unauthenticated `GET /api/v1/workspaces/{workspace}/media` responses, and fetching the file directly via `GET /media/{workspace}/{filename}` requires a bearer token with `media.read` permission for that file.
 
 Change visibility in the detail panel or use the bulk **Set field → Visibility** action to update multiple files at once.
 
@@ -40,7 +40,7 @@ Fields of type `media` let you pick a file from the media library directly withi
 Uploaded files are served from:
 
 ```
-/media/{filename}
+/media/{workspace}/{filename}
 ```
 
 ## Deleting files

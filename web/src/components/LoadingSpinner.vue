@@ -6,8 +6,8 @@
 </template>
 
 <script setup>
-import { Icon } from '@iconify/vue'
+import { Icon } from "@iconify/vue";
 defineProps({
-  label: { type: String, default: 'Loading…' },
-})
+  label: { type: String, default: "Loading…" },
+});
 </script>

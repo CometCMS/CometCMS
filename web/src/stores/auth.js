@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { api } from '../api/index.js'
+import { api, getActiveWorkspace, setActiveWorkspace } from '../api/index.js'
 import { applyTheme, DEFAULT_THEME } from '../theme.js'
 import { DEFAULT_ADMIN_LOCALE, setLocale } from '../i18n/index.js'
 import { allowsPermission } from './permissions.js'
@@ -14,7 +14,11 @@ export const useAuthStore = defineStore('auth', () => {
 
   function can(action, resource = null) {
     const grants = user.value?.capabilities?.permissions ?? []
-    return allowsPermission(grants, action, resource)
+    if (allowsPermission(grants, action, resource)) return true
+    if (resource !== null) {
+      return allowsPermission(grants, action, `workspace:${getActiveWorkspace()}:${resource}`)
+    }
+    return false
   }
 
   let initPromise = null
@@ -71,12 +75,14 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function setup(username, password) {
-    const res  = await api.setup(username, password)
+  async function setup(username, password, workspaceName, workspaceSlug) {
+    const res  = await api.setup(username, password, workspaceName, workspaceSlug)
     user.value = res.data
     applyTheme(user.value?.theme)
     setLocale(user.value?.language)
     notSetUp.value = false
+    const ws = res.meta?.workspace
+    if (ws) setActiveWorkspace(ws)
   }
 
   return {

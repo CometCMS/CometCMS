@@ -16,7 +16,7 @@ A **content type** defines the structure (schema) for content. Most content type
 6. Optional: add locales and choose a default locale.
 7. Click **Save**.
 
-Single page content types appear under **Single** in the sidebar and open directly in the editor. Their entry slug is fixed to the content type name, so a `start-page` single page is fetched at `/api/v1/content/start-page/start-page`.
+Single page content types appear under **Single** in the sidebar and open directly in the editor. Their entry slug is fixed to the content type name, so a `start-page` single page is fetched at `/api/v1/workspaces/{workspace}/content/start-page/start-page`.
 
 ## Editing a content type
 
@@ -42,6 +42,25 @@ Changing locale settings is non-destructive:
 - Changing the default locale updates existing entries to use that locale as their fallback root value when a translation exists.
 - Disabling localization keeps existing translation data in storage, but the admin and API use the shared root values until localization is enabled again.
 
+## Workspace-scoped API access
+
+Content type schemas are workspace-scoped. The same content type name can exist with different field definitions in different workspaces.
+
+For the Public API, use the workspace prefix:
+
+```http
+GET /api/v1/workspaces/site-b/content-types
+GET /api/v1/workspaces/site-b/content-types/posts
+```
+
+Unscoped Public API routes under `/api/v1/...` are rejected with `workspace_required`.
+
+For Admin API requests, the active workspace is selected with the `X-Comet-Workspace` header (or the configured default workspace when the header is omitted):
+
+```http
+X-Comet-Workspace: site-b
+```
+
 ## Deleting a content type
 
 Deleting a content type also removes all entries in that collection. This action is irreversible.
@@ -60,7 +79,11 @@ Content types are stored in `cms/storage/content-types/{name}.json`. A typical s
   "fields": {
     "title": { "type": "text", "required": true },
     "slug": { "type": "slug", "required": true, "unique": true },
-    "body": { "type": "markdown", "label": "Body", "default": "Start writing..." },
+    "body": {
+      "type": "markdown",
+      "label": "Body",
+      "default": "Start writing..."
+    },
     "published": { "type": "boolean", "label": "Published", "default": false },
     "published_at": { "type": "datetime", "label": "Publish date" }
   }

@@ -16,6 +16,8 @@ use CometCMS\Core\Security;
 use CometCMS\Core\ValidationException;
 use CometCMS\Logging\Logger;
 use CometCMS\Media\MediaRepository;
+use CometCMS\Workspaces\WorkspaceContext;
+use CometCMS\Workspaces\WorkspaceRepository;
 
 final class ApiController
 {
@@ -26,16 +28,37 @@ final class ApiController
     private ApiCache $cache;
     private MediaRepository $media;
     private PermissionService $permissions;
+    private WorkspaceContext $workspace;
+    private bool $scopedUrls = false;
 
     public function __construct(private readonly Http $http)
     {
+        $registry = new WorkspaceRepository();
+        $this->useWorkspace($registry->getDefault());
+    }
+
+    public function useWorkspace(string $workspace, bool $allowArchived = false, bool $scopedUrls = false): self
+    {
         $this->tokens = new ApiTokenRepository();
-        $this->content = ContentRepository::make();
-        $this->types = new ContentTypeRepository();
-        $this->response = new ApiResponder($http);
-        $this->cache = ApiCache::fromConfig();
-        $this->media = new MediaRepository();
+        $registry = new WorkspaceRepository();
+        $workspace = Security::slug($workspace);
+
+        if (!$registry->exists($workspace, $allowArchived)) {
+            $this->response = new ApiResponder($this->http);
+            $this->response->error('not_found', 'Workspace not found.', 404);
+        }
+
+        WorkspaceContext::setActive($workspace);
+        $this->workspace = WorkspaceContext::active();
+        $this->scopedUrls = $scopedUrls;
+        $this->content = ContentRepository::make($this->workspace);
+        $this->types = new ContentTypeRepository($this->workspace);
+        $this->response = new ApiResponder($this->http);
+        $this->cache = ApiCache::fromConfig($this->workspace);
+        $this->media = new MediaRepository($this->workspace);
         $this->permissions = new PermissionService();
+
+        return $this;
     }
 
     public function health(): never
@@ -159,7 +182,7 @@ final class ApiController
             $this->response->error('not_found', 'Content entry not found.', 404);
         }
 
-        if ($user !== null && !$this->permissions->allows($user, 'content.read', ['type' => 'content', 'collection' => $collection, 'entry' => $entry, 'principal' => $user])) {
+        if ($user !== null && !$this->permissions->allows($user, 'content.read', ['type' => 'content', 'collection' => $collection, 'entry' => $entry, 'principal' => $user, 'workspace' => $this->workspace->slug()])) {
             $this->response->error('forbidden', 'Forbidden.', 403);
         }
 
@@ -288,12 +311,12 @@ final class ApiController
             $name = $base;
             $suffix = 2;
 
-            while (file_exists(COMET_STORAGE . '/media/' . $name . $ext)) {
+            while (file_exists($this->media->directory() . '/' . $name . $ext)) {
                 $name = $base . '-' . $suffix;
                 $suffix++;
             }
 
-            $target = COMET_STORAGE . '/media/' . $name . $ext;
+            $target = $this->media->directory() . '/' . $name . $ext;
 
             if (!move_uploaded_file((string) $file['tmp_name'], $target)) {
                 $this->response->error('upload_failed', 'Could not store uploaded file.', 500);
@@ -427,7 +450,7 @@ final class ApiController
     public function mediaShow(string $file): never
     {
         $file = basename(rawurldecode($file));
-        $path = COMET_STORAGE . '/media/' . $file;
+        $path = $this->media->filePath($file);
 
         if (!is_file($path)) {
             $this->http->notFound();
@@ -448,7 +471,7 @@ final class ApiController
     public function mediaThumbShow(string $file): never
     {
         $file = basename(rawurldecode($file));
-        $originalPath = COMET_STORAGE . '/media/' . $file;
+        $originalPath = $this->media->filePath($file);
 
         if (!is_file($originalPath)) {
             $this->http->notFound();
@@ -620,7 +643,7 @@ final class ApiController
             return null;
         }
 
-        return $this->absoluteUrl('/media/' . rawurlencode($filename));
+        return $this->absoluteUrl($this->mediaRoute('/media', $filename));
     }
 
     private function publicMediaItem(array $file): array
@@ -628,10 +651,10 @@ final class ApiController
         return [
             'filename' => $file['name'],
             'name' => $file['name'],
-            'url' => $this->absoluteUrl('/media/' . rawurlencode((string) $file['name'])),
+            'url' => $this->absoluteUrl($this->mediaRoute('/media', (string) $file['name'])),
             'thumb_url' => ($file['thumb'] ?? null) !== null
-                ? $this->absoluteUrl('/media-thumbs/' . rawurlencode((string) $file['name']))
-                : $this->absoluteUrl('/media/' . rawurlencode((string) $file['name'])),
+                ? $this->absoluteUrl($this->mediaRoute('/media-thumbs', (string) $file['name']))
+                : $this->absoluteUrl($this->mediaRoute('/media', (string) $file['name'])),
             'size' => $file['size'],
             'mime' => $file['mime'],
             'thumb' => $file['thumb'] ?? null,
@@ -671,6 +694,17 @@ final class ApiController
         }
 
         return $files;
+    }
+
+    private function mediaRoute(string $base, string $filename): string
+    {
+        $path = $base . '/';
+
+        if ($this->scopedUrls) {
+            $path .= rawurlencode($this->workspace->slug()) . '/';
+        }
+
+        return $path . rawurlencode($filename);
     }
 
     private function absoluteUrl(string $path): string
@@ -749,6 +783,7 @@ final class ApiController
         }
 
         $context['principal'] = $user;
+        $context['workspace'] ??= $this->workspace->slug();
         if (!$this->permissions->allows($user, $action, $context)) {
             $this->response->error('forbidden', 'Forbidden.', 403);
         }
@@ -772,6 +807,7 @@ final class ApiController
         }
 
         $context['principal'] = $user;
+        $context['workspace'] ??= $this->workspace->slug();
         if (!$this->permissions->allows($user, $action, $context)) {
             $this->response->error('forbidden', 'Forbidden.', 403);
         }
@@ -804,7 +840,7 @@ final class ApiController
             return;
         }
 
-        if ($this->permissions->allows($user, 'content.publish', ['type' => 'content', 'collection' => $collection, 'entry' => $entry ?? [], 'principal' => $user])) {
+        if ($this->permissions->allows($user, 'content.publish', ['type' => 'content', 'collection' => $collection, 'entry' => $entry ?? [], 'principal' => $user, 'workspace' => $this->workspace->slug()])) {
             return;
         }
 

@@ -6,6 +6,14 @@ export function normalizeKey(value) {
     .replace(/^_+|_+$/g, '')
 }
 
+export function toSlug(value) {
+  return String(value ?? '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9_-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
 export function uniqueKey(base, used, reserved = new Set()) {
   let candidate = base
   let suffix = 2

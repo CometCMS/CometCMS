@@ -25,15 +25,28 @@ https://yourdomain.com/admin/api
 
 ## Dashboard
 
-| Method | Path                   | Description                                    |
-| ------ | ---------------------- | ---------------------------------------------- |
-| `GET`  | `/admin/api/dashboard` | Summary stats (entry counts, recent activity). |
-| `GET`  | `/admin/api/app`       | App version and config info.                   |
-| `GET`  | `/admin/api/activity`  | Paginated activity log. Supports `level`, `type`, `limit`, and `offset`. |
-| `GET`  | `/admin/api/update`    | Current update status.                         |
-| `POST` | `/admin/api/update/check` | Check for updates. Requires `updates.check`. |
-| `POST` | `/admin/api/update/download` | Download the latest update into staging. Requires `updates.download`. |
-| `POST` | `/admin/api/update/install` | Install a staged update. Requires `updates.install`. |
+| Method | Path                         | Description                                                              |
+| ------ | ---------------------------- | ------------------------------------------------------------------------ |
+| `GET`  | `/admin/api/dashboard`       | Summary stats (entry counts, recent activity).                           |
+| `GET`  | `/admin/api/app`             | App version and config info.                                             |
+| `GET`  | `/admin/api/activity`        | Paginated activity log. Supports `level`, `type`, `limit`, and `offset`. |
+| `GET`  | `/admin/api/update`          | Current update status.                                                   |
+| `POST` | `/admin/api/update/check`    | Check for updates. Requires `updates.check`.                             |
+| `POST` | `/admin/api/update/download` | Download the latest update into staging. Requires `updates.download`.    |
+| `POST` | `/admin/api/update/install`  | Install a staged update. Requires `updates.install`.                     |
+
+---
+
+## Workspaces
+
+Workspace-scoped admin requests send `X-Comet-Workspace: {workspace}`. Content types, content, media, revisions, trash, and public API cache are isolated by that workspace.
+
+| Method   | Path                                | Description                                                               |
+| -------- | ----------------------------------- | ------------------------------------------------------------------------- |
+| `GET`    | `/admin/api/workspaces`             | List active workspaces.                                                   |
+| `POST`   | `/admin/api/workspaces`             | Create a workspace. Requires `workspaces.manage`.                         |
+| `PUT`    | `/admin/api/workspaces/{workspace}` | Update the workspace label/archive state. Requires `workspaces.manage`.   |
+| `DELETE` | `/admin/api/workspaces/{workspace}` | Archive a workspace without deleting files. Requires `workspaces.manage`. |
 
 ---
 
@@ -56,16 +69,16 @@ Content type schemas include `singleton`. When `singleton` is `true`, the type r
 
 ## Content entries
 
-| Method   | Path                                   | Description                                                         |
-| -------- | -------------------------------------- | ------------------------------------------------------------------- |
-| `GET`    | `/admin/api/content/{collection}`      | List entries, including drafts. Omit `limit` to return all matches. |
-| `POST`   | `/admin/api/content/{collection}`      | Create a new entry.                                                 |
-| `GET`    | `/admin/api/content/{collection}/{id}` | Get a single entry.                                                 |
-| `PUT`    | `/admin/api/content/{collection}/{id}` | Update an entry.                                                    |
-| `DELETE` | `/admin/api/content/{collection}/{id}` | Soft-delete (move to trash).                                        |
-| `PATCH`  | `/admin/api/content/{collection}/bulk` | Bulk update selected entries.                                       |
-| `DELETE` | `/admin/api/content/{collection}/bulk` | Bulk soft-delete selected entries.                                  |
-| `DELETE` | `/admin/api/content/{collection}/{id}/translations/{locale}` | Permanently delete one non-default locale variant. |
+| Method   | Path                                                         | Description                                                         |
+| -------- | ------------------------------------------------------------ | ------------------------------------------------------------------- |
+| `GET`    | `/admin/api/content/{collection}`                            | List entries, including drafts. Omit `limit` to return all matches. |
+| `POST`   | `/admin/api/content/{collection}`                            | Create a new entry.                                                 |
+| `GET`    | `/admin/api/content/{collection}/{id}`                       | Get a single entry.                                                 |
+| `PUT`    | `/admin/api/content/{collection}/{id}`                       | Update an entry.                                                    |
+| `DELETE` | `/admin/api/content/{collection}/{id}`                       | Soft-delete (move to trash).                                        |
+| `PATCH`  | `/admin/api/content/{collection}/bulk`                       | Bulk update selected entries.                                       |
+| `DELETE` | `/admin/api/content/{collection}/bulk`                       | Bulk soft-delete selected entries.                                  |
+| `DELETE` | `/admin/api/content/{collection}/{id}/translations/{locale}` | Permanently delete one non-default locale variant.                  |
 
 List endpoints support `q`, `limit`, `offset`, `sort`, `order`, `locale`, and canonical
 `filter[...]` field filters:
@@ -114,18 +127,18 @@ Single page content types use the content type name as the fixed entry id/slug. 
 
 ## Media
 
-| Method   | Path                                   | Description                                                                                           |
-| -------- | -------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `GET`    | `/admin/api/media`                     | List media files. Supports `q`, `category`, `limit` and `offset`; omit `limit` to return all matches. |
-| `POST`   | `/admin/api/media`                     | Upload one or more files (multipart `media[]`). Returns `data` as an array of uploaded media items.   |
-| `POST`   | `/admin/api/media/categories`          | Create a media category.                                                                              |
-| `PUT`    | `/admin/api/media/categories/{category}` | Rename a media category and update assigned files.                                                  |
-| `DELETE` | `/admin/api/media/categories/{category}` | Delete a media category; assigned files move to no category.                                        |
-| `PUT`    | `/admin/api/media/{filename}/category` | Assign a file to a category.                                                                          |
-| `PUT`    | `/admin/api/media/{filename}/rename`   | Rename a media file and update content media-field references.                                        |
-| `PUT`    | `/admin/api/media/bulk-category`       | Assign selected files to a category.                                                                  |
-| `DELETE` | `/admin/api/media/{filename}`          | Delete a media file.                                                                                  |
-| `POST`   | `/admin/api/media/bulk-delete`         | Delete selected media files.                                                                          |
+| Method   | Path                                     | Description                                                                                           |
+| -------- | ---------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `GET`    | `/admin/api/media`                       | List media files. Supports `q`, `category`, `limit` and `offset`; omit `limit` to return all matches. |
+| `POST`   | `/admin/api/media`                       | Upload one or more files (multipart `media[]`). Returns `data` as an array of uploaded media items.   |
+| `POST`   | `/admin/api/media/categories`            | Create a media category.                                                                              |
+| `PUT`    | `/admin/api/media/categories/{category}` | Rename a media category and update assigned files.                                                    |
+| `DELETE` | `/admin/api/media/categories/{category}` | Delete a media category; assigned files move to no category.                                          |
+| `PUT`    | `/admin/api/media/{filename}/category`   | Assign a file to a category.                                                                          |
+| `PUT`    | `/admin/api/media/{filename}/rename`     | Rename a media file and update content media-field references.                                        |
+| `PUT`    | `/admin/api/media/bulk-category`         | Assign selected files to a category.                                                                  |
+| `DELETE` | `/admin/api/media/{filename}`            | Delete a media file.                                                                                  |
+| `POST`   | `/admin/api/media/bulk-delete`           | Delete selected media files.                                                                          |
 
 Media category lists are returned as `meta.categories`. Nested categories are represented as paths such as `Brand / Logos`; filtering by a parent category also includes files assigned to its subcategories. To create a subcategory, send `parent` alongside `name` to `/admin/api/media/categories`.
 
@@ -165,6 +178,7 @@ User management uses permission grants such as `users.read`, `users.create`, `us
 | -------- | ------------------------------ | ---------------------------------------------------- |
 | `GET`    | `/admin/api/users`             | List all users.                                      |
 | `POST`   | `/admin/api/users`             | Create a new user.                                   |
+| `GET`    | `/admin/api/users/{id}`        | Get one user by ID.                                  |
 | `PUT`    | `/admin/api/users/{id}`        | Update a user (display name, email, role, password). |
 | `DELETE` | `/admin/api/users/{id}`        | Delete a user.                                       |
 | `GET`    | `/admin/api/users/{id}/avatar` | Serve a user's avatar image.                         |
@@ -173,20 +187,20 @@ User management uses permission grants such as `users.read`, `users.create`, `us
 
 Role management uses `roles.read`, `roles.create`, `roles.update`, and `roles.delete`. The built-in `admin` role cannot be deleted.
 
-| Method   | Path                    | Description                         |
-| -------- | ----------------------- | ----------------------------------- |
-| `GET`    | `/admin/api/roles`      | List roles and their grants.        |
-| `POST`   | `/admin/api/roles`      | Create a role.                      |
-| `PUT`    | `/admin/api/roles/{id}` | Update a role label or grants.      |
-| `DELETE` | `/admin/api/roles/{id}` | Delete an unused non-admin role.    |
+| Method   | Path                    | Description                      |
+| -------- | ----------------------- | -------------------------------- |
+| `GET`    | `/admin/api/roles`      | List roles and their grants.     |
+| `POST`   | `/admin/api/roles`      | Create a role.                   |
+| `PUT`    | `/admin/api/roles/{id}` | Update a role label or grants.   |
+| `DELETE` | `/admin/api/roles/{id}` | Delete an unused non-admin role. |
 
 ### API Tokens
 
-| Method   | Path                                     | Description                     |
-| -------- | ---------------------------------------- | ------------------------------- |
-| `GET`    | `/admin/api/tokens`                      | List application API tokens.    |
-| `POST`   | `/admin/api/tokens`                      | Create an application API token. |
-| `DELETE` | `/admin/api/tokens/{tokenId}`            | Revoke a token.                 |
+| Method   | Path                          | Description                      |
+| -------- | ----------------------------- | -------------------------------- |
+| `GET`    | `/admin/api/tokens`           | List application API tokens.     |
+| `POST`   | `/admin/api/tokens`           | Create an application API token. |
+| `DELETE` | `/admin/api/tokens/{tokenId}` | Revoke a token.                  |
 
 ---
 

@@ -31,6 +31,8 @@ final class RoleRepository
                     'backups.restore',
                     'backups.delete',
                     'webhooks.manage',
+                    'workspaces.read',
+                    'workspaces.manage',
                 ], 'resources' => ['*']],
                 ['effect' => 'allow', 'actions' => [
                     'schema.read',
@@ -201,6 +203,15 @@ final class RoleRepository
         $role = $this->find($id);
 
         return is_array($role) ? (array) ($role['permissions'] ?? []) : self::defaultPermissions('viewer');
+    }
+
+    public function seed(): void
+    {
+        foreach (self::DEFAULT_ROLES as $id => $role) {
+            if ($this->store->read($id) === null) {
+                $this->save($this->normalizeRole($role, $id));
+            }
+        }
     }
 
     public function create(array $data): array

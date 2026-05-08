@@ -3,7 +3,7 @@ import {
   contentCollectionEndpoint,
   contentEntryEndpoint,
   contentTypeEndpoint,
-  contentTypesAdminEndpoint,
+  contentTypesEndpoint,
   mediaDetailEndpoint,
   mediaListEndpoint,
   usersAdminEndpoint,
@@ -25,7 +25,7 @@ describe("api endpoint helpers", () => {
         origin,
       ),
     ).toBe(
-      "https://example.test/api/v1/content/portfolio?limit=20&offset=0&sort=-created_at",
+      "https://example.test/api/v1/workspaces/default/content/portfolio?limit=20&offset=0&sort=-created_at",
     );
   });
 
@@ -72,7 +72,7 @@ describe("api endpoint helpers", () => {
         origin,
       ),
     ).toBe(
-      "https://example.test/api/v1/content/portfolio?limit=20&offset=0&sort=-created_at&q=hello%20world&locale=de-AT",
+      "https://example.test/api/v1/workspaces/default/content/portfolio?limit=20&offset=0&sort=-created_at&q=hello%20world&locale=de-AT",
     );
 
     expect(
@@ -86,20 +86,22 @@ describe("api endpoint helpers", () => {
         origin,
       ),
     ).toBe(
-      "https://example.test/api/v1/media?limit=20&offset=40&q=hero%20image&category=Case%20Studies%20%2F%202026",
+      "https://example.test/api/v1/workspaces/default/media?limit=20&offset=40&q=hero%20image&category=Case%20Studies%20%2F%202026",
     );
   });
 
   it("encodes content type and entry path segments", () => {
     expect(contentTypeEndpoint("case studies", origin)).toBe(
-      "https://example.test/api/v1/content-types/case%20studies",
+      "https://example.test/api/v1/workspaces/default/content-types/case%20studies",
     );
     expect(
       contentEntryEndpoint(
         { collection: "portfolio", entryId: "entry/one" },
         origin,
       ),
-    ).toBe("https://example.test/api/v1/content/portfolio/entry%2Fone");
+    ).toBe(
+      "https://example.test/api/v1/workspaces/default/content/portfolio/entry%2Fone",
+    );
   });
 
   it("builds singleton and media detail endpoints", () => {
@@ -108,17 +110,22 @@ describe("api endpoint helpers", () => {
         { collection: "homepage", entryId: "homepage", locale: "en" },
         origin,
       ),
-    ).toBe("https://example.test/api/v1/content/homepage/homepage?locale=en");
+    ).toBe(
+      "https://example.test/api/v1/workspaces/default/content/homepage/homepage?locale=en",
+    );
 
     expect(mediaDetailEndpoint("hero image.png", origin)).toBe(
-      "https://example.test/api/v1/media?q=hero%20image.png",
+      "https://example.test/api/v1/workspaces/default/media?q=hero%20image.png",
+    );
+  });
+
+  it("prefers the public API for content type discovery", () => {
+    expect(contentTypesEndpoint(origin)).toBe(
+      "https://example.test/api/v1/workspaces/default/content-types",
     );
   });
 
   it("builds auth-only admin endpoints", () => {
-    expect(contentTypesAdminEndpoint(origin)).toBe(
-      "https://example.test/admin/api/content-types",
-    );
     expect(usersAdminEndpoint(origin)).toBe(
       "https://example.test/admin/api/users",
     );

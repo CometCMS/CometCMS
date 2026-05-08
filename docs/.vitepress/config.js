@@ -21,11 +21,18 @@ export default defineConfig({
         ],
       },
       {
+        text: 'Workspaces',
+        items: [
+          { text: 'Workspaces', link: '/guide/workspaces' },
+        ],
+      },
+      {
         text: 'Content',
         items: [
           { text: 'Content Types', link: '/guide/content-types' },
           { text: 'Field Types', link: '/guide/field-types' },
           { text: 'Content Entries', link: '/guide/content-entries' },
+          { text: 'Media Library', link: '/guide/media' },
         ],
       },
       {
@@ -33,12 +40,6 @@ export default defineConfig({
         items: [
           { text: 'Managing Users', link: '/guide/users' },
           { text: 'API Tokens', link: '/guide/api-tokens' },
-        ],
-      },
-      {
-        text: 'Media',
-        items: [
-          { text: 'Media Library', link: '/guide/media' },
         ],
       },
       {
