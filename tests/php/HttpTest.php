@@ -28,6 +28,16 @@ function comet_http_test_run_inline_php_with_stdin(string $code, string $stdin):
     return $output;
 }
 
+function comet_http_test_bootstrap_path(): string
+{
+    return __DIR__ . '/bootstrap.php';
+}
+
+function comet_http_test_bootstrap_require_snippet(): string
+{
+    return 'require ' . var_export(comet_http_test_bootstrap_path(), true) . ';';
+}
+
 test('http path strips base dir and normalizes trailing slash', function (): void {
     $http = new Http();
 
@@ -48,7 +58,10 @@ test('http url prefixes path with script base directory', function (): void {
 
 test('http requestJson parses body and falls back to empty object for invalid payload', function (): void {
     $routerPath = COMET_STORAGE . '/request-json-test-router.php';
-    file_put_contents($routerPath, "<?php\nrequire '/home/andi/Schreibtisch/CometCMS/tests/php/bootstrap.php';\nheader('Content-Type: application/json');\necho json_encode((new \\CometCMS\\Core\\Http())->requestJson());\n");
+    file_put_contents(
+        $routerPath,
+        "<?php\nrequire " . var_export(comet_http_test_bootstrap_path(), true) . ";\nheader('Content-Type: application/json');\necho json_encode((new \\CometCMS\\Core\\Http())->requestJson());\n"
+    );
 
     $port = 18080 + random_int(0, 2000);
     $pid = (int) trim((string) shell_exec(sprintf(
@@ -96,8 +109,10 @@ test('http requestJson parses body and falls back to empty object for invalid pa
 });
 
 test('http redirect emits location header and status before exit', function (): void {
+    $bootstrapRequire = comet_http_test_bootstrap_require_snippet();
+
     $output = comet_http_test_run_inline_php(
-        'require "/home/andi/Schreibtisch/CometCMS/tests/php/bootstrap.php";' .
+        $bootstrapRequire .
             'register_shutdown_function(static function (): void {' .
             'echo "\n__CODE__" . http_response_code();' .
             'echo "\n__HEADERS__" . json_encode(headers_list());' .
@@ -120,8 +135,10 @@ test('http flash supports set get and consume behavior', function (): void {
 });
 
 test('http json outputs payload and response metadata before exit', function (): void {
+    $bootstrapRequire = comet_http_test_bootstrap_require_snippet();
+
     $output = comet_http_test_run_inline_php(
-        'require "/home/andi/Schreibtisch/CometCMS/tests/php/bootstrap.php";' .
+        $bootstrapRequire .
             'register_shutdown_function(static function (): void {' .
             'echo "\n__CODE__" . http_response_code();' .
             'echo "\n__HEADERS__" . json_encode(headers_list());' .

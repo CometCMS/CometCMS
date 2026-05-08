@@ -18,9 +18,16 @@ function comet_api_responder_test_run_inline_php(string $code): string
     return $output;
 }
 
+function comet_api_responder_test_bootstrap_require_snippet(): string
+{
+    return 'require ' . var_export(__DIR__ . '/bootstrap.php', true) . ';';
+}
+
 test('api responder data wraps payload in data envelope', function (): void {
+    $bootstrapRequire = comet_api_responder_test_bootstrap_require_snippet();
+
     $output = comet_api_responder_test_run_inline_php(
-        'require "/home/andi/Schreibtisch/CometCMS/tests/php/bootstrap.php";' .
+        $bootstrapRequire .
             'register_shutdown_function(static function (): void {' .
             'echo "\n__CODE__" . http_response_code();' .
             '});' .
@@ -33,8 +40,10 @@ test('api responder data wraps payload in data envelope', function (): void {
 });
 
 test('api responder data includes meta when provided', function (): void {
+    $bootstrapRequire = comet_api_responder_test_bootstrap_require_snippet();
+
     $output = comet_api_responder_test_run_inline_php(
-        'require "/home/andi/Schreibtisch/CometCMS/tests/php/bootstrap.php";' .
+        $bootstrapRequire .
             '(new \\CometCMS\\Core\\ApiResponder(new \\CometCMS\\Core\\Http()))->data(["items" => []], 206, ["page" => 2]);'
     );
 
@@ -44,8 +53,10 @@ test('api responder data includes meta when provided', function (): void {
 });
 
 test('api responder error returns code message and fields payload', function (): void {
+    $bootstrapRequire = comet_api_responder_test_bootstrap_require_snippet();
+
     $output = comet_api_responder_test_run_inline_php(
-        'require "/home/andi/Schreibtisch/CometCMS/tests/php/bootstrap.php";' .
+        $bootstrapRequire .
             '(new \\CometCMS\\Core\\ApiResponder(new \\CometCMS\\Core\\Http()))->error(' .
             '"validation_failed", "Validation failed", 422, ["email" => ["invalid"]]' .
             ');'

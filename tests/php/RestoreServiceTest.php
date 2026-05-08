@@ -155,8 +155,10 @@ test('restore service rejects missing manifest and invalid part selection', func
 });
 
 test('restore service reports missing zip extension in no-extension subprocess', function (): void {
+    $bootstrapRequire = 'require ' . var_export(__DIR__ . '/bootstrap.php', true) . ';';
+
     $script =
-        'require "/home/andi/Schreibtisch/CometCMS/tests/php/bootstrap.php";' .
+        $bootstrapRequire .
         'try {' .
         '(new \\CometCMS\\Backups\\RestoreService())->inspect("/tmp/does-not-matter.zip");' .
         '} catch (Throwable $e) {' .
