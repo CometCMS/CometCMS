@@ -1,0 +1,34 @@
+/* ── Blue brand color overrides ─────────────────────────────── */
+:root {
+  --vp-c-brand-1: #2563eb;
+  --vp-c-brand-2: #3b82f6;
+  --vp-c-brand-3: #93c5fd;
+  --vp-c-brand-soft: rgba(37, 99, 235, 0.1);
+
+  --vp-button-brand-border: transparent;
+  --vp-button-brand-text: #fff;
+  --vp-button-brand-bg: #2563eb;
+  --vp-button-brand-hover-border: transparent;
+  --vp-button-brand-hover-text: #fff;
+  --vp-button-brand-hover-bg: #1d4ed8;
+  --vp-button-brand-active-border: transparent;
+  --vp-button-brand-active-text: #fff;
+  --vp-button-brand-active-bg: #1e40af;
+}
+
+/* ── Shared landing-section heading styles ───────────────────── */
+.landing-title {
+  text-align: center;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--vp-c-text-1);
+  margin: 0 0 10px;
+}
+
+.landing-sub {
+  text-align: center;
+  color: var(--vp-c-text-2);
+  font-size: 16px;
+  margin: 0 0 40px;
+}
