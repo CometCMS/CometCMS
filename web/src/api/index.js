@@ -80,6 +80,55 @@ async function request(method, path, body = null) {
   return json
 }
 
+function requestWithProgress(method, path, formData, onProgress) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open(method, `/admin/api${path}`)
+    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest')
+    xhr.setRequestHeader('X-Comet-Workspace', getActiveWorkspace())
+    if (csrfToken) xhr.setRequestHeader('X-CSRF-Token', csrfToken)
+
+    if (onProgress) {
+      xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable) onProgress(e.loaded / e.total)
+      })
+    }
+
+    xhr.addEventListener('load', () => {
+      const newToken = xhr.getResponseHeader('X-CSRF-Token')
+      if (newToken) csrfToken = newToken
+
+      if (xhr.status === 204) return resolve(null)
+
+      let json
+      try {
+        json = JSON.parse(xhr.responseText)
+      } catch {
+        const err = new Error(`Server error (HTTP ${xhr.status})`)
+        err.code = 'server_error'
+        err.status = xhr.status
+        return reject(err)
+      }
+
+      if (xhr.status >= 400) {
+        const err = new Error(json.error?.message ?? 'Request failed')
+        err.code = json.error?.code ?? 'unknown'
+        err.fields = json.error?.fields ?? {}
+        err.status = xhr.status
+        err.retryAfter = json.error?.retry_after ?? null
+        return reject(err)
+      }
+
+      resolve(json)
+    })
+
+    xhr.addEventListener('error', () => reject(new Error('Network error')))
+    xhr.addEventListener('abort', () => reject(new Error('Upload aborted')))
+
+    xhr.send(formData)
+  })
+}
+
 function withQuery(path, params = {}) {
   const query = new URLSearchParams(params).toString()
   return query ? `${path}?${query}` : path
@@ -210,7 +259,7 @@ export const api = {
   backups: {
     list:     () => request('GET', '/backups'),
     create:   (parts) => request('POST', '/backups', { parts }),
-    upload:   (formData) => request('POST', '/backups/upload', formData),
+    upload:   (formData, onProgress) => requestWithProgress('POST', '/backups/upload', formData, onProgress),
     inspect:  (name) => request('GET', `/backups/${encodeURIComponent(name)}/inspect`),
     restore:  (name, data) => request('POST', `/backups/${encodeURIComponent(name)}/restore`, data),
     note:     (name, note) => request('PUT', `/backups/${encodeURIComponent(name)}/note`, { note }),

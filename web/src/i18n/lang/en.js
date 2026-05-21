@@ -263,6 +263,7 @@ const messages = {
     'roles.permissionGrants': 'Permission grants',
     'roles.create': 'Create',
     'roles.edit': 'Edit',
+    'roles.duplicate': 'Duplicate',
     'roles.delete': 'Delete',
     'roles.saveChanges': 'Save changes',
     'roles.deleteConfirm': 'Delete {name}?',
@@ -646,6 +647,7 @@ const messages = {
     'bulk.selectAll': 'Select all',
     'bulk.choose': '- choose -',
     'bulk.applyFiles': 'Apply to {count} {itemLabel}',
+    'bulk.clear': 'Clear',
 
     'workspaces.title': 'Workspaces',
     'workspaces.new': 'New workspace',

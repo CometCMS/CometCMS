@@ -1,150 +1,136 @@
 <template>
-  <div
-    class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
-  >
-    <!-- Left: selection count + select-all -->
-    <div
-      class="flex flex-wrap items-center gap-2 text-sm font-medium text-slate-700"
-    >
-      <label class="inline-flex items-center gap-2 shrink-0">
-        <input
-          type="checkbox"
-          class="form-checkbox rounded border-slate-300 text-theme-600"
-          :checked="allPageSelected"
-          :disabled="pageCount === 0 || applying"
-          @change="emit('toggle-page-selection', $event.target.checked)"
-        />
-        <span>{{ t("bulk.selected", { count: selectedCount }) }}</span>
-      </label>
+  <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+    <!-- Left: count + select-all + clear -->
+    <div class="flex items-center gap-3 shrink-0">
+      <span class="text-sm font-semibold text-theme-700">
+        {{ t("bulk.selected", { count: selectedCount }) }}
+      </span>
       <button
+        v-if="!allResultsSelected && pageCount > 0"
         type="button"
-        class="btn-secondary text-sm disabled:cursor-not-allowed disabled:opacity-50"
-        :disabled="pageCount === 0 || applying || allResultsSelected"
+        class="text-xs text-theme-600 hover:text-theme-700 font-medium underline-offset-2 underline disabled:opacity-50"
+        :disabled="applying"
         @click="emit('select-all')"
       >
         {{ t("bulk.selectAll") }}
       </button>
-    </div>
-
-    <!-- Right: bulk actions -->
-    <div class="flex flex-col gap-2 sm:flex-row sm:items-center flex-wrap">
-      <!-- Field selector -->
-      <div class="flex items-center gap-2 min-w-0">
-        <label
-          class="text-sm text-slate-600 whitespace-nowrap font-medium shrink-0"
-          >{{ t("bulk.setField") }}</label
-        >
-        <select
-          v-model="selectedKey"
-          class="form-select rounded-lg border-slate-300 text-sm min-w-[140px]"
-          :disabled="applying"
-          @change="fieldValue = defaultValueFor(selectedKey)"
-        >
-          <option value="">{{ t("bulk.choose") }}</option>
-          <option v-for="f in fields" :key="f.key" :value="f.key">
-            {{ f.label }}
-          </option>
-        </select>
-      </div>
-
-      <!-- Value input — dynamic based on selected field -->
-      <template v-if="selectedField">
-        <div class="flex items-center gap-2 min-w-0">
-          <label
-            class="text-sm text-slate-600 whitespace-nowrap font-medium shrink-0"
-            >{{ t("bulk.to") }}</label
-          >
-
-          <!-- Category field -->
-          <select
-            v-if="selectedField.kind === 'category'"
-            v-model="fieldValue"
-            class="form-select rounded-lg border-slate-300 text-sm min-w-[160px]"
-            :disabled="applying"
-          >
-            <option value="">{{ t("media.noCategory") }}</option>
-            <option v-for="c in categories" :key="c.path" :value="c.path">
-              {{ c.optionLabel }}
-            </option>
-          </select>
-
-          <!-- Visibility field -->
-          <select
-            v-if="selectedField.kind === 'visibility'"
-            v-model="fieldValue"
-            class="form-select rounded-lg border-slate-300 text-sm min-w-[140px]"
-            :disabled="applying"
-          >
-            <option value="public">{{ t("media.public") }}</option>
-            <option value="private">{{ t("media.private") }}</option>
-          </select>
-        </div>
-
-        <!-- Apply button -->
-        <button
-          type="button"
-          :disabled="!canApply || applying"
-          class="btn-primary py-1.5 px-4 disabled:opacity-40 whitespace-nowrap shrink-0 inline-flex items-center gap-2"
-          @click="apply"
-        >
-          <svg
-            v-if="applying"
-            class="animate-spin h-3.5 w-3.5"
-            viewBox="0 0 24 24"
-            fill="none"
-          >
-            <circle
-              class="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              stroke-width="4"
-            />
-            <path
-              class="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8v8H4z"
-            />
-          </svg>
-          {{
-            applying
-              ? t("bulk.applying")
-              : t("bulk.applyFiles", {
-                  count: selectedCount,
-                  itemLabel: t(
-                    selectedCount === 1 ? "media.file" : "media.files",
-                  ),
-                })
-          }}
-        </button>
-      </template>
-
-      <!-- Divider (visible when field actions present) -->
-      <span
-        v-if="selectedField"
-        class="hidden sm:inline text-slate-300 select-none"
-        >|</span
-      >
-
-      <!-- Delete + Clear -->
       <button
         type="button"
-        class="btn-danger text-sm disabled:cursor-not-allowed disabled:opacity-50"
-        :disabled="selectedCount === 0 || applying"
-        @click="emit('delete-selected')"
-      >
-        <Icon icon="mdi:delete" class="w-4 h-4" />
-      </button>
-      <button
-        type="button"
-        class="btn-secondary text-sm disabled:cursor-not-allowed disabled:opacity-50"
+        class="text-xs text-slate-500 hover:text-slate-700 font-medium disabled:opacity-50"
         :disabled="applying"
         @click="emit('clear-selection')"
       >
-        <Icon icon="mdi:close" class="w-4 h-4" />
+        {{ t("bulk.clear") }}
       </button>
     </div>
+
+    <!-- Divider -->
+    <div class="w-px h-5 bg-theme-200 shrink-0 hidden sm:block"></div>
+
+    <!-- Field selector -->
+    <div class="flex items-center gap-2 min-w-0">
+      <label
+        class="text-sm text-slate-600 whitespace-nowrap font-medium shrink-0"
+        >{{ t("bulk.setField") }}</label
+      >
+      <select
+        v-model="selectedKey"
+        class="form-select rounded-lg border-slate-300 text-sm min-w-[140px]"
+        :disabled="applying"
+        @change="fieldValue = defaultValueFor(selectedKey)"
+      >
+        <option value="">{{ t("bulk.choose") }}</option>
+        <option v-for="f in fields" :key="f.key" :value="f.key">
+          {{ f.label }}
+        </option>
+      </select>
+    </div>
+
+    <!-- Value input — dynamic based on selected field -->
+    <template v-if="selectedField">
+      <div class="flex items-center gap-2 min-w-0">
+        <label
+          class="text-sm text-slate-600 whitespace-nowrap font-medium shrink-0"
+          >{{ t("bulk.to") }}</label
+        >
+
+        <!-- Category field -->
+        <select
+          v-if="selectedField.kind === 'category'"
+          v-model="fieldValue"
+          class="form-select rounded-lg border-slate-300 text-sm min-w-[160px]"
+          :disabled="applying"
+        >
+          <option value="">{{ t("media.noCategory") }}</option>
+          <option v-for="c in categories" :key="c.path" :value="c.path">
+            {{ c.optionLabel }}
+          </option>
+        </select>
+
+        <!-- Visibility field -->
+        <select
+          v-if="selectedField.kind === 'visibility'"
+          v-model="fieldValue"
+          class="form-select rounded-lg border-slate-300 text-sm min-w-[140px]"
+          :disabled="applying"
+        >
+          <option value="public">{{ t("media.public") }}</option>
+          <option value="private">{{ t("media.private") }}</option>
+        </select>
+      </div>
+
+      <!-- Apply button -->
+      <button
+        type="button"
+        :disabled="!canApply || applying"
+        class="btn-primary py-1.5 px-4 disabled:opacity-40 whitespace-nowrap shrink-0 inline-flex items-center gap-2"
+        @click="apply"
+      >
+        <svg
+          v-if="applying"
+          class="animate-spin h-3.5 w-3.5"
+          viewBox="0 0 24 24"
+          fill="none"
+        >
+          <circle
+            class="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            stroke-width="4"
+          />
+          <path
+            class="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8v8H4z"
+          />
+        </svg>
+        {{
+          applying
+            ? t("bulk.applying")
+            : t("bulk.applyFiles", {
+                count: selectedCount,
+                itemLabel: t(
+                  selectedCount === 1 ? "media.file" : "media.files",
+                ),
+              })
+        }}
+      </button>
+
+      <!-- Divider before delete -->
+      <div class="w-px h-5 bg-theme-200 shrink-0 hidden sm:block"></div>
+    </template>
+
+    <!-- Delete -->
+    <button
+      type="button"
+      class="btn-secondary py-1.5 px-3 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 disabled:opacity-40 whitespace-nowrap shrink-0 inline-flex items-center gap-1.5"
+      :disabled="selectedCount === 0 || applying"
+      @click="emit('delete-selected')"
+    >
+      <Icon icon="mdi:trash-can-outline" class="w-4 h-4" />
+    </button>
   </div>
 </template>
 
@@ -156,7 +142,6 @@ import { useI18n } from "../i18n/index.js";
 const props = defineProps({
   categories: { type: Array, default: () => [] },
   selectedCount: { type: Number, default: 0 },
-  allPageSelected: { type: Boolean, default: false },
   allResultsSelected: { type: Boolean, default: false },
   pageCount: { type: Number, default: 0 },
   applying: { type: Boolean, default: false },
@@ -167,7 +152,6 @@ const emit = defineEmits([
   "delete-selected",
   "clear-selection",
   "select-all",
-  "toggle-page-selection",
 ]);
 const { t } = useI18n();
 

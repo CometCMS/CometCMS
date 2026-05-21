@@ -169,6 +169,21 @@
         <p v-if="uploadError" class="w-full text-sm text-red-600">
           {{ uploadError }}
         </p>
+        <!-- Upload progress bar -->
+        <div v-if="uploadingBackup" class="w-full mt-1">
+          <div
+            class="flex items-center justify-between text-xs text-slate-500 mb-1"
+          >
+            <span>{{ t("backup.uploading") }}</span>
+            <span>{{ uploadProgress }}%</span>
+          </div>
+          <div class="h-2 rounded-full bg-slate-200 overflow-hidden">
+            <div
+              class="h-full bg-theme-500 transition-all duration-150"
+              :style="{ width: uploadProgress + '%' }"
+            />
+          </div>
+        </div>
       </form>
     </div>
 
@@ -506,6 +521,7 @@ const activePanel = ref(null);
 const loadingBackups = ref(false);
 const creatingBackup = ref(false);
 const uploadingBackup = ref(false);
+const uploadProgress = ref(0);
 const restoringBackup = ref(false);
 const savingNote = ref(false);
 const downloadAfterCreate = ref(true);
@@ -680,10 +696,13 @@ async function uploadBackup() {
   if (!file) return;
 
   uploadingBackup.value = true;
+  uploadProgress.value = 0;
   const fd = new FormData();
   fd.append("backup", file);
   try {
-    const res = await api.backups.upload(fd);
+    const res = await api.backups.upload(fd, (p) => {
+      uploadProgress.value = Math.round(p * 100);
+    });
     selectedBackup.value = res.data.backup;
     setInspection(res.data.inspection);
     toast.success(t("backup.uploaded"));
@@ -695,6 +714,7 @@ async function uploadBackup() {
     uploadError.value = err.message;
   } finally {
     uploadingBackup.value = false;
+    uploadProgress.value = 0;
   }
 }
 

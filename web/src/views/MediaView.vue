@@ -173,7 +173,6 @@
             <MediaBulkEditBar
               :categories="categoryTree"
               :selected-count="selectedCount"
-              :all-page-selected="allPageSelected"
               :all-results-selected="allResultsSelected"
               :page-count="files.length"
               :applying="bulkWorking || regeneratingThumbs || selectingAllMedia"
@@ -181,7 +180,6 @@
               @delete-selected="confirmBulkDelete"
               @clear-selection="clearSelection"
               @select-all="selectAllMatchingMedia"
-              @toggle-page-selection="togglePageSelection($event)"
             />
           </div>
         </Transition>
@@ -1037,11 +1035,6 @@ const apiEndpointUrl = computed(() => {
     category: selectedCategory.value,
   });
 });
-const allPageSelected = computed(
-  () =>
-    files.value.length > 0 &&
-    files.value.every((file) => selectedMedia.value.has(file.name)),
-);
 const allResultsSelected = computed(
   () => totalFiles.value > 0 && selectedCount.value >= totalFiles.value,
 );
@@ -1359,20 +1352,6 @@ function toggleSelection(file, selected) {
   } else {
     next.delete(file.name);
   }
-
-  selectedMedia.value = next;
-}
-
-function togglePageSelection(selected) {
-  const next = new Set(selectedMedia.value);
-
-  files.value.forEach((file) => {
-    if (selected) {
-      next.add(file.name);
-    } else {
-      next.delete(file.name);
-    }
-  });
 
   selectedMedia.value = next;
 }

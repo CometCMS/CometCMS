@@ -79,6 +79,13 @@
               {{ t("roles.edit") }}
             </button>
             <button
+              v-if="auth.can('roles.create')"
+              @click="handleDuplicate(role)"
+              class="btn-secondary text-xs py-1 px-3"
+            >
+              {{ t("roles.duplicate") }}
+            </button>
+            <button
               v-if="auth.can('roles.delete')"
               :disabled="role.locked"
               @click="handleDelete(role)"
@@ -203,6 +210,16 @@ function openEdit(role) {
     label: role.label,
     permissions: clonePermissions(role.permissions),
   };
+}
+
+function handleDuplicate(role) {
+  createError.value = "";
+  createForm.value = {
+    id: `${role.id}-copy`,
+    label: `${role.label} (Copy)`,
+    permissions: clonePermissions(role.permissions),
+  };
+  showCreate.value = true;
 }
 
 async function handleCreate() {
