@@ -156,7 +156,7 @@ See the [webhook documentation](docs/guide/webhooks.md) for the full payload for
 
 ## Updates
 
-The admin sidebar version and **Updates** navigation item open `/admin/update`. Update checks read GitHub release metadata from `updates.repository_url` in `config/config.php`, which defaults to `https://github.com/CometCMS/CometCMS`. Installable releases should include a built ZIP asset matching `updates.release_asset_pattern` and a `.sha256` checksum asset matching `updates.checksum_asset_pattern`.
+The admin sidebar version and **Updates** navigation item open `/admin/update`. Update checks read GitHub release metadata from `updates.repository_url` in `config/config.php`, which defaults to `https://github.com/CometCMS/CometCMS`, and then try any `updates.fallback_repository_urls` such as `https://github.com/andreasjhagen/cometcms` if the primary release endpoint is unavailable. Installable releases should include a built ZIP asset matching `updates.release_asset_pattern` and a `.sha256` checksum asset matching `updates.checksum_asset_pattern`.
 
 CometCMS supports public GitHub releases for update checks and downloads. The update flow downloads and verifies a release ZIP first, then installs the staged package in a separate step.
 

@@ -99,6 +99,8 @@ const messages = {
   'dashboard.stats.totalEntries': 'Einträge gesamt',
   'dashboard.stats.contentTypes': 'Inhaltstypen',
   'dashboard.stats.totalContentTypes': 'Inhaltstypen gesamt',
+  'dashboard.stats.cmsVersion': 'CMS-Version',
+  'dashboard.stats.checkUpdates': 'Nach Updates suchen',
   'dashboard.quickActions': 'Schnellaktionen',
   'dashboard.actions.viewCollections': 'Sammlungen anzeigen',
   'dashboard.actions.addEntry': 'Neuen Eintrag erstellen',

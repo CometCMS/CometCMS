@@ -49,27 +49,38 @@ final class UpdateService
             throw new \RuntimeException('Update checks are disabled.');
         }
 
-        $json = $this->httpGet((string) $config['releases_api_url']);
-        $data = json_decode($json, true);
+        $errors = [];
 
-        if (!is_array($data) || !isset($data['tag_name'])) {
-            throw new \RuntimeException('GitHub did not return a release.');
+        foreach ($config['release_sources'] as $source) {
+            try {
+                $json = $this->httpGet((string) $source['api_url']);
+                $data = json_decode($json, true);
+
+                if (!is_array($data) || !isset($data['tag_name'])) {
+                    throw new \RuntimeException('GitHub did not return a release.');
+                }
+
+                $assets = is_array($data['assets'] ?? null) ? $data['assets'] : [];
+                $asset = $this->selectAsset($assets, (string) $config['release_asset_pattern']);
+                $checksumAsset = $this->selectAsset($assets, (string) $config['checksum_asset_pattern']);
+
+                return [
+                    'version' => ltrim((string) $data['tag_name'], "vV \t\n\r\0\x0B"),
+                    'tag' => (string) $data['tag_name'],
+                    'name' => (string) ($data['name'] ?? $data['tag_name']),
+                    'published_at' => $data['published_at'] ?? null,
+                    'url' => (string) ($data['html_url'] ?? $source['repository_url']),
+                    'repository_url' => (string) $source['repository_url'],
+                    'changelog' => trim((string) ($data['body'] ?? '')),
+                    'asset' => $asset,
+                    'checksum_asset' => $checksumAsset,
+                ];
+            } catch (\Throwable $e) {
+                $errors[] = $e->getMessage();
+            }
         }
 
-        $assets = is_array($data['assets'] ?? null) ? $data['assets'] : [];
-        $asset = $this->selectAsset($assets, (string) $config['release_asset_pattern']);
-        $checksumAsset = $this->selectAsset($assets, (string) $config['checksum_asset_pattern']);
-
-        return [
-            'version' => ltrim((string) $data['tag_name'], "vV \t\n\r\0\x0B"),
-            'tag' => (string) $data['tag_name'],
-            'name' => (string) ($data['name'] ?? $data['tag_name']),
-            'published_at' => $data['published_at'] ?? null,
-            'url' => (string) ($data['html_url'] ?? $config['repository_url']),
-            'changelog' => trim((string) ($data['body'] ?? '')),
-            'asset' => $asset,
-            'checksum_asset' => $checksumAsset,
-        ];
+        throw new \RuntimeException($errors[0] ?? 'No public GitHub release was found for the configured repository.');
     }
 
     public function downloadLatest(array $user): array
@@ -208,22 +219,80 @@ final class UpdateService
     {
         $repositoryUrl = rtrim((string) comet_config('updates.repository_url', 'https://github.com/CometCMS/CometCMS'), '/');
         $apiUrl = (string) comet_config('updates.releases_api_url', '');
+        $fallbackRepositoryUrls = $this->fallbackRepositoryUrls();
 
-        if ($apiUrl === '') {
-            $apiUrl = $this->githubApiUrl($repositoryUrl);
+        $releaseSources = [];
+
+        if ($apiUrl !== '') {
+            $releaseSources[] = ['repository_url' => $repositoryUrl, 'api_url' => $apiUrl];
+        } else {
+            $releaseSources[] = ['repository_url' => $repositoryUrl, 'api_url' => $this->githubApiUrl($repositoryUrl)];
+        }
+
+        foreach ($fallbackRepositoryUrls as $fallbackRepositoryUrl) {
+            $releaseSources[] = [
+                'repository_url' => $fallbackRepositoryUrl,
+                'api_url' => $this->githubApiUrl($fallbackRepositoryUrl),
+            ];
         }
 
         $preserved = comet_config('updates.preserved_paths', ['storage']);
+        $releaseSources = $this->uniqueReleaseSources($releaseSources);
+        $apiUrl = (string) ($releaseSources[0]['api_url'] ?? $apiUrl);
 
         return [
             'enabled' => (bool) comet_config('updates.enabled', true),
             'repository_url' => $repositoryUrl,
+            'fallback_repository_urls' => $fallbackRepositoryUrls,
             'releases_api_url' => $apiUrl,
+            'release_sources' => $releaseSources,
             'release_asset_pattern' => (string) comet_config('updates.release_asset_pattern', '/cometcms.*\.zip$/i'),
             'checksum_asset_pattern' => (string) comet_config('updates.checksum_asset_pattern', '/cometcms.*\.zip\.sha256$/i'),
             'require_checksum' => (bool) comet_config('updates.require_checksum', true),
             'preserved_paths' => is_array($preserved) ? array_values(array_map('strval', $preserved)) : ['storage'],
         ];
+    }
+
+    private function fallbackRepositoryUrls(): array
+    {
+        $urls = comet_config('updates.fallback_repository_urls', [
+            'https://github.com/andreasjhagen/cometcms',
+        ]);
+
+        if (is_string($urls) && trim($urls) !== '') {
+            $urls = [$urls];
+        }
+
+        if (!is_array($urls)) {
+            return [];
+        }
+
+        return array_values(array_unique(array_filter(array_map(
+            static fn(mixed $url): string => rtrim(trim((string) $url), '/'),
+            $urls
+        ))));
+    }
+
+    private function uniqueReleaseSources(array $sources): array
+    {
+        $unique = [];
+        $seen = [];
+
+        foreach ($sources as $source) {
+            $apiUrl = (string) ($source['api_url'] ?? '');
+
+            if ($apiUrl === '' || isset($seen[$apiUrl])) {
+                continue;
+            }
+
+            $seen[$apiUrl] = true;
+            $unique[] = [
+                'repository_url' => (string) ($source['repository_url'] ?? ''),
+                'api_url' => $apiUrl,
+            ];
+        }
+
+        return $unique;
     }
 
     private function githubApiUrl(string $repositoryUrl): string
@@ -246,7 +315,6 @@ final class UpdateService
             throw new \RuntimeException('No GitHub releases API URL is configured.');
         }
 
-        $config = $this->config();
         $headers = [
             'Accept: ' . $accept,
             'User-Agent: CometCMS-Updater/' . comet_version(),

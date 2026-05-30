@@ -10,7 +10,7 @@
 
     <template v-else>
       <!-- Stats -->
-      <div class="grid gap-4 mb-8 sm:grid-cols-3">
+      <div class="grid gap-4 mb-8 sm:grid-cols-2 xl:grid-cols-4">
         <div class="card p-5">
           <p
             class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1"
@@ -47,6 +47,23 @@
           <p class="mt-1 text-sm text-slate-500">
             {{ t("dashboard.stats.totalContentTypes") }}
           </p>
+        </div>
+        <div class="card p-5">
+          <p
+            class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1"
+          >
+            {{ t("dashboard.stats.cmsVersion") }}
+          </p>
+          <p class="text-3xl font-bold text-slate-900">
+            v{{ appVersion || "..." }}
+          </p>
+          <router-link
+            to="/update"
+            class="mt-3 inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-theme-300 hover:bg-theme-50/40"
+          >
+            <Icon icon="mdi:update" class="h-4 w-4 text-slate-500" />
+            <span>{{ t("dashboard.stats.checkUpdates") }}</span>
+          </router-link>
         </div>
       </div>
 
@@ -96,6 +113,7 @@ import { useI18n } from "../i18n/index.js";
 const loading = ref(true);
 const stats = ref({ collections: 0, entries: 0, content_types: 0 });
 const collections = ref([]);
+const appVersion = ref("");
 const { t } = useI18n();
 
 const firstCollection = computed(() => collections.value[0]?.name ?? "");
@@ -128,13 +146,15 @@ const quickActions = computed(() => [
 
 onMounted(async () => {
   try {
-    const [dashboard, types] = await Promise.allSettled([
+    const [dashboard, types, app] = await Promise.allSettled([
       api.dashboard(),
       api.contentTypes.list(),
+      api.appInfo(),
     ]);
     if (dashboard.status === "fulfilled") stats.value = dashboard.value.data;
     if (types.status === "fulfilled")
       collections.value = types.value.data ?? [];
+    if (app.status === "fulfilled") appVersion.value = app.value.data?.version ?? "";
   } finally {
     loading.value = false;
   }
