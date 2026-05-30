@@ -61,6 +61,11 @@ test('mcp initialize returns server metadata and capabilities', function (): voi
     assert_same('2.0', $response['jsonrpc'] ?? null);
     assert_same('2025-06-18', $response['result']['protocolVersion'] ?? null);
     assert_same('cometcms', $response['result']['serverInfo']['name'] ?? null);
+    assert_same('CometCMS', $response['result']['serverInfo']['title'] ?? null);
+    assert_same('image/png', $response['result']['serverInfo']['icons'][0]['mimeType'] ?? null);
+    assert_same(['374x374'], $response['result']['serverInfo']['icons'][0]['sizes'] ?? null);
+    assert_true(str_ends_with((string) ($response['result']['serverInfo']['icons'][0]['src'] ?? ''), '/admin/img/cms-icon.png'));
+    assert_same($response['result']['serverInfo']['icons'][0]['src'] ?? null, $response['result']['serverInfo']['icon'] ?? null);
     assert_true(isset($response['result']['capabilities']['tools']));
     assert_true(is_string($response['result']['instructions'] ?? null));
 });

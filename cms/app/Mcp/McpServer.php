@@ -130,6 +130,7 @@ final class McpServer
     private function initialize(array $params): array
     {
         $requested = (string) ($params['protocolVersion'] ?? self::PROTOCOL_VERSION);
+        $icon = $this->absoluteUrl('/admin/img/cms-icon.png');
 
         return [
             'protocolVersion' => $requested !== '' ? $requested : self::PROTOCOL_VERSION,
@@ -140,8 +141,15 @@ final class McpServer
             ],
             'serverInfo' => [
                 'name' => 'cometcms',
+                'title' => 'CometCMS',
                 'version' => $this->version(),
-                'icon' => $this->absoluteUrl('/admin/img/cms-icon.png'),
+                'description' => 'Headless CMS content, schema, and media tools.',
+                'icons' => [[
+                    'src' => $icon,
+                    'mimeType' => 'image/png',
+                    'sizes' => ['374x374'],
+                ]],
+                'icon' => $icon,
             ],
             'instructions' => implode(' ', [
                 'Use CometCMS tools to inspect schemas, manage entries, and work with media.',
