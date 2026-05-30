@@ -2,6 +2,7 @@ import { getActiveWorkspace } from "../api/index.js";
 
 const API_ROOT = "/api/v1";
 const ADMIN_API_ROOT = "/admin/api";
+const MCP_ROOT = "/mcp/v1";
 
 export function apiBase(origin = defaultOrigin()) {
   return `${origin}${API_ROOT}`;
@@ -22,6 +23,14 @@ export function workspacedApiBase(origin = defaultOrigin()) {
     return apiBase(origin);
   }
   return `${origin}${API_ROOT}/workspaces/${encodePathSegment(workspace)}`;
+}
+
+export function workspacedMcpEndpoint(origin = defaultOrigin()) {
+  const workspace = getActiveWorkspace();
+  if (!workspace) {
+    return `${origin}${MCP_ROOT}/workspaces/{workspace}`;
+  }
+  return `${origin}${MCP_ROOT}/workspaces/${encodePathSegment(workspace)}`;
 }
 
 export function buildApiUrl(path, params = {}, origin = defaultOrigin()) {

@@ -7,6 +7,7 @@ import {
   mediaDetailEndpoint,
   mediaListEndpoint,
   usersAdminEndpoint,
+  workspacedMcpEndpoint,
 } from "./apiEndpoint.js";
 
 const origin = "https://example.test";
@@ -128,6 +129,12 @@ describe("api endpoint helpers", () => {
   it("builds auth-only admin endpoints", () => {
     expect(usersAdminEndpoint(origin)).toBe(
       "https://example.test/admin/api/users",
+    );
+  });
+
+  it("builds the workspace-scoped MCP endpoint", () => {
+    expect(workspacedMcpEndpoint(origin)).toBe(
+      "https://example.test/mcp/v1/workspaces/default",
     );
   });
 });

@@ -29,6 +29,7 @@ function comet_entry_failure(string $title, string $message, array $details = []
     $isAdmin = $path === '/admin' || str_starts_with($path, '/admin/');
     $isJson  = str_starts_with($path, '/api/')
         || str_starts_with($path, '/admin/api/')
+        || str_starts_with($path, '/mcp/')
         || str_contains((string) ($_SERVER['HTTP_ACCEPT'] ?? ''), 'application/json');
 
     comet_entry_log($title, $message, $details);
@@ -105,6 +106,7 @@ use CometCMS\Controllers\Admin\{
 use CometCMS\Controllers\{AdminController, ApiController};
 use CometCMS\Core\Http;
 use CometCMS\Logging\Logger;
+use CometCMS\Mcp\McpController;
 
 // ─── Bootstrap ───────────────────────────────────────────────────────────────
 
@@ -273,6 +275,11 @@ try {
     // ── Admin SPA shell ───────────────────────────────────────────────────
     if ($path === '/admin' || str_starts_with($path, '/admin/')) {
         (new AdminController($http))->shell();
+    }
+
+    // ── Embedded MCP endpoint (workspace-scoped) ──────────────────────────
+    if (preg_match('#^/mcp/v1/workspaces/(' . SEG . ')$#', $path, $m)) {
+        (new McpController($http))->handle($m[1]);
     }
 
     // ── Public API v1 (workspace-scoped) ──────────────────────────────────

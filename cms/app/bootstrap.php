@@ -140,6 +140,8 @@ if ($scriptBase !== '' && $scriptBase !== '/' && str_starts_with($requestPath, $
 $requestPath = '/' . ltrim($requestPath, '/');
 $needsSession = !str_starts_with($requestPath, '/api/')
     && $requestPath !== '/api'
+    && !str_starts_with($requestPath, '/mcp/')
+    && $requestPath !== '/mcp'
     && !str_starts_with($requestPath, '/media/')
     && !str_starts_with($requestPath, '/media-thumbs/');
 

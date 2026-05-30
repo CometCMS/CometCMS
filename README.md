@@ -81,6 +81,18 @@ Authorization: Bearer ctcms_...
 
 Public reads work without a token and only return public content. Tokens use the same permission grant format as roles, so access can be limited by action, content type, entry, media category, and field. Tokens are created in the **API-Tokens** section of the admin. Trash, backup/restore, settings, users, tokens, and webhook management are admin-only features under `/admin/api`.
 
+## Embedded MCP
+
+CometCMS includes a no-dependency Streamable HTTP MCP endpoint:
+
+```http
+POST /mcp/v1/workspaces/{workspace}
+Authorization: Bearer ctcms_...
+Content-Type: application/json
+```
+
+The embedded MCP uses the same API tokens and permission grants as the REST API. It exposes content type, content entry, and media management tools directly from PHP, so hosted installs do not need Node, Composer, SSH, or the standalone MCP package. Media uploads are intentionally omitted from the embedded MCP; use the admin UI or REST API upload endpoint for files.
+
 ### Filtering, Sorting, and Pagination
 
 All list endpoints support:
