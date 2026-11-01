@@ -169,6 +169,7 @@ final class Extension
         $extensionIcons = [];
         $scripts = [];
         $seeds = [];
+        $presetIds = [];
         if (count($files) > self::MAX_FILES || array_sum(array_map('strlen', $files)) > self::MAX_BYTES) {
             throw ExtensionException::single('', 'The extension exceeds its file count or size limits.');
         }
@@ -201,11 +202,16 @@ final class Extension
                         }
                         $data['name'] = trim($data['name']);
                         $id = SiteRepository::componentId($data['name'], static fn(string $id): bool => false);
+                        if (isset($presetIds[$id])) {
+                            $errors[] = ['file' => $path, 'line' => null, 'message' => 'Theme preset names must produce distinct ids.'];
+                            continue;
+                        }
+                        $presetIds[$id] = true;
                     }
                     if ($kind === 'content_types' && isset($data['name']) && $data['name'] !== $id) {
                         $errors[] = ['file' => $path, 'line' => null, 'message' => 'The content type name must match its file name.'];
                     }
-                    $seeds[] = ['kind' => $kind, 'id' => $id, 'name' => $data['label'] ?? $data['name'] ?? $id, 'data' => $data];
+                    $seeds[] = ['kind' => $kind, 'id' => $id, 'name' => $data['label'] ?? $data['name'] ?? $id, 'data' => $data, 'source' => $path];
                 }
             } elseif ($role[0] === 'icon') {
                 $documents[] = $path;
@@ -298,15 +304,15 @@ final class Extension
     {
         if (in_array($path, [self::MANIFEST, 'style.css'], true)) return ['root'];
         if ($path === 'theme.json') return ['seed', 'presets', ''];
-        if (preg_match('~^(content-types|components)/([^/]+)\.json$~D', $path, $match)) {
+        if (preg_match('~^(content-types|components|presets)/([^/]+)\.json$~D', $path, $match)) {
             $id = $match[2];
             try {
                 Security::assertSafeName($id);
             } catch (\InvalidArgumentException) {
                 return 'Invalid seed name.';
             }
-            if ($match[1] === 'components' && ($id === '' || LayoutSchema::key($id) !== $id)) return 'Invalid component id.';
-            return ['seed', $match[1] === 'content-types' ? 'content_types' : 'components', $id];
+            if (in_array($match[1], ['components', 'presets'], true) && ($id === '' || LayoutSchema::key($id) !== $id)) return 'Invalid seed id.';
+            return ['seed', $match[1] === 'content-types' ? 'content_types' : $match[1], $id];
         }
         if (preg_match('~^templates/([^/]+)/([^/]+)\.json$~D', $path, $match)) {
             try {
@@ -345,7 +351,7 @@ final class Extension
             if ($segments[2] === 'template.mustache') return 'Rename template.mustache to template.html.';
         }
 
-        return 'Unexpected file. Extensions contain ' . self::MANIFEST . ', style.css, icon.svg/icon.png, README/LICENSE/CHANGELOG, blocks/<name>/{block.json, template.html, style.css, view.js, icon.svg} assets/, content-types/<name>.json, components/<id>.json, templates/<type>/<variant>.json and theme.json.';
+        return 'Unexpected file. Extensions contain ' . self::MANIFEST . ', style.css, icon.svg/icon.png, README/LICENSE/CHANGELOG, blocks/<name>/{block.json, template.html, style.css, view.js, icon.svg} assets/, content-types/<name>.json, components/<id>.json, templates/<type>/<variant>.json, presets/<id>.json and theme.json.';
     }
 
     /** null when the path is fine, false when it is clutter to ignore, or a message. */

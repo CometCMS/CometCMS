@@ -286,12 +286,13 @@ content-types/<name>.json     # ContentTypeRepository schema
 components/<id>.json          # {name, root, type, nodes}
 templates/<type>/<variant>.json
                               # {templates: [...], layouts: {area: nodes}}
-theme.json                    # {name, theme}
+presets/<id>.json             # {name, theme}; multiple design presets
+theme.json                    # legacy single preset, also {name, theme}
 ```
 
 Seed JSON files are limited to 1 MiB each. File names must be safe site names; component ids follow the builder's key rules. A content type's `name`, if present, must match its filename. The compiler checks paths, JSON and sizes. Installation also validates schemas against the current site, the content types and components being seeded, and installed blocks plus this extension's blocks. Validation finishes before any extension or seed files are written. Skipping a dependency that does not exist rejects the install.
 
-Content types are copied first, then components with their declared ids, template lists and layouts, and finally the theme preset. A template seed replaces one type/variant's list as a unit; its `layouts` object contains node lists keyed by template id, including `default`. For example:
+Content types are copied first, then components with their declared ids, template lists and layouts, and finally the theme presets. A template seed replaces one type/variant's list as a unit; its `layouts` object contains node lists keyed by template id, including `default`. For example:
 
 ```json
 {
@@ -302,11 +303,11 @@ Content types are copied first, then components with their declared ids, templat
 }
 ```
 
-A component contains one structure root (`section`, `row` or `column`) in `nodes`, its `name`, `root`, and a `type` (empty for a component shared between types). Theme presets use a display `name` and a normal theme object; they are matched to existing presets by name.
+A component contains one structure root (`section`, `row` or `column`) in `nodes`, its `name`, `root`, and a `type` (empty for a component shared between types). Theme presets use a display `name` and a normal theme object. An extension can ship several under `presets/`; the legacy root `theme.json` can coexist with them. Preset names must produce distinct site ids. On first import, presets match existing designs by name; subsequent updates track each source file separately, including presets renamed in the site. Keep preset file paths stable between versions. Custom CSS is excluded from presets and stays unchanged when applying one.
 
 Try **Comet Portfolio** (`examples/extensions/comet-portfolio/`): install Essentials first, then upload `examples/extensions/comet-portfolio.zip`. The preview lists **Projects**, **Portfolio hero**, **project/detail** and **Portfolio dusk**. The project schema and field-bound case-study template demonstrate media, Markdown, selects, dates, numbers, booleans, a range meter, a color swatch, result repeaters and related-project cards. After installing, Projects appears in the admin and Portfolio dusk appears in the designer. Upload it again to try the per-item conflict choices.
 
-For a standalone design theme, upload **Comet Neo-Brutalism** (`examples/extensions/comet-neo-brutalism.zip`). It imports the **Neo-Brutalism** preset and three editable section components: **Neo-Brutalism hero**, **Neo-Brutalism feature cards** and **Neo-Brutalism call to action**. Choose the preset in the designer to apply its yellow, violet and mint palette, bold typography, square corners and hard shadow scale. The components add thick borders and matching buttons using built-in builder elements; replace their sample copy and set the button destinations before publishing. It needs no other extension, scripts or external fonts, and includes a coordinated dark palette. Imported components and the preset can be kept after uninstalling.
+For a collection of designs, upload **Comet ThemePack** (`examples/extensions/comet-theme-pack.zip`). It imports **Neo-Brutalism**, **Industrial**, **Material-inspired** and **Orbital**, plus three editable Neo-Brutalism section components. The presets coordinate light and dark palettes, typography, spacing, corners and shadows; Orbital starts in dark mode. Choose a preset in the designer and save to apply it. The Neo-Brutalism components use built-in elements with their own outlines and button styling; replace their sample copy and button destinations before publishing. The pack needs no other extension, scripts or external fonts. It keeps the internal extension name `cometcms/neo-brutalism` so it updates existing Neo-Brutalism installations. Imported presets and components can be kept after uninstalling.
 
 For decorative content wrappers, upload **Fancy BG Containers** (`examples/extensions/comet-fancy-bg-containers.zip`). It adds **Geometric Forms**, **Soft Lights**, **Deep Space** and **Futuristic Grid**, each with a slot for normal builder elements. Choose background variants, theme-aware effect colors, intensity, motion, scale, padding, minimum height and vertical alignment. The normal Style controls set the surface, text and corners. Place one in a single-column full-width section to use it as a section background. These blocks need no JavaScript or external assets, respect reduced motion, and also offer a per-container **Still** option. They import no starter content or theme.
 

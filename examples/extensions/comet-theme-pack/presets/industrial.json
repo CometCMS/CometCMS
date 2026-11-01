@@ -1,0 +1,105 @@
+{
+  "name": "Industrial",
+  "theme": {
+    "base_size": 17,
+    "line_height": 1.65,
+    "type_scale": "1.25",
+    "heading_weight": 800,
+    "heading_line_height": 1.15,
+    "heading_letter_spacing": 0.02,
+    "heading_transform": "uppercase",
+    "container_width": 1200,
+    "narrow_width": 760,
+    "section_padding": "lg",
+    "section_padding_tablet": "md",
+    "section_padding_mobile": "md",
+    "grid_padding": "none",
+    "grid_padding_tablet": "none",
+    "grid_padding_mobile": "none",
+    "column_padding": "none",
+    "column_padding_tablet": "none",
+    "column_padding_mobile": "none",
+    "space": {
+      "xs": 4,
+      "sm": 8,
+      "md": 16,
+      "lg": 32,
+      "xl": 64,
+      "2xl": 96
+    },
+    "mode": "light",
+    "colors": {
+      "primary": "#b6480c",
+      "secondary": "#38434b",
+      "accent": "#d29b00",
+      "background": "#f2f1eb",
+      "surface": "#ffffff",
+      "text": "#20282d",
+      "muted": "#535c61",
+      "border": "#626d73"
+    },
+    "dark_colors": {
+      "primary": "#ff9c58",
+      "secondary": "#a5b5bf",
+      "accent": "#f3ca4b",
+      "background": "#171c20",
+      "surface": "#252d33",
+      "text": "#edf0ee",
+      "muted": "#b4bfc5",
+      "border": "#7a8993"
+    },
+    "fonts": {
+      "body": "system",
+      "heading": "monospace"
+    },
+    "radius": "none",
+    "radii": {
+      "sm": 2,
+      "md": 4,
+      "lg": 8
+    },
+    "links": {
+      "color": "primary",
+      "hover_color": "text",
+      "decoration": "underline",
+      "thickness": 2,
+      "offset": 0.2
+    },
+    "shadow_scale": {
+      "sm": {
+        "color": "border",
+        "x": 2,
+        "y": 2,
+        "blur": 0,
+        "spread": 0,
+        "opacity": 70,
+        "inset": false
+      },
+      "md": {
+        "color": "border",
+        "x": 4,
+        "y": 4,
+        "blur": 0,
+        "spread": 0,
+        "opacity": 70,
+        "inset": false
+      },
+      "lg": {
+        "color": "border",
+        "x": 6,
+        "y": 6,
+        "blur": 0,
+        "spread": 0,
+        "opacity": 70,
+        "inset": false
+      }
+    },
+    "motion": {
+      "fast": 180,
+      "normal": 300,
+      "slow": 500,
+      "stagger": 60,
+      "hover": 120
+    }
+  }
+}

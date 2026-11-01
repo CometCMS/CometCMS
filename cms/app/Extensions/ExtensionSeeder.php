@@ -44,17 +44,32 @@ final class ExtensionSeeder
         return $this->store->read('extensions-seeded') ?? [];
     }
 
-    /** Presets are matched by display name, while the ledger keeps their immutable site id. */
+    /** Track each preset's source independently; older imports are matched by id or display name. */
     public function resolve(array $seeds): array
     {
-        $tracked = array_values(array_filter($this->ledger()[$this->extension] ?? [], static fn(array $item): bool => $item['kind'] === 'presets'))[0] ?? null;
+        $tracked = array_values(array_filter($this->ledger()[$this->extension] ?? [], static fn(array $item): bool => $item['kind'] === 'presets'));
+        $used = [];
         foreach ($seeds as &$seed) {
             if ($seed['kind'] !== 'presets') continue;
             $matched = null;
-            foreach ($this->site->themePresets() as $preset) {
-                if ($preset['name'] === $seed['data']['name']) { $matched = $preset['id']; break; }
+            foreach ($tracked as $entry) {
+                if (isset($entry['source']) ? $entry['source'] === ($seed['source'] ?? 'theme.json') : $entry['id'] === $seed['id']) {
+                    $matched = $entry['id'];
+                    break;
+                }
             }
-            $seed['id'] = $matched ?? $tracked['id'] ?? SiteRepository::componentId($seed['data']['name'], fn(string $id): bool => $this->site->themePreset($id) !== null);
+            if ($matched === null) {
+                foreach ($this->site->themePresets() as $preset) {
+                    if ($preset['name'] === $seed['data']['name']) { $matched = $preset['id']; break; }
+                }
+            }
+            // Legacy theme.json shipped exactly one preset and had no source in its ledger.
+            if ($matched === null && ($seed['source'] ?? 'theme.json') === 'theme.json' && count($tracked) === 1 && !isset($tracked[0]['source'])) {
+                $matched = $tracked[0]['id'];
+            }
+            $seed['id'] = $matched ?? SiteRepository::componentId($seed['data']['name'], fn(string $id): bool => $this->site->themePreset($id) !== null || isset($used[$id]));
+            if (isset($used[$seed['id']])) throw ExtensionException::single(self::file($seed), 'Theme presets must resolve to distinct site presets.');
+            $used[$seed['id']] = true;
         }
         unset($seed);
         return $seeds;
@@ -169,9 +184,6 @@ final class ExtensionSeeder
             });
             if ($seed['kind'] === 'presets') $validate($seed, function () use ($seed): array {
                 if (!is_array($seed['data']['theme'] ?? null)) throw new ValidationException(['theme' => 'A preset needs a theme.']);
-                if ($this->site->themePreset($seed['id']) === null && count($this->site->themePresets()) >= SiteRepository::MAX_THEME_PRESETS) {
-                    throw new ValidationException(['theme' => 'The site has reached its theme preset limit.']);
-                }
                 return ['name' => $seed['data']['name'], 'theme' => Theme::normalize($seed['data']['theme'])];
             });
         }
@@ -202,6 +214,7 @@ final class ExtensionSeeder
 
     private static function file(array $seed): string
     {
+        if (isset($seed['source'])) return $seed['source'];
         return match ($seed['kind']) {
             'content_types' => 'content-types/' . $seed['id'] . '.json',
             'components', 'templates' => $seed['kind'] . '/' . $seed['id'] . '.json',
@@ -223,6 +236,10 @@ final class ExtensionSeeder
                 throw ExtensionException::single(self::file($seed), 'Choose skip or overwrite for an existing item.');
             }
             if ($choice !== 'skip') $selected[] = $seed;
+        }
+        $newPresets = array_filter($selected, fn(array $seed): bool => $seed['kind'] === 'presets' && $this->site->themePreset($seed['id']) === null);
+        if ($newPresets !== [] && count($this->site->themePresets()) + count($newPresets) > SiteRepository::MAX_THEME_PRESETS) {
+            throw ExtensionException::single(self::file(reset($newPresets)), 'The site has reached its theme preset limit.');
         }
         return $selected;
     }
@@ -268,6 +285,7 @@ final class ExtensionSeeder
                     }
                     $written[] = $seed;
                     $entries[self::key($seed)] = ['kind' => $kind, 'id' => $seed['id'], 'hash' => '', 'seeded_at' => Security::now()];
+                    if ($kind === 'presets') $entries[self::key($seed)]['source'] = $seed['source'] ?? 'theme.json';
                 }
             }
             // Layout saves can add page fields to types. Hash the final stored items.
