@@ -1,0 +1,64 @@
+{
+  "title": "Inline Links",
+  "description": "A row of text links with separators for footers, legal links and quick navigation.",
+  "icon": "mdi:link-variant",
+  "props": {
+    "navigation": {
+      "type": "menu",
+      "label": "Menu",
+      "default": "main"
+    },
+    "separator": {
+      "type": "enum",
+      "label": "Separator",
+      "options": [
+        "dot",
+        "slash",
+        "pipe",
+        "dash",
+        "none"
+      ],
+      "default": "dot"
+    },
+    "hover": {
+      "type": "enum",
+      "label": "Hover effect",
+      "options": [
+        "underline",
+        "color",
+        "fade"
+      ],
+      "default": "underline"
+    },
+    "alignment": {
+      "type": "enum",
+      "label": "Alignment",
+      "options": [
+        "start",
+        "center",
+        "end",
+        "between"
+      ],
+      "default": "start"
+    },
+    "accent": {
+      "type": "color",
+      "label": "Accent color",
+      "default": "primary"
+    },
+    "density": {
+      "type": "enum",
+      "label": "Spacing",
+      "options": [
+        "compact",
+        "comfortable",
+        "spacious"
+      ],
+      "default": "comfortable"
+    },
+    "uppercase": {
+      "type": "bool",
+      "label": "Uppercase labels"
+    }
+  }
+}

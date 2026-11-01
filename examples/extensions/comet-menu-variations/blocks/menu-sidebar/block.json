@@ -1,0 +1,48 @@
+{
+  "title": "Sidebar Navigation",
+  "description": "A vertical list for sidebars and documentation with a marked current page.",
+  "icon": "mdi:view-list-outline",
+  "props": {
+    "navigation": {
+      "type": "menu",
+      "label": "Menu",
+      "default": "main"
+    },
+    "style": {
+      "type": "enum",
+      "label": "Style",
+      "options": [
+        "rail",
+        "pill",
+        "plain"
+      ],
+      "default": "rail"
+    },
+    "accent": {
+      "type": "color",
+      "label": "Accent color",
+      "default": "primary"
+    },
+    "corners": {
+      "type": "enum",
+      "label": "Corners",
+      "options": [
+        "rounded",
+        "round",
+        "square",
+        "theme"
+      ],
+      "default": "rounded"
+    },
+    "density": {
+      "type": "enum",
+      "label": "Spacing",
+      "options": [
+        "compact",
+        "comfortable",
+        "spacious"
+      ],
+      "default": "comfortable"
+    }
+  }
+}

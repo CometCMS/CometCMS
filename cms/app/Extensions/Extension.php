@@ -39,7 +39,7 @@ final class Extension
     private const EXTENSION_FIELDS = ['api_version', 'name', 'title', 'description', 'version', 'author', 'license', 'homepage', 'requires'];
     private const BLOCK_FIELDS = ['title', 'description', 'icon', 'props'];
     private const PROP_FIELDS = ['type', 'label', 'default', 'max', 'min', 'options', 'fields', 'control'];
-    public const PROP_TYPES = ['string', 'text', 'richtext', 'url', 'link', 'bool', 'int', 'enum', 'icon', 'color', 'media', 'list'];
+    public const PROP_TYPES = ['string', 'text', 'richtext', 'url', 'link', 'bool', 'int', 'enum', 'icon', 'color', 'media', 'menu', 'list'];
     /** Theme colors a color prop may default to; workspaces add their own custom colors. */
     public const COLOR_KEYS = ['primary', 'secondary', 'accent', 'background', 'surface', 'text', 'muted', 'border'];
     public const ICONS = ['icon.svg' => 'image/svg+xml', 'icon.png' => 'image/png'];
@@ -565,6 +565,7 @@ final class Extension
             case 'color':
             case 'icon':
             case 'media':
+            case 'menu':
                 $prop['default'] = $default ?? '';
                 break;
             case 'list':
@@ -633,6 +634,7 @@ final class Extension
             'color' => $value === '' || in_array($value, self::COLOR_KEYS, true) ? null : 'must be empty or a theme color: ' . implode(', ', self::COLOR_KEYS) . '.',
             'icon' => is_string($value) && ($value === '' || isset(Icons::catalog()[$value])) ? null : 'must be empty or a bundled site icon name.',
             'media' => $value === '' ? null : 'is not supported: media comes from the library. Show a fallback with {{^name}}…{{/name}}.',
+            'menu' => is_string($value) && ($value === '' || preg_match('/^[A-Za-z0-9_-]{1,80}$/D', $value)) ? null : 'must be empty or a menu name of up to 80 letters, digits, hyphens or underscores.',
             'list' => self::listProblem($prop, $value),
             default => 'is invalid.',
         };

@@ -1,0 +1,75 @@
+{
+  "title": "Segmented Navigation",
+  "description": "A segmented control, tab bar or button group with a highlighted current page.",
+  "icon": "mdi:view-week-outline",
+  "props": {
+    "navigation": {
+      "type": "menu",
+      "label": "Menu",
+      "default": "main"
+    },
+    "style": {
+      "type": "enum",
+      "label": "Style",
+      "options": [
+        "track",
+        "tabs",
+        "divided"
+      ],
+      "default": "track"
+    },
+    "width": {
+      "type": "enum",
+      "label": "Width",
+      "options": [
+        "fill",
+        "fit"
+      ],
+      "default": "fill"
+    },
+    "alignment": {
+      "type": "enum",
+      "label": "Alignment (fit width)",
+      "options": [
+        "start",
+        "center",
+        "end"
+      ],
+      "default": "start"
+    },
+    "accent": {
+      "type": "color",
+      "label": "Accent color",
+      "default": "primary"
+    },
+    "surface": {
+      "type": "color",
+      "label": "Surface color"
+    },
+    "corners": {
+      "type": "enum",
+      "label": "Corners",
+      "options": [
+        "rounded",
+        "round",
+        "square",
+        "theme"
+      ],
+      "default": "rounded"
+    },
+    "density": {
+      "type": "enum",
+      "label": "Spacing",
+      "options": [
+        "compact",
+        "comfortable",
+        "spacious"
+      ],
+      "default": "comfortable"
+    },
+    "uppercase": {
+      "type": "bool",
+      "label": "Uppercase labels"
+    }
+  }
+}

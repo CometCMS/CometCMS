@@ -315,12 +315,29 @@ final class NodeRenderer
                 'url' => is_string($value) && HtmlSanitizer::isSafeUrl(trim($value)) ? trim($value) : '',
                 // Saved layouts are sanitized already; like the text element, render does it again.
                 'richtext' => is_string($value) ? HtmlSanitizer::sanitize($value) : '',
+                'menu' => $this->blockMenu(is_string($value) ? $value : '', $state),
                 'list' => array_map(fn(mixed $item): array => $this->blockValues($spec['fields'], is_array($item) ? $item : [], $state), is_array($value) ? array_values($value) : []),
                 default => is_scalar($value) ? $value : '',
             };
         }
 
         return $values;
+    }
+
+    /** Menu props resolve through the same localized links, icons and disclosures as built-in navigation. */
+    private function blockMenu(string $name, array $state): string
+    {
+        $menu = $this->ctx->menu($name);
+        if ($menu === null || $menu['items'] === []) {
+            return $this->annotating()
+                ? '<div class="c-placeholder"' . $this->placeholder('menuEmpty', ['name' => $name]) . '>Menu “' . Security::e($name) . '” has no items</div>'
+                : '';
+        }
+
+        // Sequence numbers also isolate repeated props and instances of the same component.
+        $group = 'block-menu-' . ++$this->menuSequence;
+        return '<nav class="c-menu c-menu-vertical c-menu-active-bold" data-menu aria-label="' . Security::e($menu['label']) . '">'
+            . $this->menuItems($menu['items'], $state, 'c-menu-list', $group) . '</nav>';
     }
 
     private function blockMedia(string $file): array

@@ -1,0 +1,9 @@
+{
+  "api_version": 1,
+  "name": "cometcms/menu-variations",
+  "title": "CometCMS - Menu Variations",
+  "description": "Pills, segmented tabs, a numbered index, cards, a sidebar and inline links powered by your site menus, each with styles, shapes and spacing options.",
+  "version": "1.0.0",
+  "author": "CometCMS",
+  "license": "MIT"
+}

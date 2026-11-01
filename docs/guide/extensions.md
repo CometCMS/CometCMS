@@ -56,6 +56,8 @@ comet-essentials/
 
 Zipping the folder yourself works too. A single top-level folder inside the ZIP is unwrapped, and `.DS_Store`, `__MACOSX/` and other dotfiles are ignored. The CLI runs the compiler checks without a running CMS; full seed schema validation happens during installation. It needs only PHP with the zip extension.
 
+The **CometCMS - Menu Variations** extension in `examples/extensions/comet-menu-variations/` adds **Pill Navigation**, **Segmented Navigation**, **Numbered Navigation**, **Navigation Cards**, **Sidebar Navigation** and **Inline Links**. Each uses the site's existing menus through a `menu` property and offers several styles plus accent color, corner, alignment and spacing options. Nested menus expand in place and links remain visible on mobile. Validate and pack it with the same CLI commands, replacing the source folder; a ready-to-upload package is at `examples/extensions/comet-menu-variations.zip`.
+
 ## comet-extension.json
 
 ```json
@@ -138,6 +140,7 @@ Every prop needs `type` and `label` (up to 120 bytes); `default` is optional.
 | `icon` | none; the default is a bundled site icon name or `""` | no icon | Searchable site icon picker | `{{name}}` renders a decorative SVG in element content; in attributes it prints the icon name |
 | `color` | none; the default is a theme color or `""` | `""` | Theme color picker, including the workspace's custom colors | The color key, such as `primary` |
 | `media` | none; no default | no image | Media library; can be bound to fields | The image URL; `{{name.alt}}` is its alternative text |
+| `menu` | none; default may be a menu name | `""` | Select from the site's menus, or None | `{{{name}}}` renders localized navigation with nested disclosures, icons and active-page states |
 | `list` | `fields` (required, 1–16 item fields of any other type), `max` 1–100 (20) | `[]` | Items to add, reorder and remove | Repeated by `{{#name}}…{{/name}}` |
 
 For example, `"zoom": { "type": "int", "label": "Zoom level", "min": 1, "max": 19, "default": 13, "control": "slider" }` creates a labeled slider with integer steps and an editable numeric value. `control` accepts `"slider"` or `"number"` on integer props only, including list item fields. It changes the editor control; stored values and bounds validation stay the same.
@@ -161,11 +164,13 @@ Templates are HTML with Mustache tags. All values are HTML-escaped.
 | `<details {{#open}}open{{/open}}>` | Inside a start tag, a section toggles one boolean attribute: `open`, `hidden`, `inert`, `disabled`, `controls`, `autoplay`, `muted`, `loop`, `playsinline` or `reversed`. |
 | `{{! comment }}` | Removed. |
 
-Elsewhere inside a start tag, tags may only appear in quoted attribute values: `class="cometcms-callout cometcms-callout--{{tone}}"`. Sections can nest 16 deep. Each section must open and close inside the same element, or inside the same attribute value, so every combination of values produces well-formed HTML. Raw output is only for `richtext` props; there are no partials and no delimiter changes, and the only dotted names are `.url` and `.alt` on media props. List iteration cannot be nested, including reusing an enclosing list inside itself. Scalar conditions inside lists are supported.
+Elsewhere inside a start tag, tags may only appear in quoted attribute values: `class="cometcms-callout cometcms-callout--{{tone}}"`. Sections can nest 16 deep. Each section must open and close inside the same element, or inside the same attribute value, so every combination of values produces well-formed HTML. Raw output is only for `richtext` and `menu` props; there are no partials and no delimiter changes, and the only dotted names are `.url` and `.alt` on media props. List iteration cannot be nested, including reusing an enclosing list inside itself. Scalar conditions inside lists are supported.
 
 **Links.** Declare a `link` prop to use the builder's shared destination picker, then put it in an `<a href="{{cta}}">`. Keep the visible label in a separate text prop. When the editor chooses "open in new tab", CometCMS adds `target="_blank" rel="noopener noreferrer"` itself, unless the template sets its own `target`. For internal page destinations, "open in modal" adds `data-link-modal` and `aria-haspopup="dialog"` and uses the site's modal template. These options also work on links inside list items. A plain `url` prop only provides a URL input.
 
 **Colors.** A `color` prop prints its theme key, which fits theme classes such as `c-bg-{{tint}}` or your own class names. To use it in your CSS, set a custom property: `style="--cometcms-tint: {{tint}}"` becomes `--cometcms-tint: var(--c-accent)`, which follows the theme and dark mode. An empty color becomes `initial`, so `var(--cometcms-tint, fallback)` uses the fallback. The `style` attribute accepts nothing else.
+
+**Menus.** Declare `"navigation": { "type": "menu", "label": "Menu", "default": "main" }` and place `<div>{{{navigation}}}</div>` in the template. The saved value references a site-owned menu; its labels and destinations follow the current language and subsequent menu edits. The renderer supplies a labeled `<nav class="c-menu c-menu-vertical c-menu-active-bold" data-menu>` with the shared `.c-menu-list`, `.c-menu-label`, `.c-submenu` and native disclosure markup. Scope styles to your own wrapper to create custom navigation layouts. Submenus expand in place by default, and repeated instances have independent disclosure groups. Menu props are not translated or bound separately, and also work as list item fields. Empty or missing menus render no navigation publicly and show a placeholder in the builder. Like rich text, menu HTML requires triple braces inside a block container; it cannot appear in attributes or paragraphs. Sections such as `{{#navigation}}` and `{{^navigation}}` test whether navigation was rendered.
 
 #### Slots
 

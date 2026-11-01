@@ -615,7 +615,10 @@ const selectOptions = computed(() => {
           .map((type) => ({ value: type.name, label: type.label })),
       ];
     case "menu":
-      return builder.menus.value.map((menu) => ({ value: menu.name, label: menu.label }));
+      return [
+        ...(props.node.kind.startsWith("block:") ? [{ value: "", label: t("site.option.none") }] : []),
+        ...builder.menus.value.map((menu) => ({ value: menu.name, label: menu.label })),
+      ];
     case "form": {
       // Show one choice per content type, retaining existing placement IDs.
       const forms = new Map();

@@ -1,0 +1,69 @@
+{
+  "title": "Numbered Navigation",
+  "description": "An editorial index with oversized links, numbers and hover arrows.",
+  "icon": "mdi:format-list-numbered",
+  "props": {
+    "navigation": {
+      "type": "menu",
+      "label": "Menu",
+      "default": "main"
+    },
+    "numbers": {
+      "type": "enum",
+      "label": "Numbering",
+      "options": [
+        "leading-zero",
+        "decimal",
+        "roman",
+        "alpha",
+        "none"
+      ],
+      "default": "leading-zero"
+    },
+    "size": {
+      "type": "enum",
+      "label": "Link size",
+      "options": [
+        "medium",
+        "large",
+        "display"
+      ],
+      "default": "large"
+    },
+    "effect": {
+      "type": "enum",
+      "label": "Hover effect",
+      "options": [
+        "slide",
+        "fill",
+        "none"
+      ],
+      "default": "slide"
+    },
+    "arrows": {
+      "type": "bool",
+      "label": "Show arrows",
+      "default": true
+    },
+    "dividers": {
+      "type": "bool",
+      "label": "Divider lines",
+      "default": true
+    },
+    "accent": {
+      "type": "color",
+      "label": "Accent color",
+      "default": "primary"
+    },
+    "density": {
+      "type": "enum",
+      "label": "Spacing",
+      "options": [
+        "compact",
+        "comfortable",
+        "spacious"
+      ],
+      "default": "comfortable"
+    }
+  }
+}

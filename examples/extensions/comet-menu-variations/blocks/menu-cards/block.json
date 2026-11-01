@@ -1,0 +1,91 @@
+{
+  "title": "Navigation Cards",
+  "description": "A responsive grid of clickable navigation cards with icons, numbers and nested links.",
+  "icon": "mdi:view-grid-outline",
+  "props": {
+    "navigation": {
+      "type": "menu",
+      "label": "Menu",
+      "default": "main"
+    },
+    "style": {
+      "type": "enum",
+      "label": "Style",
+      "options": [
+        "outline",
+        "filled",
+        "elevated",
+        "stripe"
+      ],
+      "default": "outline"
+    },
+    "columns": {
+      "type": "enum",
+      "label": "Desktop columns",
+      "options": [
+        "auto",
+        "two",
+        "three",
+        "four"
+      ],
+      "default": "three"
+    },
+    "height": {
+      "type": "enum",
+      "label": "Card height",
+      "options": [
+        "auto",
+        "tall"
+      ],
+      "default": "auto"
+    },
+    "alignment": {
+      "type": "enum",
+      "label": "Text alignment",
+      "options": [
+        "start",
+        "center"
+      ],
+      "default": "start"
+    },
+    "arrows": {
+      "type": "bool",
+      "label": "Show arrows",
+      "default": true
+    },
+    "numbers": {
+      "type": "bool",
+      "label": "Show numbers"
+    },
+    "accent": {
+      "type": "color",
+      "label": "Accent color",
+      "default": "primary"
+    },
+    "surface": {
+      "type": "color",
+      "label": "Surface color"
+    },
+    "corners": {
+      "type": "enum",
+      "label": "Corners",
+      "options": [
+        "rounded",
+        "large",
+        "square",
+        "theme"
+      ],
+      "default": "rounded"
+    },
+    "density": {
+      "type": "enum",
+      "label": "Spacing",
+      "options": [
+        "compact",
+        "comfortable",
+        "spacious"
+      ],
+      "default": "comfortable"
+    }
+  }
+}

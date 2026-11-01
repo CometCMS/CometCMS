@@ -1,0 +1,68 @@
+{
+  "title": "Pill Navigation",
+  "description": "Rounded navigation chips in soft, outline, solid or ghost styles.",
+  "icon": "mdi:dots-horizontal",
+  "props": {
+    "navigation": {
+      "type": "menu",
+      "label": "Menu",
+      "default": "main"
+    },
+    "style": {
+      "type": "enum",
+      "label": "Style",
+      "options": [
+        "soft",
+        "outline",
+        "solid",
+        "ghost"
+      ],
+      "default": "soft"
+    },
+    "alignment": {
+      "type": "enum",
+      "label": "Alignment",
+      "options": [
+        "start",
+        "center",
+        "end",
+        "stretch"
+      ],
+      "default": "start"
+    },
+    "accent": {
+      "type": "color",
+      "label": "Accent color",
+      "default": "primary"
+    },
+    "surface": {
+      "type": "color",
+      "label": "Surface color"
+    },
+    "corners": {
+      "type": "enum",
+      "label": "Corners",
+      "options": [
+        "round",
+        "rounded",
+        "square",
+        "theme"
+      ],
+      "default": "round"
+    },
+    "density": {
+      "type": "enum",
+      "label": "Spacing",
+      "options": [
+        "compact",
+        "comfortable",
+        "spacious"
+      ],
+      "default": "comfortable"
+    },
+    "uppercase": {
+      "type": "bool",
+      "label": "Uppercase labels"
+    }
+  }
+}

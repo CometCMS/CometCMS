@@ -193,8 +193,9 @@ final class BlockTemplate
                 $field !== null && !in_array($field, self::FIELDS[$spec['type']] ?? [], true)
                     => isset(self::FIELDS[$spec['type']]) ? $key . ' offers .' . implode(' and .', self::FIELDS[$spec['type']]) . '.' : 'dotted names only work on media props, as in {{photo.alt}}.',
                 $field !== null && $type !== '' => 'sections test the whole prop; write {{#' . $key . '}}.',
-                $rawOutput && $spec['type'] !== 'richtext' => 'raw output is only for richtext props; values are always escaped. Use {{' . $key . '}}.',
+                $rawOutput && !in_array($spec['type'], ['richtext', 'menu'], true) => 'raw output is only for richtext and menu props; other values are always escaped. Use {{' . $key . '}}.',
                 !$rawOutput && $type === '' && $spec['type'] === 'richtext' => $key . ' is rich text: output its HTML with {{{' . $key . '}}}.',
+                !$rawOutput && $type === '' && $spec['type'] === 'menu' => $key . ' is a menu: output its navigation with {{{' . $key . '}}}.',
                 $type === '' && $spec['type'] === 'list' => $key . ' is a list: repeat content for each item with {{#' . $key . '}}…{{/' . $key . '}}.',
                 $option !== null && $type === '' => 'comparisons only work in sections, like {{#' . $key . '=' . $option . '}}…{{/' . $key . '}}.',
                 $option !== null && $spec['type'] !== 'enum' => 'only enum props can be compared with =.',

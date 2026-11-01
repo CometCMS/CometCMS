@@ -9,10 +9,11 @@ import { SITE_ICONS } from '../../../composables/siteIcons.js'
 import { t } from '../../../i18n/index.js'
 
 async function renderControl(name, def, value, overrides = {}) {
-  const { styleState = 'normal', ...controlProps } = overrides
+  const { styleState = 'normal', menus = [], ...controlProps } = overrides
   const app = createSSRApp({ setup() {
     const builder = createSiteBuilder({ t })
     builder.styleState.value = styleState
+    builder.menus.value = menus
     return () => h(BuilderControl, { node: { id: 'icon1', kind: 'icon', props: {}, style: {} }, name, def, value, ...controlProps })
   } })
   app.use(createPinia())
@@ -33,6 +34,20 @@ describe('builder HTML source control', () => {
     expect(html).not.toContain('<style>')
     expect(html).not.toContain('<section')
     expect(html).not.toContain('tiptap')
+  })
+})
+
+describe('extension menu controls', () => {
+  it('selects site-owned menus by name and allows clearing an extension menu', async () => {
+    const html = await renderControl('navigation', { type: 'menu', label: 'Menu', default: 'main' }, 'footer', {
+      node: { id: 'nav1', kind: 'block:cometcms/menu-pills', props: { navigation: 'footer' }, style: {} },
+      menus: [{ name: 'main', label: 'Main navigation' }, { name: 'footer', label: 'Footer links' }],
+    })
+    expect(html).toContain('<select')
+    expect(html).toMatch(/<option value=""[^>]*>None<\/option>/)
+    expect(html).toMatch(/<option value="main"[^>]*>Main navigation<\/option>/)
+    expect(html).toMatch(/<option value="footer"[^>]*>Footer links<\/option>/)
+    expect(html).toMatch(/<select[^>]*value="footer"/)
   })
 })
 
