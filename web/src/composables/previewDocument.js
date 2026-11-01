@@ -7,10 +7,27 @@ export function withPreviewStyles(html, css) {
 /** Elements the editor adds to the preview that an update leaves in place, such as overlays. */
 export const PREVIEW_KEEP = "data-preview-keep";
 
-/** Scripted blocks need a fresh realm so their DOM, listeners and timers reset together. */
+/**
+ * Scripted blocks need a fresh realm so their DOM, listeners and timers reset together,
+ * unless every mounted instance returned a cleanup function and every scripted block
+ * in the new document is already loaded: then they are unmounted, the document is
+ * patched, and they are mounted again (see remountBlocks()).
+ */
 export function needsPreviewReload(doc, html) {
-  return !!doc.querySelector('[data-comet-block]')
+  const scripted = !!doc.querySelector('[data-comet-block]')
     || html.includes('<script type="module">import mount from ');
+  if (!scripted) return false;
+  const blocks = doc.defaultView?.cometBlocks;
+  if (!blocks?.remountable?.()) return true;
+  return [...html.matchAll(/data-comet-block="([^"]+)"/g)].some(([, name]) => !blocks.has(name));
+}
+
+/** Unmount scripted blocks, update the document, and mount them again with their new props. */
+export function patchScriptedDocument(doc, html) {
+  const blocks = doc.defaultView?.cometBlocks;
+  blocks?.unmount();
+  patchDocument(doc, html);
+  blocks?.mount();
 }
 
 /**

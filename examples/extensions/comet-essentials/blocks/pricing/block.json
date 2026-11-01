@@ -71,5 +71,23 @@
       "label": "Small print",
       "max": 500
     }
-  }
+  },
+  "keywords": [
+    "plan",
+    "price",
+    "subscription",
+    "tier"
+  ],
+  "variations": [
+    {
+      "name": "highlighted",
+      "title": "Highlighted plan",
+      "description": "The plan you recommend, emphasized.",
+      "icon": "mdi:star-outline",
+      "props": {
+        "highlight": true,
+        "name": "Business"
+      }
+    }
+  ]
 }

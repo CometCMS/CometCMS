@@ -684,7 +684,7 @@ final class LayoutSchema
             $kinds[$kind] = [
                 'props' => $props,
                 'style' => self::styleKeys($kind),
-                'children' => self::childrenFor(($blocks->get($kind)['slot'] ?? false) ? 'slot' : $kind, $pageContent, $modal, $blocks, $component),
+                'children' => self::slotChildren(self::childrenFor(($blocks->get($kind)['slot'] ?? false) ? 'slot' : $kind, $pageContent, $modal, $blocks, $component), $blocks->get($kind)),
                 'responsive' => ['props' => self::RESPONSIVE_PROPS[$kind] ?? [], 'style' => array_values(array_intersect(self::RESPONSIVE_STYLE, self::styleKeys($kind)))],
                 'states' => [
                     'props' => self::STATE_PROPS[$kind] ?? [],
@@ -698,6 +698,11 @@ final class LayoutSchema
                     'slot' => $blocks->get($kind)['slot'],
                     'script' => $blocks->get($kind)['script'] !== '',
                     'extension' => true,
+                    'category' => $blocks->get($kind)['category'],
+                    'keywords' => $blocks->get($kind)['keywords'],
+                    'variations' => $blocks->get($kind)['variations'],
+                    'deprecated' => $blocks->get($kind)['deprecated'],
+                    'l10n' => $blocks->get($kind)['l10n'] ?? (object) [],
                 ] : []),
             ];
         }
@@ -776,6 +781,14 @@ final class LayoutSchema
     }
 
     /** Kinds a node may contain, with the page content place, content areas and modal elements where the document offers them. */
+    /** What a block's slot accepts: the usual elements, narrowed to its allowed_children when it lists some. */
+    private static function slotChildren(array $children, ?array $block): array
+    {
+        $only = $block['allowed_children'] ?? [];
+
+        return $only === [] ? $children : array_values(array_intersect($children, $only));
+    }
+
     public static function childrenFor(string $parent, bool $pageContent, bool $inModal, ?ExtensionRegistry $blocks = null, bool $areas = false): array
     {
         $children = self::allowedChildren($parent, $blocks);
@@ -1425,9 +1438,11 @@ final class LayoutSchema
      * (null where no page content place may go); $areas allows a component's
      * content areas.
      */
-    private static function normalizeNodes(array $nodes, string $parent, int &$count, array &$seen, bool $insideItem, int $rows, ExtensionRegistry $blocks, ?array &$places = null, bool $inModal = false, string $path = 'root', bool $areas = false): array
+    private static function normalizeNodes(array $nodes, string $parent, int &$count, array &$seen, bool $insideItem, int $rows, ExtensionRegistry $blocks, ?array &$places = null, bool $inModal = false, string $path = 'root', bool $areas = false, ?array $only = null): array
     {
         $allowed = self::childrenFor($parent, $places !== null, $inModal, $blocks, $areas);
+        // A block slot with allowed_children accepts only those.
+        if ($only !== null) $allowed = array_values(array_intersect($allowed, $only));
         $normalized = [];
         $filled = [];
 
@@ -1437,8 +1452,13 @@ final class LayoutSchema
             }
 
             $kind = (string) ($node['kind'] ?? '');
+            // A block saved under an earlier name (block.json "aliases") continues as the current block.
+            if (ExtensionRegistry::isKind($kind) && $blocks->get($kind) === null && ($current = $blocks->alias($kind)) !== null) {
+                $node['kind'] = $kind = $current;
+            }
             $placed = self::placementKind($node);
-            $missingBlock = ExtensionRegistry::isKind($kind) && in_array($parent, ['column', 'tab', 'field', 'slot', 'item-slot', self::MODAL, self::AREA_CONTENT], true);
+            $missingBlock = ExtensionRegistry::isKind($kind) && in_array($parent, ['column', 'tab', 'field', 'slot', 'item-slot', self::MODAL, self::AREA_CONTENT], true)
+                && ($only === null || in_array($kind, $only, true));
             if ($placed === '' || (!in_array($placed, $allowed, true) && !$missingBlock) || ($placed === 'row' && $rows > self::MAX_ROW_DEPTH)) {
                 continue;
             }
@@ -1489,7 +1509,7 @@ final class LayoutSchema
                 default => $rows + ($kind === 'row' ? 1 : 0),
             };
             $children = ($slot || in_array($kind, [...self::STRUCTURE, 'field', 'collection', 'tabs', 'tab', self::PAGE_CONTENT, self::MODAL, self::COMPONENT, self::AREA_CONTENT], true)) && is_array($node['children'] ?? null)
-                ? self::normalizeNodes($node['children'], $childParent, $count, $seen, $insideItem || $kind === 'field', $childRows, $blocks, $childPlaces, ($inModal || $kind === self::MODAL) && !$repeated, $path . ':' . $index, $areas && !$repeated && $kind !== self::AREA_CONTENT)
+                ? self::normalizeNodes($node['children'], $childParent, $count, $seen, $insideItem || $kind === 'field', $childRows, $blocks, $childPlaces, ($inModal || $kind === self::MODAL) && !$repeated, $path . ':' . $index, $areas && !$repeated && $kind !== self::AREA_CONTENT, $slot ? (($blocks->get($kind)['allowed_children'] ?? []) ?: null) : null)
                 : [];
             if ($childPlaces !== null) {
                 $places = $childPlaces;
@@ -1549,7 +1569,7 @@ final class LayoutSchema
         $normalized = [];
 
         foreach (self::propSpec($kind, $blocks) as $key => $spec) {
-            $value = $props[$key] ?? $spec['default'];
+            $value = $props[$key] ?? self::renamedValue($spec, $props) ?? $spec['default'];
             $binding = self::bindings($kind, $blocks)[$key] ?? null;
             $normalize = static fn(mixed $item): mixed => $binding !== null && SmartValue::isDynamic($item)
                 ? SmartValue::normalize($item, $binding) : self::normalizeValue($spec, $item);
@@ -1661,9 +1681,34 @@ final class LayoutSchema
         return $normalized;
     }
 
+    /** A value saved under one of the prop's earlier names (renamed_from), or null. */
+    private static function renamedValue(array $spec, array $values): mixed
+    {
+        foreach ($spec['renamed_from'] ?? [] as $earlier) {
+            if (array_key_exists($earlier, $values)) return $values[$earlier];
+        }
+
+        return null;
+    }
+
+    /** Extension settings: block prop rules without translations or bindings. */
+    public static function normalizeSettings(array $specs, array $values): array
+    {
+        $normalized = [];
+        foreach ($specs as $key => $spec) {
+            $normalized[$key] = self::normalizeValue(self::blockProp($spec), $values[$key] ?? self::renamedValue($spec, $values) ?? $spec['default']);
+        }
+
+        return $normalized;
+    }
+
     private static function normalizeValue(array $spec, mixed $value): mixed
     {
         $default = $spec['default'];
+        // An enum option renamed in a later version (option_aliases) keeps its meaning.
+        if (isset($spec['option_aliases']) && is_scalar($value) && isset($spec['option_aliases'][(string) $value])) {
+            $value = $spec['option_aliases'][(string) $value];
+        }
 
         return match ($spec['type']) {
             'accordion_items' => self::normalizeAccordionItems($value),
@@ -1780,7 +1825,7 @@ final class LayoutSchema
         foreach (array_slice($value, 0, $spec['max']) as $item) {
             $normalized = [];
             foreach ($spec['fields'] as $name => $field) {
-                $normalized[$name] = self::normalizeValue($field, is_array($item) && array_key_exists($name, $item) ? $item[$name] : $field['default']);
+                $normalized[$name] = self::normalizeValue($field, is_array($item) && array_key_exists($name, $item) ? $item[$name] : (is_array($item) ? self::renamedValue($field, $item) : null) ?? $field['default']);
             }
             $items[] = $normalized;
         }

@@ -14,6 +14,7 @@ use CometCMS\Site\Icons;
  *
  * Rendering takes resolved values: scalars, lists of item value maps, and for media,
  * colors and links a map whose "_" entry is the main value (URL, color key, href).
+ * Extension settings are read as {{@name}}; their values are keyed "@name".
  */
 final class BlockTemplate
 {
@@ -24,11 +25,16 @@ final class BlockTemplate
     /**
      * @param array<string, array> $props declared prop specs
      * @param array<string, string> $assets package path => published asset file
+     * @param array<string, array> $settings the extension's setting specs
      */
-    public static function compile(string $source, array $props, array $assets, string $file, array &$errors): array
+    public static function compile(string $source, array $props, array $assets, string $file, array &$errors, array $settings = []): array
     {
         $before = count($errors);
-        [$html, $tags] = self::tokenize($source, $props, $file, $errors);
+        $named = [];
+        foreach ($settings as $key => $spec) {
+            $named['@' . $key] = $spec;
+        }
+        [$html, $tags] = self::tokenize($source, $props + $named, $file, $errors);
         if (count($errors) > $before) {
             return [];
         }
@@ -186,7 +192,8 @@ final class BlockTemplate
             }
             if ($spec === null) {
                 $names = array_unique(array_merge(...array_map('array_keys', $scopes)));
-                $error($line, $raw . ': unknown prop "' . $key . '". ' . (count($scopes) > 1 ? 'Available here: ' : 'Declared props: ') . ($names === [] ? '(none)' : implode(', ', $names)) . '.');
+                $error($line, $raw . ': unknown ' . (str_starts_with($key, '@') ? 'setting "' . substr($key, 1) . '". Settings are declared in comet-extension.json. ' : 'prop "' . $key . '". ')
+                    . (count($scopes) > 1 ? 'Available here: ' : 'Declared props and settings: ') . ($names === [] ? '(none)' : implode(', ', $names)) . '.');
                 return null;
             }
             $problem = match (true) {
@@ -245,7 +252,7 @@ final class BlockTemplate
             }
             if ($context['tag'] && $context['quote'] === '') {
                 // Inside a start tag, a section may only toggle one boolean attribute: <details {{#open}}open{{/open}}>.
-                $flag = '/\G\{\{\s*([#^])\s*([a-z][a-z0-9_]{0,63})(?:\s*=\s*([^\s{}]+))?\s*\}\}\s*([a-z][a-z-]{0,39})\s*\{\{\s*\/\s*\2(?:\s*=\s*\3)?\s*\}\}/';
+                $flag = '/\G\{\{\s*([#^])\s*(@?[a-z][a-z0-9_]{0,63})(?:\s*=\s*([^\s{}]+))?\s*\}\}\s*([a-z][a-z-]{0,39})\s*\{\{\s*\/\s*\2(?:\s*=\s*\3)?\s*\}\}/';
                 if ($rawOutput || preg_match($flag, $source, $toggle, 0, $position) !== 1) {
                     $error($line, $raw . ': inside an HTML tag, template tags can only toggle a boolean attribute, as in <details {{#open}}open{{/open}}>. Put values in quoted attribute values, as in class="{{name}}".');
                     continue;
@@ -264,7 +271,7 @@ final class BlockTemplate
                 $html .= ' data-comet-flag-' . $id . ' ';
                 continue;
             }
-            if (!preg_match('/^([#^\/]?)\s*([a-z][a-z0-9_]{0,63})(?:\.([a-z][a-z0-9_]{0,63}))?(?:\s*=\s*([^\s{}]+))?$/D', $inner, $tag)
+            if (!preg_match('/^([#^\/]?)\s*(@?[a-z][a-z0-9_]{0,63})(?:\.([a-z][a-z0-9_]{0,63}))?(?:\s*=\s*([^\s{}]+))?$/D', $inner, $tag)
                 || ($rawOutput && $tag[1] !== '')) {
                 $error($line, $raw . ': Unrecognized tag. Use {{name}}, {{{richtext}}}, {{#name}}…{{/name}}, {{^name}}…{{/name}}, {{#name=option}}…{{/name}} or {{! comment }}.');
                 continue;

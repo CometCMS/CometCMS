@@ -48,22 +48,27 @@
           </span>
           <div class="min-w-0 space-y-1">
             <p class="font-medium text-slate-800">
-              {{ pkg.title }} <span class="text-xs text-slate-500">{{ pkg.version }}</span>
+              {{ extensionText(pkg, 'title', locale) }} <span class="text-xs text-slate-500">{{ pkg.version }}</span>
               <span v-if="pkg.scripts" class="ml-1 inline-flex items-center gap-1 rounded bg-amber-100 px-1.5 py-0.5 align-middle text-[10px] font-semibold text-amber-800" :title="t('site.extensions.scriptsBadgeHint')">
                 <Icon icon="mdi:language-javascript" class="h-3 w-3" aria-hidden="true" />{{ t("site.extensions.scriptsBadge") }}
               </span>
             </p>
             <p class="text-xs text-slate-500">{{ [pkg.name, pkg.author, pkg.license].filter(Boolean).join(" · ") }}</p>
-            <p v-if="pkg.requires?.length" class="text-xs text-slate-500">{{ t('site.extensions.requires') }} {{ pkg.requires.join(', ') }}</p>
-            <p v-if="pkg.description" class="text-sm text-slate-600">{{ pkg.description }}</p>
-            <p class="text-xs text-slate-500">{{ t('site.extensions.counts', { blocks: pkg.counts?.blocks ?? pkg.blocks.length, types: pkg.counts?.content_types ?? 0, components: pkg.counts?.components ?? 0, templates: pkg.counts?.templates ?? 0, presets: pkg.counts?.presets ?? 0 }) }}</p>
+            <p v-if="Object.keys(pkg.requires ?? {}).length" class="text-xs text-slate-500">{{ t('site.extensions.requires') }} {{ Object.entries(pkg.requires).map(([name, constraint]) => constraint === '*' ? name : `${name} ${constraint}`).join(', ') }}</p>
+            <p v-if="pkg.permissions?.connect?.length" class="text-xs text-slate-500">{{ t('site.extensions.connectsTo') }} {{ pkg.permissions.connect.join(', ') }}</p>
+            <p v-if="pkg.description" class="text-sm text-slate-600">{{ extensionText(pkg, 'description', locale) }}</p>
+            <p class="text-xs text-slate-500">{{ t('site.extensions.counts', { blocks: pkg.counts?.blocks ?? pkg.blocks.length, types: pkg.counts?.content_types ?? 0, components: pkg.counts?.components ?? 0, templates: pkg.counts?.templates ?? 0, presets: pkg.counts?.presets ?? 0, fonts: pkg.counts?.fonts ?? 0 }) }}</p>
             <ul class="flex flex-wrap gap-1.5 pt-1" :aria-label="t('site.extensions.blocksIn', { name: pkg.title })">
               <li v-for="block in pkg.blocks" :key="block.name" class="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-700" :title="block.description || block.name">
                 <KindIcon :icon="kindIcon(`block:${block.name}`, { kinds: { [`block:${block.name}`]: block } })" class="h-3.5 w-3.5 shrink-0 text-slate-500" />
-                {{ block.title }}
+                <span :class="{ 'line-through': typeof block.deprecated === 'string' }">{{ extensionText(block, 'title', locale) }}</span>
                 <Icon v-if="block.script" icon="mdi:language-javascript" class="h-3.5 w-3.5 text-amber-700" :aria-label="t('site.extensions.scriptsBadge')" />
               </li>
             </ul>
+            <button v-if="data.can_install && Object.keys(pkg.settings ?? {}).length" type="button" class="inline-flex items-center gap-1 pt-1 text-xs font-medium text-theme-700 hover:underline" :aria-expanded="settingsOpen === pkg.name" @click="settingsOpen = settingsOpen === pkg.name ? null : pkg.name">
+              <Icon icon="mdi:cog-outline" class="h-3.5 w-3.5" aria-hidden="true" />{{ t('site.extensions.settings') }}
+            </button>
+            <ExtensionSettings v-if="settingsOpen === pkg.name" :specs="pkg.settings" :model-value="pkg.settings_values" :disabled="busy" @save="(values) => saveSettings(pkg, values)" />
           </div>
         </div>
         <div class="flex shrink-0 flex-wrap items-center justify-end gap-2">
@@ -135,6 +140,13 @@
             <li v-for="block in pendingReview.scripts" :key="block">{{ block }}</li>
           </ul>
         </section>
+        <section v-if="pendingReview?.permissions?.connect?.length" class="space-y-2 rounded-lg bg-amber-50 p-3 text-amber-900">
+          <h4 class="font-semibold">{{ t('site.extensions.permissionsTitle') }}</h4>
+          <p>{{ t('site.extensions.permissionsMessage') }}</p>
+          <ul class="list-disc space-y-1 pl-5 font-mono text-xs">
+            <li v-for="origin in pendingReview.permissions.connect" :key="origin">{{ origin }}</li>
+          </ul>
+        </section>
         <section v-if="seedGroups.length" class="space-y-2">
           <h4 class="font-semibold">{{ t('site.extensions.seedsTitle') }}</h4>
           <p>{{ t('site.extensions.seedsMessage') }}</p>
@@ -168,6 +180,8 @@ import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { Icon } from "@iconify/vue";
 import ConfirmModal from "../ConfirmModal.vue";
 import ToggleSwitch from "../ToggleSwitch.vue";
+import ExtensionSettings from "./ExtensionSettings.vue";
+import { extensionText } from "../../composables/extensionText.js";
 import KindIcon from "./builder/KindIcon.vue";
 import { kindIcon } from "./builder/kindIcons.js";
 import { api, getActiveWorkspace } from "../../api/index.js";
@@ -176,7 +190,8 @@ import { useSiteStore } from "../../stores/site.js";
 import { useContentTypesStore } from "../../stores/contentTypes.js";
 import { useI18n } from "../../i18n/index.js";
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
+const settingsOpen = ref(null);
 const site = useSiteStore();
 const types = useContentTypesStore();
 const data = ref(null);
@@ -192,7 +207,7 @@ const removeChoices = ref([]);
 const seedKey = (item) => `${item.kind}/${item.id}`;
 // Seeds from an earlier version are refreshed unless someone edited them since.
 const seedStatus = (item) => !item.exists ? 'site.extensions.new' : !item.tracked ? 'site.extensions.exists' : item.modified ? 'site.extensions.edited' : 'site.extensions.unedited';
-const seedGroups = computed(() => ['content_types', 'components', 'templates', 'presets'].map((kind) => ({ kind, items: (pendingReview.value?.plan ?? []).filter((item) => item.kind === kind) })).filter((group) => group.items.length));
+const seedGroups = computed(() => ['fonts', 'content_types', 'components', 'templates', 'presets'].map((kind) => ({ kind, items: (pendingReview.value?.plan ?? []).filter((item) => item.kind === kind) })).filter((group) => group.items.length));
 const brokenExtensions = computed(() => [...new Set((data.value?.errors ?? []).map((issue) => issue.extension))]
   .filter((name) => name && !(data.value?.extensions ?? []).some((pkg) => pkg.name === name)));
 let generation = 0;
@@ -309,6 +324,25 @@ async function toggleEnabled(pkg) {
     if (current === generation) {
       success.value = t(enabled ? "site.extensions.enabledSuccess" : "site.extensions.disabledSuccess", { name: pkg.title });
     }
+  } catch (err) {
+    if (current === generation) error.value = fail(err);
+  } finally {
+    if (current === generation) busy.value = false;
+  }
+}
+
+async function saveSettings(pkg, values) {
+  if (busy.value || !data.value?.can_install) return;
+  const current = generation;
+  const workspace = getActiveWorkspace();
+  busy.value = true;
+  error.value = null;
+  success.value = "";
+  try {
+    const { data: saved } = await api.extensions.setSettings(pkg.name, values);
+    if (current !== generation || workspace !== getActiveWorkspace()) return;
+    pkg.settings_values = saved.settings;
+    success.value = t("site.extensions.settingsSaved", { name: extensionText(pkg, "title", locale.value) });
   } catch (err) {
     if (current === generation) error.value = fail(err);
   } finally {

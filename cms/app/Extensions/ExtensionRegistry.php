@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CometCMS\Extensions;
 
+use CometCMS\Site\LayoutSchema;
 use CometCMS\Workspaces\WorkspaceContext;
 use CometCMS\Storage\JsonStore;
 
@@ -18,10 +19,12 @@ final class ExtensionRegistry
     public const MAX_EXTENSIONS = 64;
     public const MAX_BLOCKS = 256;
     /** Bump whenever compiled extensions change shape, so cached indexes are rebuilt. */
-    private const COMPILER = 8;
+    private const COMPILER = 9;
+    private const SETTINGS = 'extensions-settings';
 
     private ?array $index = null;
     private ?string $signature = null;
+    private ?array $settings = null;
 
     public function __construct(public readonly WorkspaceContext $workspace) {}
 
@@ -68,6 +71,42 @@ final class ExtensionRegistry
         return $this->index()['extensions'][$name] ?? null;
     }
 
+    /** The current kind of a block stored under one of its earlier names, or null. */
+    public function alias(string $kind): ?string
+    {
+        $current = $this->index()['aliases'][$kind] ?? null;
+
+        return $current !== null && $this->get($current) !== null ? $current : null;
+    }
+
+    /** An extension's setting values, with defaults for those an administrator has not set. */
+    public function settings(string $name): array
+    {
+        $specs = $this->index()['extensions'][$name]['settings'] ?? [];
+        if ($specs === []) return [];
+        $this->settings ??= (new JsonStore($this->workspace->path('site')))->read(self::SETTINGS) ?? [];
+        $stored = $this->settings[$name] ?? [];
+
+        return LayoutSchema::normalizeSettings($specs, is_array($stored) ? $stored : []);
+    }
+
+    /** Store an extension's settings; unknown keys are dropped and values normalized like block props. */
+    public function setSettings(string $name, array $values): ?array
+    {
+        if (!Extension::validName($name)) throw new \InvalidArgumentException('Invalid extension name.');
+        return $this->locked(function () use ($name, $values): ?array {
+            $this->index = $this->signature = $this->settings = null;
+            $specs = $this->index()['extensions'][$name]['settings'] ?? null;
+            if ($specs === null) return null;
+            $store = new JsonStore($this->workspace->path('site'));
+            $all = $store->read(self::SETTINGS) ?? [];
+            $all[$name] = LayoutSchema::normalizeSettings($specs, $values);
+            $store->write($all, self::SETTINGS);
+            $this->index = $this->signature = $this->settings = null;
+            return $all[$name];
+        });
+    }
+
     /** Installed metadata plus the current state of the site-owned seeds. */
     public function details(string $name): ?array
     {
@@ -98,7 +137,8 @@ final class ExtensionRegistry
         $index = $this->index();
         $extensions = [];
         foreach ($index['extensions'] as $extension) {
-            $extensions[] = array_intersect_key($extension, array_flip(['name', 'title', 'description', 'version', 'author', 'license', 'homepage', 'icon', 'requires'])) + [
+            $extensions[] = array_intersect_key($extension, array_flip(['name', 'title', 'description', 'version', 'author', 'license', 'homepage', 'icon', 'requires', 'cms', 'permissions', 'settings', 'l10n'])) + [
+                'settings_values' => $this->settings($extension['name']),
                 'enabled' => $extension['enabled'],
                 'dependency_errors' => $extension['dependency_errors'],
                 'counts' => ['blocks' => count($extension['blocks'])] + array_count_values(array_column($extension['seeds'], 'kind')),
@@ -109,6 +149,8 @@ final class ExtensionRegistry
                     'description' => $index['blocks'][$kind]['description'],
                     'icon' => $index['blocks'][$kind]['icon'],
                     'script' => $index['blocks'][$kind]['script'] !== '',
+                    'deprecated' => $index['blocks'][$kind]['deprecated'],
+                    'l10n' => $index['blocks'][$kind]['l10n'] ?? (object) [],
                 ], $extension['blocks']),
             ];
         }
@@ -159,6 +201,7 @@ final class ExtensionRegistry
             $candidates = $index['extensions'];
             $candidates[$name] = ['enabled' => true] + $extension;
             $this->requireDependencies($candidates, $name);
+            $this->requireCompatibleDependents($candidates, $name);
             foreach (array_keys($extension['blocks']) as $kind) {
                 $owner = $index['blocks'][$kind]['extension'] ?? $name;
                 if ($owner !== $name) {
@@ -176,7 +219,7 @@ final class ExtensionRegistry
             // Scripts run with the website's origin, so installing them is a separate decision.
             $scripts = self::scriptBlocks(array_keys($extension['blocks']), $extension['blocks']);
             if (($changes !== [] && !$acceptChanges) || ($scripts !== [] && !$allowScripts) || ($validated !== [] && $seeds === null)) {
-                throw new ExtensionReview($name, $previous['version'] ?? null, $extension['version'], $changes, $scripts, $seeder->plan($extension['seeds']));
+                throw new ExtensionReview($name, $previous['version'] ?? null, $extension['version'], $changes, $scripts, $seeder->plan($extension['seeds']), $extension['permissions']);
             }
             // Revalidate the effective dependency graph after skip/overwrite choices.
             $seeder->validate($seeder->selected($extension['seeds'], $seeds ?? []));
@@ -194,6 +237,7 @@ final class ExtensionRegistry
                 'blocks' => array_map(static fn(string $kind): string => substr($kind, 6), array_keys($extension['blocks'])),
                 'changes' => $changes,
                 'scripts' => $scripts,
+                'permissions' => $extension['permissions'],
             ];
         });
     }
@@ -254,6 +298,11 @@ final class ExtensionRegistry
             $state = $store->read('extensions-state') ?? [];
             unset($state[$name]);
             $store->write($state, 'extensions-state');
+            $settings = $store->read(self::SETTINGS) ?? [];
+            if (isset($settings[$name])) {
+                unset($settings[$name]);
+                $store->write($settings, self::SETTINGS);
+            }
             self::remove($removed);
             if (count(scandir(dirname($directory)) ?: []) === 2) {
                 rmdir(dirname($directory));
@@ -271,9 +320,13 @@ final class ExtensionRegistry
     private function breakingChanges(array $previous, array $extension): array
     {
         $changes = [];
+        $aliases = [];
+        foreach ($extension['blocks'] as $kind => $block) {
+            foreach ($block['aliases'] as $alias) $aliases['block:' . $alias] = $kind;
+        }
         foreach ($previous['blocks'] as $kind) {
             $old = $this->index()['blocks'][$kind] ?? null;
-            $new = $extension['blocks'][$kind] ?? null;
+            $new = $extension['blocks'][$kind] ?? (isset($aliases[$kind]) ? $extension['blocks'][$aliases[$kind]] : null);
             $block = substr($kind, 6);
             if ($old === null) continue;
             if ($new === null) {
@@ -299,14 +352,18 @@ final class ExtensionRegistry
     private static function propChanges(string $prefix, array $old, array $new): array
     {
         $changes = [];
+        $renamed = [];
+        foreach ($new as $key => $spec) {
+            foreach ($spec['renamed_from'] ?? [] as $earlier) $renamed[$earlier] = $key;
+        }
         foreach ($old as $key => $spec) {
-            $next = $new[$key] ?? null;
+            $next = $new[$key] ?? (isset($renamed[$key]) ? $new[$renamed[$key]] : null);
             if ($next === null) {
                 $changes[] = $prefix . $key . '" is removed. Its saved values are dropped the next time a layout is saved.';
             } elseif ($next['type'] !== $spec['type']) {
                 $changes[] = $prefix . $key . '" changes from ' . $spec['type'] . ' to ' . $next['type'] . '. Saved values that do not fit fall back to the default.';
-            } elseif ($spec['type'] === 'enum' && array_diff($spec['options'], $next['options']) !== []) {
-                $changes[] = $prefix . $key . '" no longer offers ' . implode(', ', array_diff($spec['options'], $next['options'])) . '. Instances using them fall back to the default.';
+            } elseif ($spec['type'] === 'enum' && array_diff($spec['options'], $next['options'], array_keys($next['option_aliases'] ?? [])) !== []) {
+                $changes[] = $prefix . $key . '" no longer offers ' . implode(', ', array_diff($spec['options'], $next['options'], array_keys($next['option_aliases'] ?? []))) . '. Instances using them fall back to the default.';
             } else {
                 if ($spec['type'] === 'int' && ($next['min'] > $spec['min'] || $next['max'] < $spec['max'])) {
                     $changes[] = $prefix . $key . '" narrows its range to ' . $next['min'] . '–' . $next['max'] . '. Saved values outside it are clamped.';
@@ -391,7 +448,7 @@ final class ExtensionRegistry
 
     private function compileAll(): array
     {
-        $index = ['extensions' => [], 'blocks' => [], 'assets' => [], 'errors' => []];
+        $index = ['extensions' => [], 'blocks' => [], 'aliases' => [], 'assets' => [], 'errors' => []];
         $state = (new JsonStore($this->workspace->path('site')))->read('extensions-state') ?? [];
         if (is_link($this->directory())) {
             $index['errors'][] = ['extension' => '', 'file' => 'site/extensions', 'line' => null, 'message' => 'The extensions folder cannot be a symbolic link.'];
@@ -446,16 +503,22 @@ final class ExtensionRegistry
             }
         }
         ksort($index['blocks']);
+        // A block's earlier names resolve to it, unless another block has taken the name since.
+        foreach ($index['blocks'] as $kind => $block) {
+            foreach ($block['aliases'] as $alias) {
+                if (!isset($index['blocks']['block:' . $alias])) $index['aliases']['block:' . $alias] = $kind;
+            }
+        }
 
         return $index;
     }
 
-    /** Dependency names are explicit; version constraints and automatic downloads are not supported. */
+    /** Dependencies are explicit names with version constraints; nothing is downloaded automatically. */
     private static function dependencyProblems(array $extensions, string $name): array
     {
         $problems = [];
         $visited = [];
-        $walk = function (string $candidate, array $trail) use (&$walk, &$problems, &$visited, $extensions): void {
+        $walk = function (string $candidate, array $trail) use (&$walk, &$problems, &$visited, $extensions, $name): void {
             if (in_array($candidate, $trail, true)) {
                 $problems[] = 'Dependency cycle: ' . implode(' → ', [...$trail, $candidate]) . '.';
                 return;
@@ -463,9 +526,15 @@ final class ExtensionRegistry
             if (isset($visited[$candidate])) return;
             $visited[$candidate] = true;
             $trail[] = $candidate;
-            foreach ($extensions[$candidate]['requires'] ?? [] as $dependency) {
+            $cms = $extensions[$candidate]['cms'] ?? '';
+            if ($cms !== '' && !VersionConstraint::satisfies(Extension::cmsVersion(), $cms)) {
+                $problems[] = ($candidate === $name ? 'Requires' : $candidate . ' requires') . ' CometCMS ' . $cms . ', but this site runs ' . Extension::cmsVersion() . '.';
+            }
+            foreach ($extensions[$candidate]['requires'] ?? [] as $dependency => $constraint) {
                 if (!isset($extensions[$dependency])) {
-                    $problems[] = 'Requires ' . $dependency . '. Install it first.';
+                    $problems[] = 'Requires ' . $dependency . ($constraint === '*' ? '' : ' ' . $constraint) . '. Install it first.';
+                } elseif (!VersionConstraint::satisfies((string) $extensions[$dependency]['version'], $constraint)) {
+                    $problems[] = 'Requires ' . $dependency . ' ' . $constraint . ', but version ' . $extensions[$dependency]['version'] . ' is installed. Install a matching version first.';
                 } elseif (!$extensions[$dependency]['enabled']) {
                     $problems[] = 'Requires ' . $dependency . '. Enable it first.';
                 } else {
@@ -483,11 +552,24 @@ final class ExtensionRegistry
         if ($problems !== []) throw new ExtensionException(array_map(static fn(string $message): array => ['file' => Extension::MANIFEST, 'line' => null, 'message' => $message], $problems));
     }
 
+    /** An update must still satisfy the version constraints of enabled extensions that require it. */
+    private function requireCompatibleDependents(array $extensions, string $name): void
+    {
+        $problems = [];
+        foreach ($extensions as $candidate => $extension) {
+            $constraint = $extension['requires'][$name] ?? null;
+            if ($candidate !== $name && $extension['enabled'] && $constraint !== null && !VersionConstraint::satisfies($extensions[$name]['version'], $constraint)) {
+                $problems[] = ['file' => Extension::MANIFEST, 'line' => null, 'message' => $candidate . ' requires ' . $name . ' ' . $constraint . ', which version ' . $extensions[$name]['version'] . ' does not satisfy. Update or disable ' . $candidate . ' first.'];
+            }
+        }
+        if ($problems !== []) throw new ExtensionException($problems);
+    }
+
     private function requireNoDependents(array $extensions, string $name, bool $enabledOnly = false): void
     {
         $dependents = [];
         foreach ($extensions as $candidate => $extension) {
-            if ((!$enabledOnly || $extension['enabled']) && in_array($name, $extension['requires'], true)) $dependents[] = $candidate;
+            if ((!$enabledOnly || $extension['enabled']) && isset($extension['requires'][$name])) $dependents[] = $candidate;
         }
         if ($dependents !== []) {
             throw ExtensionException::single(Extension::MANIFEST, 'Required by ' . implode(', ', $dependents) . '. ' . ($enabledOnly ? 'Disable those extensions first.' : 'Delete those extensions first.'));
@@ -498,7 +580,8 @@ final class ExtensionRegistry
     private function signature(): string
     {
         $state = $this->workspace->path('site') . '/extensions-state.json';
-        $parts = ['compiler ' . self::COMPILER, 'state ' . (is_file($state) ? (string) file_get_contents($state) : '')];
+        $settings = $this->workspace->path('site') . '/' . self::SETTINGS . '.json';
+        $parts = ['compiler ' . self::COMPILER, 'state ' . (is_file($state) ? (string) file_get_contents($state) : ''), 'settings ' . (is_file($settings) ? (string) file_get_contents($settings) : '')];
         $directory = $this->directory();
         clearstatcache();
         if (is_link($directory)) {

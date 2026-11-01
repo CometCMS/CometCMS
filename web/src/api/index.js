@@ -489,6 +489,7 @@ export const api = {
 
   extensions: {
     setEnabled: (name, enabled) => request('PUT', `/site/extensions/${name.split('/').map(encodeURIComponent).join('/')}`, { enabled }),
+    setSettings: (name, settings) => request('PUT', `/site/extensions/${name.split('/').map(encodeURIComponent).join('/')}`, { settings }),
     list: () => request('GET', '/site/extensions'),
     get: (name) => request('GET', `/site/extensions/${name.split('/').map(encodeURIComponent).join('/')}`),
     delete: (name, remove = []) => request('DELETE', `/site/extensions/${name.split('/').map(encodeURIComponent).join('/')}`, { remove }),

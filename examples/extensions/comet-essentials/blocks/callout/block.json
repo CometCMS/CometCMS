@@ -6,7 +6,8 @@
       "type": "string",
       "label": "Heading",
       "max": 200,
-      "default": "Something worth sharing"
+      "default": "Something worth sharing",
+      "placeholder": "Something worth sharing"
     },
     "message": {
       "type": "text",
@@ -21,23 +22,67 @@
         "info",
         "success"
       ],
-      "default": "info"
+      "default": "info",
+      "option_labels": {
+        "info": "Information",
+        "success": "Success"
+      },
+      "group": "Appearance"
     },
     "show_link": {
       "type": "bool",
       "label": "Show link",
-      "default": true
+      "default": true,
+      "group": "Link",
+      "help": "Adds a link below the message."
     },
     "link_label": {
       "type": "string",
       "label": "Link label",
       "max": 120,
-      "default": "Learn more"
+      "default": "Learn more",
+      "group": "Link",
+      "visible_when": {
+        "show_link": true
+      }
     },
     "link": {
       "type": "link",
       "label": "Link",
-      "default": "#details"
+      "default": "#details",
+      "group": "Link",
+      "visible_when": {
+        "show_link": true
+      }
     }
-  }
+  },
+  "keywords": [
+    "notice",
+    "alert",
+    "announcement",
+    "banner"
+  ],
+  "variations": [
+    {
+      "name": "success",
+      "title": "Success callout",
+      "description": "A confirmation with a check mark.",
+      "icon": "mdi:check-circle-outline",
+      "props": {
+        "tone": "success",
+        "title": "All set",
+        "show_link": false
+      }
+    },
+    {
+      "name": "plain",
+      "title": "Note",
+      "description": "A short note without a link.",
+      "icon": "mdi:note-text-outline",
+      "props": {
+        "show_link": false,
+        "title": "Good to know"
+      }
+    }
+  ]
 }

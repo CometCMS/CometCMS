@@ -24,7 +24,7 @@
       </div>
       <div v-if="open === index" class="space-y-3 border-t border-slate-100 px-2 py-2">
         <BuilderControl
-          v-for="(field, key) in def.fields"
+          v-for="(field, key) in visibleFields(item)"
           :key="key"
           embedded
           :node="node"
@@ -48,6 +48,7 @@ import { Icon } from "@iconify/vue";
 import BuilderControl from "./BuilderControl.vue";
 import { useI18n } from "../../../i18n/index.js";
 import { clone } from "../../../composables/layoutTree.js";
+import { conditionsHold } from "../../../composables/extensionText.js";
 
 const props = defineProps({
   node: { type: Object, required: true },
@@ -60,6 +61,11 @@ const emit = defineEmits(["update"]);
 const { t } = useI18n();
 const open = ref(null);
 const items = computed(() => (Array.isArray(props.value) ? props.value : []));
+
+/** Item fields whose visible_when conditions hold for this item; deprecated fields are hidden. */
+function visibleFields(item) {
+  return Object.fromEntries(Object.entries(props.def.fields ?? {}).filter(([, field]) => field.deprecated === undefined && conditionsHold(field, item)));
+}
 
 /** The first text field names an item; untitled items are numbered. */
 function title(item, index) {

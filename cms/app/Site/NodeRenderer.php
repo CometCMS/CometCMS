@@ -9,6 +9,7 @@ use CometCMS\Core\Security;
 use CometCMS\Localization\LocalizedValue;
 use CometCMS\Localization\Messages;
 use CometCMS\Extensions\ExtensionRegistry;
+use CometCMS\Site\Blocks\BlockScripts;
 use CometCMS\Site\Blocks\BlockTemplate;
 
 /**
@@ -113,6 +114,8 @@ final class NodeRenderer
     private array $blockStyles = [];
     /** @var array<string, true> */
     private array $blockScripts = [];
+    /** @var array<string, array> extension name => its settings as template values */
+    private array $extensionSettings = [];
 
     public function __construct(private readonly SiteContext $ctx)
     {
@@ -285,7 +288,7 @@ final class NodeRenderer
         }
         $values = $this->blockValues($block['props'], $node['props'] ?? [], $state);
         // Compiled templates are well-formed allow-listed HTML; render only escapes values.
-        $html = BlockTemplate::render($block['template'], $values, $this->ctx->blockAssetUrl(...), $slot);
+        $html = BlockTemplate::render($block['template'], $values + $this->blockSettings($block['extension']), $this->ctx->blockAssetUrl(...), $slot);
         $this->blockStyles[$block['extension']][$node['kind']] = true;
         // Installed block scripts also mount in previews, using the same resolved props.
         $attributes = '';
@@ -322,6 +325,18 @@ final class NodeRenderer
         }
 
         return $values;
+    }
+
+    /** An extension's settings as template values, keyed "@name" as templates read them. */
+    private function blockSettings(string $extension): array
+    {
+        if (!isset($this->extensionSettings[$extension])) {
+            $blocks = $this->ctx->site->blocks();
+            $values = BlockScripts::settingValues($blocks->extension($extension)['settings'] ?? [], $blocks->settings($extension));
+            $this->extensionSettings[$extension] = array_combine(array_map(static fn(string $key): string => '@' . $key, array_keys($values)), array_values($values));
+        }
+
+        return $this->extensionSettings[$extension];
     }
 
     /** Menu props resolve through the same localized links, icons and disclosures as built-in navigation. */

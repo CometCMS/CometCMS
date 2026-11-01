@@ -21,6 +21,10 @@ const COMET_BLOCK_EXAMPLE = COMET_TEST_ROOT . '/examples/extensions/comet-essent
 function comet_block_files(array $changes = []): array
 {
     $files = Extension::readDirectory(COMET_BLOCK_EXAMPLE);
+    // Translations name every block and prop; tests that reshape blocks leave them out.
+    if (!array_key_exists('i18n/de.json', $changes) && array_filter(array_keys($changes), static fn(string $path): bool => str_starts_with($path, 'blocks/')) !== []) {
+        unset($files['i18n/de.json']);
+    }
     foreach ($changes as $path => $bytes) {
         if ($bytes === null) {
             unset($files[$path]);
@@ -30,6 +34,15 @@ function comet_block_files(array $changes = []): array
     }
 
     return $files;
+}
+
+/** The loader of an Essentials block script, with the extension's default settings. */
+function comet_essentials_loader(string $name, string $url, bool $preview = false): string
+{
+    $specs = Extension::compile(comet_block_files())['settings'];
+    $values = array_map(static fn(array $spec): mixed => $spec['default'], $specs);
+
+    return \CometCMS\Site\Blocks\BlockScripts::loader($name, $url, \CometCMS\Site\Blocks\BlockScripts::settingValues($specs, $values), $preview);
 }
 
 function comet_block_manifest(string $path, array $changes): array
@@ -105,8 +118,8 @@ function comet_block_errors(callable $callback): array
 test('extensions register their blocks without changing built-ins or crossing workspaces', function (): void {
     $blocks = ExtensionRegistry::active();
     $result = $blocks->installFiles(comet_block_files(), allowScripts: true);
-    assert_same(['name' => 'cometcms/essentials', 'title' => 'Comet Essentials', 'version' => '1.7.0', 'previous_version' => null,
-        'blocks' => ['cometcms/before-after', 'cometcms/callout', 'cometcms/card', 'cometcms/feature', 'cometcms/logo-bar', 'cometcms/maps', 'cometcms/pricing', 'cometcms/slideshow', 'cometcms/stats', 'cometcms/testimonial', 'cometcms/vertical-text'], 'changes' => [], 'scripts' => ['cometcms/before-after', 'cometcms/logo-bar', 'cometcms/maps', 'cometcms/slideshow', 'cometcms/stats']], $result);
+    assert_same(['name' => 'cometcms/essentials', 'title' => 'Comet Essentials', 'version' => '1.8.0', 'previous_version' => null,
+        'blocks' => ['cometcms/before-after', 'cometcms/callout', 'cometcms/card', 'cometcms/feature', 'cometcms/logo-bar', 'cometcms/maps', 'cometcms/pricing', 'cometcms/slideshow', 'cometcms/stats', 'cometcms/testimonial', 'cometcms/vertical-text'], 'changes' => [], 'scripts' => ['cometcms/before-after', 'cometcms/logo-bar', 'cometcms/maps', 'cometcms/slideshow', 'cometcms/stats'], 'permissions' => []], $result);
     $spec = LayoutSchema::spec(blocks: $blocks);
     assert_true(in_array('heading', $spec['elements'], true));
     foreach (['block:cometcms/callout', 'block:cometcms/logo-bar', 'block:cometcms/feature'] as $kind) {
@@ -115,7 +128,8 @@ test('extensions register their blocks without changing built-ins or crossing wo
     }
     $callout = $spec['kinds']['block:cometcms/callout'];
     assert_same('Callout', $callout['label']);
-    assert_same(['type' => 'link', 'label' => 'Link', 'default' => ['type' => 'url', 'url' => '#details'], 'localized' => true, 'binding' => 'link'], $callout['props']['link']);
+    assert_same(['type' => 'link', 'label' => 'Link', 'group' => 'Link', 'visible_when' => ['show_link' => [true]], 'default' => ['type' => 'url', 'url' => '#details'],
+        'l10n' => ['de' => ['label' => 'Link', 'group' => 'Link']], 'localized' => true, 'binding' => 'link'], $callout['props']['link']);
     assert_true($callout['props']['title']['localized']);
     assert_false(isset($callout['props']['tone']['localized']));
     assert_same([], $callout['children']);
@@ -174,13 +188,13 @@ test('extension validation reports every problem with its file and line', functi
         'blocks/empty/style.css' => '',
     ])));
     assert_same([
-        'comet-extension.json: Unknown field "scripts". Allowed: api_version, name, title, description, version, author, license, homepage, requires.',
+        'comet-extension.json: Unknown field "scripts". Allowed: api_version, name, title, description, version, author, license, homepage, requires, cms, permissions, settings.',
         'comet-extension.json: api_version must be 1.',
         'blocks/callout/block.json: Remove "name": a block is named after its extension vendor and folder, for example blocks/callout becomes cometcms/callout.',
         'blocks/empty/block.json: Every block needs block.json.',
         'blocks/empty/template.html: Every block needs template.html.',
         'blocks/feature/style.css:1: The relative URL "images/bg.png" would resolve against each page\'s address. Reference extension files as url(assets/…).',
-        'blocks/logo-bar/template.html:3: {{{answer}}}: unknown prop "answer". Declared props: label, logos, direction, speed, height, gap, pause_on_hover, fade_edges, grayscale, empty_label.',
+        'blocks/logo-bar/template.html:3: {{{answer}}}: unknown prop "answer". Declared props and settings: label, logos, direction, speed, height, gap, pause_on_hover, fade_edges, grayscale, empty_label, @tile_url, @attribution, @attribution_url.',
     ], $errors);
     assert_same(['blocks/logo-bar/template.html:2: The style attribute may only set CSS custom properties from color props, as in style="--accent: {{accent}}". Put other CSS in style.css.'], comet_block_errors(fn() => Extension::compile(comet_block_files([
         'blocks/logo-bar/template.html' => "<details>\n  <summary style=\"color: red\">{{label}}</summary>\n</details>",
@@ -301,7 +315,7 @@ test('extension updates that break placed blocks need confirmation', function ()
     $blocks = ExtensionRegistry::active();
     $blocks->installFiles(comet_block_files(), allowScripts: true);
     $manifest = comet_block_manifest('blocks/callout/block.json', []);
-    unset($manifest['props']['link_label']);
+    unset($manifest['props']['link_label'], $manifest['variations'], $manifest['props']['tone']['option_labels']);
     $manifest['props']['tone']['options'] = ['info'];
     $update = comet_block_files([
         'comet-extension.json' => comet_block_manifest('comet-extension.json', ['version' => '2.0.0']),
@@ -316,11 +330,11 @@ test('extension updates that break placed blocks need confirmation', function ()
         assert_same(['cometcms/callout: the prop "tone" no longer offers success. Instances using them fall back to the default.',
             'cometcms/callout: the prop "link_label" is removed. Its saved values are dropped the next time a layout is saved.',
             'cometcms/feature is removed. Placed instances will show as missing blocks.'], $e->changes);
-        assert_same('1.7.0', $e->installedVersion);
+        assert_same('1.8.0', $e->installedVersion);
     }
-    assert_same('1.7.0', ExtensionRegistry::active()->extension('cometcms/essentials')['version']);
+    assert_same('1.8.0', ExtensionRegistry::active()->extension('cometcms/essentials')['version']);
     $result = ExtensionRegistry::active()->installFiles($update, true, true);
-    assert_same('1.7.0', $result['previous_version']);
+    assert_same('1.8.0', $result['previous_version']);
     assert_same(3, count($result['changes']));
     assert_null(ExtensionRegistry::active()->get('block:cometcms/feature'));
     $pricing = comet_block_manifest('blocks/pricing/block.json', []);
@@ -773,7 +787,7 @@ test('block scripts are single self-contained modules with a default export', fu
     ])));
     assert_same([
         'blocks/card/view.js: view.js cannot contain "</script".',
-        'blocks/card/view.js: view.js must export its mount function: export default function (element, props) { … }',
+        'blocks/card/view.js: view.js must export its mount function: export default function (element, props, ctx) { … }',
         'blocks/card/view.js:1: view.js must be self-contained: imports are not allowed. Bundle dependencies into the file, for example with esbuild --bundle --format=esm.',
         'blocks/missing/view.js: There is no block "missing" for this script. Add block.json and template.html next to it.',
     ], $errors);
@@ -817,7 +831,7 @@ test('published pages and previews mount block scripts through exact CSP sources
     $ctx = comet_site_test_context($site);
     $html = (new PageRenderer($ctx))->entryPage($site->types()['about'], $entry);
     $url = '/_site/default/blocks/' . hash('sha256', comet_block_files()['blocks/stats/view.js']) . '.js';
-    $loader = \CometCMS\Site\Blocks\BlockScripts::loader('cometcms/stats', $url);
+    $loader = comet_essentials_loader('cometcms/stats', $url);
     assert_same(1, substr_count($html, '<script type="module">' . $loader . '</script>'));
     assert_same(2, substr_count($html, 'data-comet-block="cometcms/stats"'));
     assert_true(str_contains($html, 'data-comet-props="{&quot;items&quot;:[{&quot;value&quot;:250,&quot;suffix&quot;:&quot;+&quot;,&quot;label&quot;:&quot;Websites&quot;}'));
@@ -838,7 +852,9 @@ test('published pages and previews mount block scripts through exact CSP sources
     $builder->preview = true;
     $annotated = (new PageRenderer($builder))->entryPage($site->types()['about'], $entry);
     assert_true(str_contains($annotated, 'data-node='));
-    assert_same(1, substr_count($annotated, '<script type="module">' . $loader . '</script>'));
+    // Previews tell scripts they are previews through ctx.preview.
+    assert_same(0, substr_count($annotated, '<script type="module">' . $loader . '</script>'));
+    assert_same(1, substr_count($annotated, '<script type="module">' . comet_essentials_loader('cometcms/stats', $url, true) . '</script>'));
     foreach (\CometCMS\Site\Blocks\BlockScripts::cspSources($annotated, $builder) as $source) {
         assert_true(str_contains($annotated, $source));
     }
@@ -878,7 +894,7 @@ test('example slideshows render translated media slides and load their script in
     assert_true(str_contains($html, 'Add slides to start your slideshow.'));
     assert_false(str_contains($html, 'Unsere Geschichte'));
     $script = hash_file('sha256', COMET_BLOCK_EXAMPLE . '/blocks/slideshow/view.js') . '.js';
-    $loader = \CometCMS\Site\Blocks\BlockScripts::loader('cometcms/slideshow', '/_site/default/blocks/' . $script);
+    $loader = comet_essentials_loader('cometcms/slideshow', '/_site/default/blocks/' . $script);
     assert_same(1, substr_count($html, '<script type="module">' . $loader . '</script>'));
     assert_same(["'sha256-" . base64_encode(hash('sha256', $loader, true)) . "'", 'example.test/_site/default/blocks/' . $script], \CometCMS\Site\Blocks\BlockScripts::cspSources($html, $ctx));
 
@@ -932,7 +948,9 @@ test('maps render escaped location labels and include their script in editor pre
     $preview = (new PageRenderer($context))->entryPage($type, $entry);
     assert_true(str_contains($preview, 'The interactive map loads on the published website.'));
     assert_true(str_contains($preview, 'import mount'));
-    assert_false(str_contains($preview, 'tile.openstreetmap.org'));
+    // The tile server is a setting the script receives; no tiles are requested from the markup.
+    assert_false(str_contains($preview, 'src="https://tile.openstreetmap.org'));
+    assert_true(str_contains($preview, '"tile_url":"https://tile.openstreetmap.org/{z}/{x}/{y}.png"'));
 });
 
 test('example comparison and testimonial blocks render safe translated content and media with preview fallbacks', function (): void {
@@ -971,7 +989,7 @@ test('example comparison and testimonial blocks render safe translated content a
     assert_same(2, substr_count($html, 'data-comet-block="cometcms/before-after"'));
     assert_false(str_contains($html, 'data-comet-block="cometcms/testimonial"'));
     $script = hash_file('sha256', COMET_BLOCK_EXAMPLE . '/blocks/before-after/view.js') . '.js';
-    $loader = \CometCMS\Site\Blocks\BlockScripts::loader('cometcms/before-after', '/_site/default/blocks/' . $script);
+    $loader = comet_essentials_loader('cometcms/before-after', '/_site/default/blocks/' . $script);
     assert_same(1, substr_count($html, '<script type="module">' . $loader . '</script>'));
 
     $ctx->preview = true;
@@ -1299,9 +1317,12 @@ test('disabling an extension hides each seed kind that ExtensionSeeder::KINDS ma
         'content-types/design-item.json' => json_encode(['label' => 'Design items', 'fields' => []]),
         'components/design-hero.json' => json_encode(['name' => 'Design hero', 'root' => 'section', 'type' => '', 'nodes' => [['kind' => 'section', 'children' => []]]]),
         'templates/design-item/detail.json' => json_encode(['templates' => [['id' => 'default', 'name' => 'Item', 'header' => 'design-hero', 'footer' => 'default']], 'layouts' => []]),
+        'fonts/design-font.json' => json_encode(['name' => 'Design font', 'faces' => [['file' => 'assets/design.woff2', 'weight' => [400, 400], 'style' => 'normal']]]),
+        'assets/design.woff2' => (string) file_get_contents(COMET_TEST_ROOT . '/examples/extensions/comet-theme-pack/assets/fonts/inter-latin-normal.woff2'),
     ];
     // Every seed kind the compiler produces needs a visibility decision and a check here.
     $visible = [
+        'fonts' => fn(): bool => in_array('Design font', array_column(\CometCMS\Site\FontRegistry::active()->families(), 'name'), true),
         'content_types' => fn(): bool => (new \CometCMS\Content\ContentTypeRepository())->exists('design-item'),
         'components' => fn(): bool => in_array('design-hero', array_column((new SiteRepository())->components(), 'id'), true) && (new SiteRepository())->component('design-hero') !== null,
         'templates' => function (): bool {
@@ -1567,7 +1588,9 @@ function comet_dependency_files(string $name, array $requires = []): array
 }
 
 test('extension dependency declarations validate names lists duplicates and self references', function (): void {
-    foreach ([null, 'test/base', ['bad name'], ['test/kit'], ['test/base', 'test/base'], ['vendor' => 'test/base'], array_fill(0, 33, 'test/base')] as $requires) {
+    $many = [];
+    for ($index = 0; $index < 33; $index++) $many['test/base' . $index] = '*';
+    foreach ([null, 'test/base', ['test/base'], ['bad name' => '*'], ['test/kit' => '*'], ['test/base' => '1.x.y'], ['test/base' => ''], ['test/base' => 1], $many] as $requires) {
         $files = comet_block_single([], '<p>Block</p>');
         $manifest = json_decode($files['comet-extension.json'], true);
         $manifest['requires'] = $requires;
@@ -1575,13 +1598,14 @@ test('extension dependency declarations validate names lists duplicates and self
         assert_throws(ExtensionException::class, fn() => Extension::compile($files));
     }
     assert_same([], Extension::compile(comet_block_files())['requires']);
-    assert_same(['cometcms/essentials'], Extension::compile(comet_extension_portfolio())['requires']);
+    assert_same(['cometcms/essentials' => '^1.7'], Extension::compile(comet_extension_portfolio())['requires']);
+    assert_same(['test/base' => '>=1.2 <2 || ^3.0.0-beta'], Extension::compile(comet_dependency_files('test/kit', ['test/base' => '>=1.2 <2 || ^3.0.0-beta']))['requires']);
 });
 
 test('extension dependencies are enforced for installation enabling disabling deletion and cycles', function (): void {
     $registry = ExtensionRegistry::active();
     $base = comet_dependency_files('test/base');
-    $dependent = comet_dependency_files('test/dependent', ['test/base']);
+    $dependent = comet_dependency_files('test/dependent', ['test/base' => '^1.0']);
     assert_throws(ExtensionException::class, fn() => $registry->installFiles($dependent));
     assert_null($registry->extension('test/dependent'));
     $registry->installFiles($base);
@@ -1589,10 +1613,10 @@ test('extension dependencies are enforced for installation enabling disabling de
     assert_throws(ExtensionException::class, fn() => $registry->installFiles($dependent));
     $registry->setEnabled('test/base', true);
     $registry->installFiles($dependent);
-    assert_same(['test/base'], $registry->details('test/dependent')['requires']);
+    assert_same(['test/base' => '^1.0'], $registry->details('test/dependent')['requires']);
     assert_throws(ExtensionException::class, fn() => $registry->setEnabled('test/base', false));
     assert_throws(ExtensionException::class, fn() => $registry->delete('test/base'));
-    assert_throws(ExtensionException::class, fn() => $registry->installFiles(comet_dependency_files('test/base', ['test/dependent'])));
+    assert_throws(ExtensionException::class, fn() => $registry->installFiles(comet_dependency_files('test/base', ['test/dependent' => '*'])));
     assert_same([], $registry->extension('test/base')['requires']);
     $registry->setEnabled('test/dependent', false);
     $registry->setEnabled('test/base', false);
@@ -1619,7 +1643,7 @@ test('folder-deployed dependency failures suspend dependent extensions blocks an
     assert_true((new \CometCMS\Content\ContentTypeRepository())->exists('project'));
     assert_true($registry->extension('cometcms/portfolio')['enabled']);
     // Directly copied cycles never activate, regardless of folder sorting order.
-    foreach (['test/a' => ['test/b'], 'test/b' => ['test/a']] as $name => $requires) {
+    foreach (['test/a' => ['test/b' => '*'], 'test/b' => ['test/a' => '*']] as $name => $requires) {
         mkdir($registry->directory() . '/' . $name, 0775, true);
         file_put_contents($registry->directory() . '/' . $name . '/comet-extension.json', comet_dependency_files($name, $requires)['comet-extension.json']);
     }

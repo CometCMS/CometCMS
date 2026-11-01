@@ -17,7 +17,12 @@ export function tilePosition({ latitude, longitude }, zoom) {
   };
 }
 
-export default function mount(element, props) {
+// Tiles come from the extension's "tile_url" setting, an OpenStreetMap-style
+// https://…/{z}/{x}/{y}.png template that administrators can point to their provider.
+const DEFAULT_TILES = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+
+export default function mount(element, props, ctx = {}) {
+  const tileUrl = ctx.settings?.tile_url || DEFAULT_TILES;
   const root = element.querySelector('.cometcms-map');
   const viewport = root.querySelector('[data-viewport]');
   const tiles = root.querySelector('[data-tiles]');
@@ -32,7 +37,7 @@ export default function mount(element, props) {
     placeholder.textContent = props.invalid_label;
     open.hidden = true;
     element.dataset.mapState = 'invalid';
-    return;
+    return () => {};
   }
   let zoom = Math.max(1, Math.min(19, Math.round(Number(props.zoom) || 13)));
   let visible = false;
@@ -87,7 +92,7 @@ export default function mount(element, props) {
             element.dataset.mapState = 'error';
           }
         });
-        image.src = `https://tile.openstreetmap.org/${zoom}/${((x % count) + count) % count}/${y}.png`;
+        image.src = tileUrl.replace('{z}', zoom).replace('{x}', ((x % count) + count) % count).replace('{y}', y);
         images.push(image);
       }
     }
@@ -98,8 +103,8 @@ export default function mount(element, props) {
     cancelAnimationFrame(frame);
     frame = requestAnimationFrame(render);
   }
-  zoomIn.addEventListener('click', () => { zoom = Math.min(19, zoom + 1); schedule(); });
-  zoomOut.addEventListener('click', () => { zoom = Math.max(1, zoom - 1); schedule(); });
+  zoomIn.addEventListener('click', () => { zoom = Math.min(19, zoom + 1); schedule(); }, { signal: ctx.signal });
+  zoomOut.addEventListener('click', () => { zoom = Math.max(1, zoom - 1); schedule(); }, { signal: ctx.signal });
   const resize = new ResizeObserver(schedule);
   const visibility = new IntersectionObserver(([entry]) => {
     visible = entry.isIntersecting;
@@ -110,4 +115,9 @@ export default function mount(element, props) {
   root.querySelector('[data-controls]').hidden = false;
   element.dataset.mounted = 'true';
   render();
+  return () => {
+    cancelAnimationFrame(frame);
+    resize.disconnect();
+    visibility.disconnect();
+  };
 }

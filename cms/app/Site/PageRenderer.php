@@ -402,8 +402,8 @@ final class PageRenderer
         $noindex = ($meta['noindex'] ?? false) || $embed || $this->ctx->preview || !empty($settings['noindex']);
         $head = '<meta charset="utf-8">'
             . ($this->ctx->preview ? '<meta http-equiv="Content-Security-Policy" content="'
-                . SiteScripts::cspDirective($headScript . $bodyScripts . $blockScripts, $this->ctx)
-                . '; object-src \'none\'; base-uri \'none\'; form-action \'none\'">' : '')
+                . BlockScripts::extendPolicy(SiteScripts::cspDirective($headScript . $bodyScripts . $blockScripts, $this->ctx)
+                    . '; object-src \'none\'; base-uri \'none\'; form-action \'none\'', $blockScripts, $this->ctx) . '">' : '')
             . '<meta name="viewport" content="width=device-width,initial-scale=1">'
             . '<title>' . $title . '</title>'
             . '<meta name="generator" content="CometCMS">';

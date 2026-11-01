@@ -251,6 +251,7 @@
       type="text"
       :value="value"
       :maxlength="def.max"
+      :placeholder="extensionPlaceholder"
       class="form-input w-full rounded-lg border-slate-300 py-1.5 text-xs"
       :class="{ 'font-mono': def.type !== 'string' }"
       @input="emitValue($event.target.value)"
@@ -275,6 +276,7 @@
       :id="inputId"
       :value="value ?? ''"
       :maxlength="def.max"
+      :placeholder="extensionPlaceholder"
       rows="4"
       class="form-textarea w-full rounded-lg border-slate-300 py-1.5 text-xs"
       @input="emitValue($event.target.value)"
@@ -373,6 +375,7 @@
     <p v-if="def.type === 'form' && selectOptions.length === 1" class="mt-2 text-xs text-slate-500">
       {{ t("site.forms.noEligibleTypes") }}
     </p>
+    <p v-if="extensionHelp" :id="`${inputId}-help`" class="mt-1 text-[11px] leading-snug text-slate-500">{{ extensionHelp }}</p>
     </fieldset>
   </div>
 </template>
@@ -415,6 +418,7 @@ import { resolveLocalized } from '../../../composables/localizedValues.js';
 import { useSiteStore } from "../../../stores/site.js";
 import { useSiteBuilder } from "../../../composables/useSiteBuilder.js";
 import { useI18n } from "../../../i18n/index.js";
+import { extensionText, optionText } from "../../../composables/extensionText.js";
 
 /** Slider step of sizes; the number field beside it takes any value. */
 const SIZE_STEP = 10;
@@ -448,15 +452,18 @@ function resetTranslation() {
 const isSecondaryLocale = computed(() => builder.locale.value !== builder.defaultLocale.value);
 const sourceText = computed(() => { const value = resolveLocalized(props.value, builder.defaultLocale?.value || 'en', builder.defaultLocale?.value || 'en'); return typeof value === 'string' ? value.replace(/<[^>]*>/g, '') : JSON.stringify(value); });
 const linkSettings = computed(() => site.data?.workspace === getActiveWorkspace() && site.draft ? site.draft.settings : builder.settings.value);
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const inputId = computed(() => `builder-${props.node.id}-${props.group}-${props.name}`);
 /** The design being edited, so new custom colors and classes are offered right away. */
 const siteTheme = computed(() => site.draft?.theme ?? site.data?.theme ?? null);
 const customClasses = computed(() => themeCssClasses(siteTheme.value?.custom_css ?? ""));
 const isHoverAnimation = computed(() => props.group === "style" && props.name === "animation" && builder.styleState.value === "hover");
+/** Extension props and settings bring their own texts, translated through i18n/<locale>.json. */
+const extensionHelp = computed(() => (props.def.help ? extensionText(props.def, "help", locale.value) : ""));
+const extensionPlaceholder = computed(() => (props.def.placeholder ? extensionText(props.def, "placeholder", locale.value) : undefined));
 const label = computed(() => {
   if (props.def.type === "raw_html") return t("site.prop.htmlSource");
-  if (props.def.label) return props.def.label;
+  if (props.def.label) return extensionText(props.def, "label", locale.value);
   if (props.node.kind === "accordion" && props.name === "items") return t("site.accordion.entries");
   if (props.def.type === "table_rows") return t("site.table.cells");
   if (isHoverAnimation.value) return t("site.style.hover_effect");
@@ -518,7 +525,7 @@ const flagSample = computed(() => {
 });
 
 function optionLabel(option) {
-  if (props.group === "props" && props.node.kind.startsWith("block:")) return option;
+  if (props.group === "props" && props.node.kind.startsWith("block:")) return optionText(props.def, option, locale.value);
   if (option === "") return t(props.group === "style" ? "site.option.default" : "site.option.auto");
   if (/^h[1-6]$/.test(option)) return option.toUpperCase();
   if (/^\d+:\d+$/.test(option)) return option;

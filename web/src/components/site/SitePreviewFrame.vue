@@ -37,7 +37,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { api } from "../../api/index.js";
 import { useI18n } from "../../i18n/index.js";
-import { needsPreviewReload, patchDocument, withPreviewStyles } from "../../composables/previewDocument.js";
+import { needsPreviewReload, patchScriptedDocument, withPreviewStyles } from "../../composables/previewDocument.js";
 import { initGalleryLightbox } from "../../../../cms/app/Site/assets/gallery.js";
 import { initTabs } from "../../../../cms/app/Site/assets/tabs.js";
 import { initMenus } from "../../../../cms/app/Site/assets/menus.js";
@@ -115,7 +115,7 @@ async function render() {
       emit("updated", doc);
     } else if (doc?.body && html && !needsPreviewReload(doc, html)) {
       // Reloading the iframe would blank it for a frame on every edit.
-      patchDocument(doc, html);
+      patchScriptedDocument(doc, html);
       initTabs(doc);
       applyScale();
       emit("updated", doc);

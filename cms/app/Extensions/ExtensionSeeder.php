@@ -8,6 +8,8 @@ use CometCMS\Content\ContentRepository;
 use CometCMS\Content\ContentTypeRepository;
 use CometCMS\Core\Security;
 use CometCMS\Core\ValidationException;
+use CometCMS\Site\FontFiles;
+use CometCMS\Site\FontRegistry;
 use CometCMS\Site\LayoutSchema;
 use CometCMS\Site\SiteRepository;
 use CometCMS\Site\Theme;
@@ -19,12 +21,14 @@ final class ExtensionSeeder
 {
     /**
      * Every seed kind, in write order, and whether disabling its extension
-     * hides it. Each new kind must decide here; templates keep applying.
+     * hides it. Each new kind must decide here; templates keep applying and
+     * fonts stay available so themes that chose them keep rendering.
      */
-    public const KINDS = ['content_types' => true, 'components' => true, 'templates' => false, 'presets' => true];
+    public const KINDS = ['fonts' => false, 'content_types' => true, 'components' => true, 'templates' => false, 'presets' => true];
 
     private ContentTypeRepository $types;
     private SiteRepository $site;
+    private FontRegistry $fonts;
     private JsonStore $store;
 
     public function __construct(private readonly WorkspaceContext $workspace, private readonly string $extension, private readonly ?ExtensionRegistry $blocks = null)
@@ -32,6 +36,7 @@ final class ExtensionSeeder
         $this->types = new ContentTypeRepository($workspace, includeDisabled: true);
         $this->site = new SiteRepository($workspace, $this->types, includeDisabled: true);
         $this->store = new JsonStore($workspace->path('site'));
+        $this->fonts = new FontRegistry($workspace);
     }
 
     public static function key(array $seed): string
@@ -106,6 +111,7 @@ final class ExtensionSeeder
             'components' => $this->site->component($seed['id']) !== null,
             'templates' => $this->templateExists($seed['id']),
             'presets' => $this->site->themePreset($seed['id']) !== null,
+            'fonts' => isset($this->fonts->families()[$seed['id']]),
         };
     }
 
@@ -186,6 +192,8 @@ final class ExtensionSeeder
                 if (!is_array($seed['data']['theme'] ?? null)) throw new ValidationException(['theme' => 'A preset needs a theme.']);
                 return ['name' => $seed['data']['name'], 'theme' => Theme::normalize($seed['data']['theme'])];
             });
+            // Extension::compile already checked the faces against their WOFF2 files.
+            if ($seed['kind'] === 'fonts') $validate($seed, static fn(): array => $seed['data']);
         }
         if ($errors !== []) throw new ExtensionException($errors);
         return array_values($normalized);
@@ -219,6 +227,7 @@ final class ExtensionSeeder
             'content_types' => 'content-types/' . $seed['id'] . '.json',
             'components', 'templates' => $seed['kind'] . '/' . $seed['id'] . '.json',
             'presets' => 'theme.json',
+            'fonts' => 'fonts/' . $seed['id'] . '.json',
         };
     }
 
@@ -275,6 +284,9 @@ final class ExtensionSeeder
                             $this->site->saveTemplates([$type => [$variant => $data['templates']]]);
                             foreach ($data['layouts'] as $area => $nodes) $this->site->saveLayout($type, $variant, $nodes, area: $area);
                             break;
+                        case 'fonts':
+                            $this->seedFont($seed['id'], $data);
+                            break;
                         case 'presets':
                             $previous = $this->site->themePreset($seed['id']);
                             if ($previous !== null) $this->site->deleteThemePreset($previous['id']);
@@ -308,6 +320,30 @@ final class ExtensionSeeder
         return array_values($entries);
     }
 
+    /** Copy the installed extension's WOFF2 files into the font library, then register the family. */
+    private function seedFont(string $id, array $font): void
+    {
+        $source = (new ExtensionRegistry($this->workspace))->directory() . '/' . $this->extension . '/';
+        $this->fonts->locked(function () use ($id, $font, $source): void {
+            $faces = [];
+            foreach ($font['faces'] as $face) {
+                $target = $this->fonts->directory() . '/files/' . $face['hash'] . '.woff2';
+                if (!is_file($target)) {
+                    $bytes = is_file($source . $face['file']) ? (string) file_get_contents($source . $face['file']) : '';
+                    if ($bytes === '' || FontFiles::validate($bytes) !== $face['hash']) throw new \RuntimeException('The font file ' . $face['file'] . ' changed during installation.');
+                    FontFiles::write($target, $bytes);
+                }
+                unset($face['file']);
+                $faces[] = $face;
+            }
+            $this->fonts->save([
+                'id' => $id, 'name' => $font['name'], 'source' => 'custom', 'category' => $font['category'],
+                'license' => $font['license'], 'version' => '1', 'subsets' => array_values(array_unique(array_column($faces, 'subset'))),
+                'faces' => $faces, 'extension' => $this->extension,
+            ]);
+        });
+    }
+
     public function seeded(): array
     {
         $items = [];
@@ -316,6 +352,7 @@ final class ExtensionSeeder
                 'content_types' => $this->types->find($entry['id'])['label'],
                 'components' => $this->site->component($entry['id'])['name'] ?? $entry['id'],
                 'presets' => $this->site->themePreset($entry['id'])['name'] ?? $entry['id'],
+                'fonts' => $this->fonts->families()[$entry['id']]['name'] ?? $entry['id'],
                 default => $entry['id'],
             };
             $item = ['kind' => $entry['kind'], 'id' => $entry['id'], 'name' => $name, 'modified' => $this->hash($entry) !== $entry['hash']];
@@ -331,7 +368,7 @@ final class ExtensionSeeder
         $ledger = $this->ledger();
         $entries = $ledger[$this->extension] ?? [];
         if (array_diff($remove, array_map(self::key(...), $entries)) !== []) throw new \InvalidArgumentException('Unknown seeded item selected for removal.');
-        foreach (['templates', 'components', 'content_types', 'presets'] as $kind) {
+        foreach (['templates', 'components', 'content_types', 'presets', 'fonts'] as $kind) {
             foreach ($entries as $entry) {
                 if ($entry['kind'] !== $kind || !in_array(self::key($entry), $remove, true)) continue;
                 switch ($kind) {
@@ -349,6 +386,15 @@ final class ExtensionSeeder
                         $preset = $this->site->themePreset($entry['id']);
                         if ($preset !== null) $this->site->deleteThemePreset($preset['id']);
                         break;
+                    case 'fonts':
+                        // A font a theme still uses stays behind as ordinary site data.
+                        // Extension bookkeeping (this ledger, compiled indexes) names the font without using it.
+                        $uses = array_filter($this->fonts->usages($entry['id']), static fn(string $path): bool => !str_starts_with($path, 'extensions'));
+                        if (isset($this->fonts->families()[$entry['id']]) && $uses === []) {
+                            unlink($this->fonts->directory() . '/' . $entry['id'] . '.json');
+                            $this->site->clearCache();
+                        }
+                        break;
                 }
             }
         }
@@ -365,6 +411,7 @@ final class ExtensionSeeder
             'components' => [$root . '/components/' . $entry['id'] . '.json'],
             'templates' => [$root . '/templates/' . $entry['id'] . '.json', ...glob($root . '/content/' . $entry['id'] . '/*.json') ?: []],
             'presets' => [$root . '/presets/' . $entry['id'] . '.json'],
+            'fonts' => [$root . '/fonts/' . $entry['id'] . '.json'],
         };
         sort($paths);
         $hash = hash_init('sha256');
@@ -393,6 +440,8 @@ final class ExtensionSeeder
                     $paths[] = $this->workspace->path('revisions') . '/site/content/' . $seed['id'];
                     break;
                 case 'presets': $paths[] = $root . '/theme/presets'; break;
+                // Face files are content-addressed and never overwritten, so only the family is journaled.
+                case 'fonts': $paths[] = $root . '/theme/fonts/' . $seed['id'] . '.json'; break;
             }
         }
         $snapshots = [];

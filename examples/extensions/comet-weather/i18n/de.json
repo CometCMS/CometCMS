@@ -1,0 +1,28 @@
+{
+  "title": "Comet Wetter",
+  "description": "Das aktuelle Wetter für einen Ort, vom kostenlosen Dienst Open-Meteo.",
+  "settings": {
+    "units": { "label": "Einheiten", "options": { "metric": "Metrisch (°C, km/h)", "imperial": "Imperial (°F, mph)" } },
+    "refresh_minutes": { "label": "Aktualisieren alle (Minuten)", "help": "Wie oft geöffnete Seiten das Wetter aktualisieren. 0 lädt es einmal." },
+    "credit": { "label": "Open-Meteo nennen", "help": "Der kostenlose Tarif von Open-Meteo verlangt eine Quellenangabe." }
+  },
+  "blocks": {
+    "weather": {
+      "title": "Wetter",
+      "description": "Aktuelle Temperatur, Wetterlage und Wind für einen Ort.",
+      "category": "Live-Daten",
+      "keywords": ["wetter", "temperatur", "vorhersage"],
+      "variations": { "compact": { "title": "Wetter-Badge", "description": "Eine Zeile für Kopfbereiche und Seitenleisten." } },
+      "props": {
+        "place": { "label": "Ortsname", "help": "Wird als Überschrift gezeigt. Er wird nicht nachgeschlagen; die Koordinaten bestimmen das Wetter." },
+        "location": { "label": "Koordinaten", "help": "Breite, Länge in Dezimalgrad." },
+        "layout": { "label": "Layout", "group": "Darstellung", "options": { "card": "Karte", "compact": "Badge" } },
+        "accent": { "label": "Akzent", "group": "Darstellung" },
+        "show_wind": { "label": "Wind anzeigen", "group": "Darstellung" },
+        "loading_label": { "label": "Ladetext", "group": "Beschriftungen" },
+        "error_label": { "label": "Fehlertext", "group": "Beschriftungen" },
+        "wind_label": { "label": "Wind-Beschriftung", "group": "Beschriftungen" }
+      }
+    }
+  }
+}

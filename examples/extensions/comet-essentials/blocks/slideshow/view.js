@@ -1,5 +1,7 @@
-// Each instance owns its navigation and timer.
-export default function mount(element, props) {
+// Each instance owns its navigation and timer. Listeners use ctx.signal, so the
+// returned cleanup only has to stop the timer.
+export default function mount(element, props, ctx = {}) {
+  const { signal } = ctx;
   const root = element.querySelector('.cometcms-slideshow');
   const slides = [...root.querySelectorAll('[data-slide]')];
   const controls = root.querySelector('[data-controls]');
@@ -8,7 +10,7 @@ export default function mount(element, props) {
   const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
   const interval = Math.max(2000, Math.min(20000, Number(props.interval) || 5000));
   let current = 0;
-  let rotating = !!props.autoplay && !motion.matches;
+  let rotating = !!props.autoplay && !motion.matches && !ctx.reducedMotion;
   let hovered = root.matches(':hover');
   let timer;
 
@@ -18,7 +20,7 @@ export default function mount(element, props) {
     button.type = 'button';
     button.textContent = String(index + 1);
     button.setAttribute('aria-label', `${props.slide_label} ${index + 1}`);
-    button.addEventListener('click', () => navigate(index));
+    button.addEventListener('click', () => navigate(index), { signal });
     selectors.append(button);
     return button;
   });
@@ -49,8 +51,8 @@ export default function mount(element, props) {
   }
 
   controls.hidden = slides.length < 2;
-  root.querySelector('[data-previous]').addEventListener('click', () => navigate(current - 1));
-  root.querySelector('[data-next]').addEventListener('click', () => navigate(current + 1));
+  root.querySelector('[data-previous]').addEventListener('click', () => navigate(current - 1), { signal });
+  root.querySelector('[data-next]').addEventListener('click', () => navigate(current + 1), { signal });
   root.addEventListener('keydown', (event) => {
     if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
     const index = { ArrowLeft: current - 1, ArrowRight: current + 1, Home: 0, End: slides.length - 1 }[event.key];
@@ -61,13 +63,14 @@ export default function mount(element, props) {
       buttons[(index + slides.length) % slides.length].focus();
     }
     navigate(index);
-  });
-  root.addEventListener('pointerenter', () => { hovered = true; schedule(); });
-  root.addEventListener('pointerleave', () => { hovered = false; schedule(); });
+  }, { signal });
+  root.addEventListener('pointerenter', () => { hovered = true; schedule(); }, { signal });
+  root.addEventListener('pointerleave', () => { hovered = false; schedule(); }, { signal });
   // Focus and manual navigation stop autoplay for this instance.
-  root.addEventListener('focusin', () => { rotating = false; schedule(); });
-  document.addEventListener('visibilitychange', schedule);
-  motion.addEventListener('change', () => { if (motion.matches) rotating = false; schedule(); });
+  root.addEventListener('focusin', () => { rotating = false; schedule(); }, { signal });
+  document.addEventListener('visibilitychange', schedule, { signal });
+  motion.addEventListener('change', () => { if (motion.matches) rotating = false; schedule(); }, { signal });
   show(0);
   element.dataset.mounted = 'true';
+  return () => clearTimeout(timer);
 }

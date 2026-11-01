@@ -1,0 +1,135 @@
+{
+  "description": "Vorher/Nachher-Vergleiche, Testimonials, Hinweise, Karten, Logoleisten, Features, Preise, Landkarten, Slideshows, Statistiken und vertikaler Text für jedes Theme.",
+  "settings": {
+    "tile_url": {
+      "label": "Kachelserver für Karten",
+      "group": "Karten",
+      "help": "Eine https-URL-Vorlage mit {z}, {x} und {y}. Nutze für Websites mit viel Verkehr einen kommerziellen Anbieter gemäß dessen Bedingungen."
+    },
+    "attribution": {
+      "label": "Kartennachweis",
+      "group": "Karten",
+      "help": "Wird auf jeder Karte angezeigt, wie es der Kachelanbieter verlangt."
+    },
+    "attribution_url": {
+      "label": "Link zum Nachweis",
+      "group": "Karten"
+    }
+  },
+  "blocks": {
+    "before-after": {
+      "title": "Vorher / Nachher"
+    },
+    "callout": {
+      "title": "Hinweis",
+      "description": "Eine Ankündigung mit optionalem Link.",
+      "keywords": [
+        "hinweis",
+        "meldung",
+        "ankündigung"
+      ],
+      "variations": {
+        "success": {
+          "title": "Erfolgshinweis",
+          "description": "Eine Bestätigung mit Häkchen."
+        },
+        "plain": {
+          "title": "Notiz",
+          "description": "Eine kurze Notiz ohne Link."
+        }
+      },
+      "props": {
+        "title": {
+          "label": "Überschrift"
+        },
+        "message": {
+          "label": "Nachricht"
+        },
+        "tone": {
+          "label": "Ton",
+          "group": "Darstellung",
+          "options": {
+            "info": "Information",
+            "success": "Erfolg"
+          }
+        },
+        "show_link": {
+          "label": "Link anzeigen",
+          "group": "Link",
+          "help": "Fügt unter der Nachricht einen Link hinzu."
+        },
+        "link_label": {
+          "label": "Linktext",
+          "group": "Link"
+        },
+        "link": {
+          "label": "Link",
+          "group": "Link"
+        }
+      }
+    },
+    "card": {
+      "title": "Karte"
+    },
+    "feature": {
+      "title": "Feature"
+    },
+    "logo-bar": {
+      "title": "Logoleiste"
+    },
+    "maps": {
+      "title": "Landkarte",
+      "keywords": [
+        "karte",
+        "standort",
+        "adresse"
+      ],
+      "props": {
+        "location": {
+          "label": "Koordinaten",
+          "help": "Breite, Länge in Dezimalgrad, zum Beispiel 52.520008, 13.404954."
+        },
+        "zoom": {
+          "label": "Zoomstufe"
+        }
+      }
+    },
+    "pricing": {
+      "title": "Preisplan",
+      "keywords": [
+        "tarif",
+        "preis",
+        "abo"
+      ],
+      "variations": {
+        "highlighted": {
+          "title": "Hervorgehobener Plan",
+          "description": "Der empfohlene Plan, betont."
+        }
+      }
+    },
+    "slideshow": {
+      "title": "Slideshow",
+      "props": {
+        "autoplay": {
+          "label": "Automatisch abspielen"
+        },
+        "interval": {
+          "label": "Intervall (ms)"
+        },
+        "pause_on_hover": {
+          "label": "Bei Mauszeiger anhalten"
+        }
+      }
+    },
+    "stats": {
+      "title": "Statistiken"
+    },
+    "testimonial": {
+      "title": "Testimonial"
+    },
+    "vertical-text": {
+      "title": "Vertikaler Text"
+    }
+  }
+}

@@ -1,0 +1,20 @@
+.c-block-cometcms__weather .cometcms-weather {
+  display: grid;
+  gap: var(--space-xs, 0.25rem);
+  border-inline-start: 4px solid var(--cometcms-weather-accent, var(--c-primary, #2563eb));
+  padding: var(--space-md, 1rem) var(--space-lg, 1.5rem);
+}
+.c-block-cometcms__weather .cometcms-weather__place { margin: 0; font-size: 1rem; }
+.c-block-cometcms__weather .cometcms-weather__now { margin: 0; font-size: 1.75rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.c-block-cometcms__weather .cometcms-weather__wind,
+.c-block-cometcms__weather .cometcms-weather__credit { margin: 0; font-size: 0.875rem; opacity: 0.8; }
+.c-block-cometcms__weather .cometcms-weather--compact {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.25rem 0.75rem;
+}
+.c-block-cometcms__weather .cometcms-weather--compact .cometcms-weather__now { font-size: 1rem; }
+.c-block-cometcms__weather .cometcms-weather--compact .cometcms-weather__credit { flex-basis: 100%; font-size: 0.75rem; }
+.c-block-cometcms__weather [data-state="error"] .cometcms-weather__now { font-size: 1rem; font-weight: 400; }

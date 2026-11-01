@@ -49,8 +49,8 @@
       "border": "#66748b"
     },
     "fonts": {
-      "body": "system",
-      "heading": "system"
+      "body": "inter",
+      "heading": "inter"
     },
     "radius": "lg",
     "radii": {

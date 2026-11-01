@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace CometCMS\Extensions;
 
-/** One install preview covers destructive changes, trusted scripts and site-content choices. */
+/** One install preview covers destructive changes, trusted scripts with their network permissions, and site-content choices. */
 final class ExtensionReview extends \RuntimeException
 {
     public function __construct(
@@ -14,6 +14,7 @@ final class ExtensionReview extends \RuntimeException
         public readonly array $changes,
         public readonly array $scripts,
         public readonly array $plan,
+        public readonly array $permissions = [],
     ) {
         parent::__construct('Review ' . $extension . ' before installing.');
     }
@@ -21,6 +22,6 @@ final class ExtensionReview extends \RuntimeException
     public function details(): array
     {
         return ['extension' => $this->extension, 'installed_version' => $this->installedVersion, 'version' => $this->version,
-            'changes' => $this->changes, 'scripts' => $this->scripts, 'plan' => $this->plan];
+            'changes' => $this->changes, 'scripts' => $this->scripts, 'permissions' => $this->permissions, 'plan' => $this->plan];
     }
 }

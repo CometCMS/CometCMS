@@ -7,6 +7,7 @@ namespace CometCMS\Controllers;
 use CometCMS\Core\Http;
 use CometCMS\Core\RateLimiter;
 use CometCMS\Extensions\ExtensionRegistry;
+use CometCMS\Site\Blocks\BlockScripts;
 use CometCMS\Site\Flags;
 use CometCMS\Site\FormCaptcha;
 use CometCMS\Site\FormRepository;
@@ -299,6 +300,7 @@ final class SiteController
 
         if (str_starts_with($response['content_type'], 'text/html')) {
             $policy = str_replace("script-src 'none'", SiteScripts::cspDirective($response['body'], $context), self::CONTENT_SECURITY_POLICY);
+            if ($context !== null) $policy = BlockScripts::extendPolicy($policy, $response['body'], $context);
             $policy = FormCaptcha::extendPolicy($policy, $response['body']);
             header('Content-Security-Policy: ' . $policy);
         }

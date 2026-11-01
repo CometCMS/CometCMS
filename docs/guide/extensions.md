@@ -40,7 +40,7 @@ comet-essentials/
 ```
 
 1. Check the extension: `npm run extensions -- validate examples/extensions/comet-essentials`
-2. Pack it: `npm run extensions -- pack examples/extensions/comet-essentials` (writes `comet-essentials-1.7.0.zip`)
+2. Pack it: `npm run extensions -- pack examples/extensions/comet-essentials` (writes `comet-essentials-1.8.0.zip`)
 3. As an administrator, open **Website Settings → Extensions** and drop the ZIP on the upload area.
 4. Open a layout. **Before / after**, **Callout**, **Card**, **Logo bar**, **Feature**, **Pricing plan**, **Maps**, **Slideshow**, **Stats**, **Testimonial** and **Vertical Text** are in the elements palette.
 
@@ -58,6 +58,8 @@ Zipping the folder yourself works too. A single top-level folder inside the ZIP 
 
 The **CometCMS - Menu Variations** extension in `examples/extensions/comet-menu-variations/` adds **Pill Navigation**, **Segmented Navigation**, **Numbered Navigation**, **Navigation Cards**, **Sidebar Navigation** and **Inline Links**. Each uses the site's existing menus through a `menu` property and offers several styles plus accent color, corner, alignment and spacing options. Nested menus expand in place and links remain visible on mobile. Validate and pack it with the same CLI commands, replacing the source folder; a ready-to-upload package is at `examples/extensions/comet-menu-variations.zip`.
 
+**Comet Weather** (`examples/extensions/comet-weather/`, packed as `comet-weather.zip`) is the reference for the features beyond plain blocks: [settings](#settings), [network permissions](#network-permissions), [translations](#translations), the [script lifecycle](#javascript), a palette [category and variation](#palette-categories-keywords-and-variations), inspector [groups and conditions](#inspector-options) and [migrations](#migrations). It shows the current weather from the free Open-Meteo service. Essentials also uses them: map tiles and attribution are settings, the callout has variations and grouped, conditional link options, and every block has German editor texts.
+
 ## comet-extension.json
 
 ```json
@@ -66,9 +68,13 @@ The **CometCMS - Menu Variations** extension in `examples/extensions/comet-menu-
   "name": "cometcms/essentials",
   "title": "Comet Essentials",
   "description": "Essential builder blocks that work with any theme.",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "author": "CometCMS",
-  "license": "MIT"
+  "license": "MIT",
+  "cms": ">=2.0",
+  "settings": {
+    "tile_url": { "type": "url", "label": "Map tile server", "default": "https://tile.openstreetmap.org/{z}/{x}/{y}.png" }
+  }
 }
 ```
 
@@ -79,7 +85,10 @@ The **CometCMS - Menu Variations** extension in `examples/extensions/comet-menu-
 | `title` | Required. Up to 120 bytes. |
 | `version` | Required. Semantic version such as `1.0.0` or `1.1.0-beta.1`. |
 | `description`, `author`, `license`, `homepage` | Optional text. `homepage` is an http(s) URL. |
-| `requires` | Optional list of up to 32 unique extension names that must be installed and enabled. See [Dependencies](#dependencies). |
+| `requires` | Optional object of up to 32 extension names with [version constraints](#dependencies), such as `{"cometcms/essentials": "^1.7"}`. |
+| `cms` | Optional version constraint for the CometCMS release, such as `">=2.0"`. Installation and enabling are refused on other releases. |
+| `settings` | Optional object of up to 32 workspace-wide [settings](#settings). |
+| `permissions` | Optional [network permissions](#network-permissions) for block scripts: `{"connect": ["https://api.example.com"]}`. |
 
 Other fields are rejected, so a typo cannot go unnoticed.
 
@@ -87,7 +96,7 @@ Other fields are rejected, so a typo cannot go unnoticed.
 
 ### block.json
 
-Every folder `blocks/<name>/` is one block. Its name combines the extension vendor and the folder name: `blocks/callout` in `cometcms/essentials` is the block **`cometcms/callout`**, stored in layouts as the kind `block:cometcms/callout`. Block folder names follow the same rules as name parts. Block names are vendor-wide: two extensions from the same vendor must use different block folder names. A block name belongs to one extension; installing another extension that defines it is rejected. Treat block kinds and prop names as persistent storage keys. To rename one in v1, keep the old block or prop working alongside its replacement; there are no automatic data migrations.
+Every folder `blocks/<name>/` is one block. Its name combines the extension vendor and the folder name: `blocks/callout` in `cometcms/essentials` is the block **`cometcms/callout`**, stored in layouts as the kind `block:cometcms/callout`. Block folder names follow the same rules as name parts. Block names are vendor-wide: two extensions from the same vendor must use different block folder names. A block name belongs to one extension; installing another extension that defines it is rejected. Treat block kinds, prop names and enum options as persistent storage keys. To rename one, declare a [migration](#migrations).
 
 ```json
 {
@@ -112,6 +121,40 @@ Every folder `blocks/<name>/` is one block. Its name combines the extension vend
 ```
 
 `title` (up to 120 bytes) is the palette label, and the optional `description` (up to 500 bytes) its hint. Do not add `name`; the folder decides it. A block has at most 32 props. Prop names start with a lowercase letter and use lowercase letters, digits and underscores.
+
+| Optional field | Meaning |
+| --- | --- |
+| `category` | Up to 40 bytes. Blocks with a category get their own palette group under that title; others are listed with the elements. |
+| `keywords` | Up to 12 search words of up to 40 bytes each, matched by the palette search. |
+| `variations` | Up to 16 named starting values, each listed as its own palette entry. See below. |
+| `deprecated` | `true` or a note of up to 300 bytes. The block leaves the palette; placed instances keep working, and the inspector shows the note. |
+| `aliases` | Earlier names of this block. See [Migrations](#migrations). |
+| `allowed_children` | For blocks with a `<slot>`: the only elements editors may drop into it, as built-in element names (`heading`, `text`, `button`, …) and block names (`cometcms/card`). Other children are dropped when a layout is saved. |
+
+#### Palette categories, keywords and variations
+
+```json
+"category": "Live data",
+"keywords": ["forecast", "temperature"],
+"variations": [
+  { "name": "compact", "title": "Weather badge", "description": "A single line for headers.", "icon": "mdi:thermometer", "props": { "layout": "compact", "show_wind": false } }
+]
+```
+
+A variation is not a separate block: inserting it places the block with these prop values instead of the defaults. Its `name` is a lowercase key that translations refer to; `title` is required, while `description` and an Iconify `icon` are optional. The values are checked like defaults.
+
+#### Inspector options
+
+Props may also have:
+
+| Field | Applies to | Meaning |
+| --- | --- | --- |
+| `group` | top-level props and settings | Up to 40 bytes. Props with the same group are shown together in a collapsible section after the ungrouped ones. |
+| `help` | all | Up to 300 bytes, shown below the control. |
+| `placeholder` | `string`, `text`, `url` | Up to 120 bytes, shown in the empty field. |
+| `visible_when` | all | Up to 4 conditions on sibling props, all of which must hold: `{"show_link": true}`, `{"tone": ["info", "warning"]}`. Enum and integer props compare values; other props compare `true` (has a value) or `false` (is empty). Inside a list item, conditions refer to fields of the same item. Hidden props keep their values and still render. |
+| `option_labels` | `enum` | Labels editors see instead of stored values: `{"info": "Information"}`. |
+| `deprecated` | all | `true` or a note. The prop is hidden in the inspector but still rendered. |
 
 **Extension icon.** Put an `icon.png` or `icon.svg` (up to 64 KiB) at the extension root. The Extensions list displays it in full color, or a generic extension symbol when absent. If both files are present, the list uses `icon.png` and blocks without their own icons use `icon.svg`. The example Essentials and Portfolio extensions include transparent 192×192 PNG icons. No manifest field is required. Disabled extensions gray out their icon along with their details.
 
@@ -236,23 +279,92 @@ Use a prop for `id` values, or include one in the template, when a block can app
 A block can have a `view.js`: one ES module whose default export runs for every instance of the block on the website and in previews.
 
 ```js
-// blocks/stats/view.js
-export default function mount(element, props) {
-  // element: the block's root element, with the class c-block-cometcms__stats
+// blocks/weather/view.js
+export default function mount(element, props, ctx) {
+  // element: the block's root element, with the class c-block-cometcms__weather
   // props: the block's values, as the template received them
-  for (const number of element.querySelectorAll('[data-value]')) {
-    // … animate number up to Number(number.dataset.value) over props.duration ms
-  }
-  element.dataset.mounted = 'true';
+  // ctx: { settings, locale, preview, reducedMotion, signal }
+  const timer = setInterval(update, ctx.settings.refresh_minutes * 60000);
+  fetch(url, { signal: ctx.signal });
+  return () => clearInterval(timer); // cleanup
 }
 ```
 
+- **Context.** `ctx.settings` holds the extension's [settings](#settings) in the same shapes as props. `ctx.locale` is the page language, for `Intl` formatting. `ctx.preview` is `true` in the builder and in draft previews, for example to skip polling. `ctx.reducedMotion` reports the visitor's preference. `ctx.signal` is an `AbortSignal` that aborts when the instance is unmounted; pass it to `fetch` and `addEventListener(…, { signal })`.
+- **Cleanup.** Return a function that stops what `signal` does not cover, such as timers, observers and animation frames. When every scripted instance in the builder preview has returned a cleanup function, edits update the preview in place: instances are unmounted, the markup is updated, and they are mounted again with their new props. Without a cleanup, the preview reloads after each edit instead. Return `() => {}` when there is nothing to clean up.
+
 - **Values.** `props` holds each prop by name: text as strings, `int` as numbers, `bool` as booleans, lists as arrays of item objects, and media, links and colors as objects whose `_` is the URL, the address or the color key (media also have `alt`, links `new_tab` and `open_modal`, colors `css`). Bound and translated props are already resolved.
-- **Website and previews.** Scripts run in the builder iframe and in full-page draft previews with the resolved block props. After edits, previews containing scripted blocks reload to reset generated markup, listeners and timers while preserving scroll position. Blocks should still provide readable HTML when JavaScript is unavailable (progressive enhancement).
+- **Website and previews.** Scripts run in the builder iframe and in full-page draft previews with the resolved block props. Blocks should still provide readable HTML when JavaScript is unavailable (progressive enhancement).
 - **Self-contained.** `view.js` must export its mount function as the default export and cannot `import` anything. Both `export default function mount(…) { … }` and bundled `export { mount as default }` are accepted. The browser parses and executes the module; installer checks do not replace testing it in a preview. Bundle dependencies into the file, for example `esbuild src/stats.js --bundle --format=esm --outfile=blocks/stats/view.js`. It is limited to 128 KiB and cannot contain `</script`.
 - **Errors.** An exception in one instance is logged to the console and does not stop the others.
 
-The script is served as a content-hashed module. Each page that contains the block gets one small loader, which imports the module and calls it for each instance with `data-comet-props`. The website's Content-Security-Policy allows exactly these loaders, by hash, and exactly these module URLs; it never allows the whole site, so other files on the server, such as uploaded media, still cannot run as scripts. Scripts may use `fetch`, but only to the website itself and to the sources the policy allows.
+The script is served as a content-hashed module. Each page that contains the block gets one small loader, which imports the module and calls it for each instance with `data-comet-props`. The website's Content-Security-Policy allows exactly these loaders, by hash, and exactly these module URLs; it never allows the whole site, so other files on the server, such as uploaded media, still cannot run as scripts. Scripts may use `fetch`, but only to the website itself and to the origins their extension declares in [`permissions`](#network-permissions).
+
+### Settings
+
+Settings are values an administrator sets once per workspace, under **Website Settings → Extensions → Settings**, such as a map tile server or units. They are declared in `comet-extension.json` like props, with the types `string`, `text`, `url`, `bool`, `int`, `enum` and `color` and the same `label`, `default`, limits, `group`, `help`, `placeholder`, `visible_when` and `option_labels`:
+
+```json
+"settings": {
+  "units": { "type": "enum", "label": "Units", "options": ["metric", "imperial"], "option_labels": { "metric": "Metric (°C)", "imperial": "Imperial (°F)" } },
+  "credit": { "type": "bool", "label": "Credit Open-Meteo", "default": true }
+}
+```
+
+Templates of all the extension's blocks read them with an `@`: `{{@units}}`, `{{#@credit}}…{{/@credit}}`, `{{#@units=imperial}}…{{/@units}}`, `href="{{@attribution_url}}"`. Scripts receive them as `ctx.settings`. Values are validated like props when saved; unset settings use their defaults. Settings appear in published pages, so never use them for secrets such as private API keys. Changing them refreshes cached pages. They are stored in `site/extensions-settings.json`, kept across updates and removed with the extension.
+
+### Network permissions
+
+The website's Content-Security-Policy allows `fetch` only to the site itself. An extension whose scripts need an API declares its origins:
+
+```json
+"permissions": { "connect": ["https://api.open-meteo.com", "https://*.example.com"] }
+```
+
+Origins are lowercase `https://` hosts, optionally with a `*.` subdomain wildcard and a port, without a path; at most 16. Pages that render one of the extension's scripted blocks add them to `connect-src`; other pages do not. Permissions require at least one `view.js`, and the install review lists them next to the scripts, so administrators confirm both together. Images, media and fonts from `https:` are already allowed.
+
+### Translations
+
+Editor texts can be translated in `i18n/<locale>.json`, named after a lowercase language code such as `de` or `pt-br`. The admin uses the file for its own language, falling back to the base language (`de` for `de-at`), then to the texts in the manifests:
+
+```json
+{
+  "title": "Comet Wetter",
+  "settings": { "units": { "label": "Einheiten", "options": { "metric": "Metrisch" } } },
+  "blocks": {
+    "weather": {
+      "title": "Wetter", "description": "…", "category": "Live-Daten", "keywords": ["wetter"],
+      "variations": { "compact": { "title": "Wetter-Badge" } },
+      "props": {
+        "layout": { "label": "Layout", "group": "Darstellung", "options": { "card": "Karte" } },
+        "rows": { "label": "Zeilen", "fields": { "label": { "label": "Beschriftung" } } }
+      }
+    }
+  }
+}
+```
+
+Every key is optional. Props accept `label`, `help`, `placeholder`, `group`, enum `options` and list `fields`. Blocks, props, fields, options, settings and variations that do not exist are reported as errors, like typos elsewhere. Translations only change what editors see; translating content for visitors uses the site's languages, as before.
+
+### Migrations
+
+Renaming a block, prop or option would orphan saved values. Declare the earlier names instead; saved layouts are read under the new names and stored that way the next time they are saved:
+
+```json
+{
+  "aliases": ["cometcms/forecast"],
+  "props": {
+    "location": { "type": "string", "label": "Coordinates", "renamed_from": ["coordinates"] },
+    "layout": { "type": "enum", "label": "Layout", "options": ["card", "compact"], "option_aliases": { "wide": "card" } }
+  }
+}
+```
+
+- `aliases` (block.json): up to 8 earlier names of the block, from the same vendor. Placed `block:cometcms/forecast` instances become `block:cometcms/weather`. An installed block with that name takes precedence.
+- `renamed_from` (props and list fields): up to 8 earlier names. A saved value under an earlier name is used when the prop itself has none.
+- `option_aliases` (enum props): earlier values mapped to current options. Earlier values cannot still be options.
+
+Updates that only rename this way are not breaking changes, so the install review does not ask about them. Keep migrations for as long as older layouts may exist.
 
 ### CSS and assets
 
@@ -335,13 +447,15 @@ Keep your extensions in version control. Versions are informational: dependencie
 
 ## Dependencies
 
-An optional `requires` list in `comet-extension.json` names extensions that must be installed and enabled in the same workspace:
+An optional `requires` object in `comet-extension.json` names extensions that must be installed and enabled in the same workspace, each with a version constraint:
 
 ```json
-"requires": ["cometcms/essentials"]
+"requires": { "cometcms/essentials": "^1.7" }
 ```
 
-Comet Portfolio declares this requirement. Missing or disabled dependencies block installation and enabling with an explanation naming the required extension. Dependencies are listed in the Extensions inventory. Self-dependencies, duplicate names, invalid names and dependency cycles are rejected. The list holds at most 32 names; version constraints and automatic installation are not supported.
+Constraints follow npm and Composer: `*` (any version), `1.4.2`, partial versions such as `1.4` (any 1.4.x), `^1.7` (1.7.0 up to, not including, 2.0.0; `^0.3` stays below 0.4), `~1.2.3` (below 1.3.0), comparisons such as `>=1.2 <2` separated by spaces, and alternatives joined by `||`. A pre-release such as `2.0.0-beta.1` sorts before `2.0.0`.
+
+Comet Portfolio declares this requirement. Missing, disabled or non-matching dependencies block installation and enabling with an explanation naming the required extension and version. An update that a dependent extension's constraint no longer accepts is refused as well. Dependencies are listed in the Extensions inventory. Self-dependencies, invalid names, invalid constraints and dependency cycles are rejected. The object holds at most 32 names; automatic installation is not supported.
 
 Disable dependent extensions first before disabling a requirement. Uninstall all dependent extensions, including disabled ones, before uninstalling a requirement. When folders are deployed directly, dependency failures suspend dependent extensions and their imported content types until their requirements are available again. Folder traversal order does not affect dependency resolution.
 
@@ -362,7 +476,8 @@ Installing, updating and deleting extensions requires an administrator with the 
 
 | Capability | Policy |
 | --- | --- |
-| Data | Blocks see only their own validated props. No content queries, media library, sessions or environment. |
+| Data | Blocks see only their own validated props and their extension's settings. No content queries, media library, sessions or environment. |
+| Network | Pages allow `fetch` to the site, plus the `connect` origins the extensions of their scripted blocks declare. Administrators confirm them with the scripts. |
 | JavaScript | **Trusted, and confirmed separately.** A `view.js` runs on the website and in previews with the website's origin. Because the admin shares that origin, a script runs with the permissions of any administrator or editor who is signed in while visiting the site. Installing or updating an extension with scripts therefore needs an explicit confirmation, and such extensions are marked "JavaScript" in **Extensions**. Extensions copied into the folder directly are trusted like the rest of the server's files. |
 | Server code | None. No PHP, build steps, hooks or extension managers. Other JavaScript files are rejected. |
 | Markup | Allow-listed at installation; values are escaped, and rich text is sanitized with the CMS's HTML allow-list. |
@@ -376,9 +491,9 @@ Extension CSS and scripts load in the preview document, including the builder if
 | Request | Purpose |
 | --- | --- |
 | `GET /admin/api/site/extensions` | Installed extensions with their blocks, folder extensions that failed to load (`errors`), and `can_install`. Requires `site.manage`. |
-| `POST /admin/api/site/extensions` | Multipart upload with the ZIP in `extension`. Returns 201 with `name`, `version`, `previous_version`, `blocks` and `changes`. Invalid extensions return 422 `invalid_extension` with `details`: a list of `{file, line, message}`. When confirmation is needed, returns 409 `extension_review` with `details`: `{extension, installed_version, version, changes, scripts, plan}`. `changes` lists destructive block changes, `scripts` names every block with JavaScript, and `plan` lists `{kind, id, name, exists, tracked, modified, default}` for each seed; `default` is the action applied when `seeds` omits the item. Review them together, then resubmit the ZIP with `accept_changes=1` for breaking changes, `allow_scripts=1` to trust scripts, and `seeds` as a JSON object, for example `{"content_types/project":"create","components/portfolio-hero":"skip","templates/project/detail":"overwrite","presets/portfolio-dusk":"create"}`. New items default to create, unedited items this extension seeded to overwrite, and other existing items to skip. The server revalidates everything before writing; no uploaded ZIP is retained between requests. A successful response lists the blocks with scripts in `scripts`. |
+| `POST /admin/api/site/extensions` | Multipart upload with the ZIP in `extension`. Returns 201 with `name`, `version`, `previous_version`, `blocks` and `changes`. Invalid extensions return 422 `invalid_extension` with `details`: a list of `{file, line, message}`. When confirmation is needed, returns 409 `extension_review` with `details`: `{extension, installed_version, version, changes, scripts, permissions, plan}`. `changes` lists destructive block changes, `scripts` names every block with JavaScript, `permissions` the network origins those scripts may reach, and `plan` lists `{kind, id, name, exists, tracked, modified, default}` for each seed; `default` is the action applied when `seeds` omits the item. Review them together, then resubmit the ZIP with `accept_changes=1` for breaking changes, `allow_scripts=1` to trust scripts, and `seeds` as a JSON object, for example `{"content_types/project":"create","components/portfolio-hero":"skip","templates/project/detail":"overwrite","presets/portfolio-dusk":"create"}`. New items default to create, unedited items this extension seeded to overwrite, and other existing items to skip. The server revalidates everything before writing; no uploaded ZIP is retained between requests. A successful response lists the blocks with scripts in `scripts`. |
 | `GET /admin/api/site/extensions/{vendor}/{name}` | Extension metadata plus `seeded`: `{kind, id, name, modified, entry_count?}`. Content types include their entry count. |
-| `PUT /admin/api/site/extensions/{vendor}/{name}` | Set `{ "enabled": true }` or `{ "enabled": false }`. Requires an administrator, `site.manage` and CSRF. Returns the extension name and enabled status. |
+| `PUT /admin/api/site/extensions/{vendor}/{name}` | Set `{ "enabled": true }` or `{ "enabled": false }`, or save settings with `{ "settings": {"units": "imperial"} }`. Requires an administrator, `site.manage` and CSRF. Returns the extension name and enabled status, or the normalized `settings`. The extension list includes each extension's `settings` specs and current `settings_values`. |
 | `DELETE /admin/api/site/extensions/{vendor}/{name}` | JSON body `{"remove":["components/portfolio-hero"]}` chooses seeded items to delete. Blocks and assets are always removed; unchecked items stay. Returns 404 `not_found` when it is not installed. |
 
 The workspace header and CSRF handling are those of the other admin endpoints.
@@ -386,7 +501,8 @@ The workspace header and CSRF handling are those of the other admin endpoints.
 ## Not yet supported
 
 - **Shared modules** between the scripts of several blocks; bundle shared code into each `view.js`.
-- **Version-constrained dependencies**, automatic block/prop migrations, and localized extension editor labels. Keep backwards-compatible storage keys and test supported CMS releases before distributing an extension.
+- **Value transforms** in migrations, such as splitting one prop into two or converting types; renames and option aliases are declarative only.
+- **Secret settings** and server-side requests; settings are public, and scripts call APIs from the visitor's browser.
 - **Nested lists**, binding a whole list to a repeater field, and several named slots.
 
 </div>

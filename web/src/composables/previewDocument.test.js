@@ -15,6 +15,14 @@ describe('scripted preview updates', () => {
     expect(needsPreviewReload(doc, plain)).toBe(true)
   })
 
+  it('remounts in place when every instance has a cleanup and every block is already loaded', () => {
+    const blocks = { remountable: () => true, has: (name) => name === 'example/map' }
+    const doc = { querySelector: () => ({}), defaultView: { cometBlocks: blocks } }
+    expect(needsPreviewReload(doc, scripted)).toBe(false)
+    expect(needsPreviewReload(doc, scripted.replace('example/map', 'example/chart'))).toBe(true)
+    expect(needsPreviewReload({ ...doc, defaultView: { cometBlocks: { ...blocks, remountable: () => false } } }, scripted)).toBe(true)
+  })
+
   it('keeps ordinary preview updates in place', () => {
     expect(needsPreviewReload({ querySelector: () => null }, plain)).toBe(false)
   })

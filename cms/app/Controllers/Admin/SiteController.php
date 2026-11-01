@@ -139,7 +139,20 @@ final class SiteController extends BaseController
         $this->verifyCsrf();
         $name = $vendor . '/' . $extension;
         try {
-            $enabled = $this->requestJson()['enabled'] ?? null;
+            $request = $this->requestJson();
+            // Settings and status are separate requests, each with its own audit entry.
+            if (array_key_exists('settings', $request)) {
+                $values = $request['settings'];
+                if (!is_array($values) || ($values !== [] && array_is_list($values))) throw new \InvalidArgumentException('Settings must be an object of setting values.');
+                $settings = $this->site->extensions()->setSettings($name, $values);
+                if ($settings === null) {
+                    $this->json(['error' => ['code' => 'not_found', 'message' => 'Extension not found.']], 404);
+                }
+                $this->site->clearCache();
+                $this->logger->info('site.extension_configured', ['workspace' => $this->site->workspace()->slug(), 'extension' => $name]);
+                $this->json(['data' => ['name' => $name, 'settings' => (object) $settings]]);
+            }
+            $enabled = $request['enabled'] ?? null;
             if (!is_bool($enabled)) throw new \InvalidArgumentException('Enabled must be a boolean.');
             if (!$this->site->extensions()->setEnabled($name, $enabled)) {
                 $this->json(['error' => ['code' => 'not_found', 'message' => 'Extension not found.']], 404);
@@ -1240,8 +1253,8 @@ final class SiteController extends BaseController
         header('Content-Type: text/html; charset=utf-8');
         header('Cache-Control: private, no-store');
         header('X-Robots-Tag: noindex, nofollow');
-        header("Content-Security-Policy: default-src 'self'; img-src 'self' data: https:; media-src 'self' https:; frame-src 'self' https://www.youtube-nocookie.com https://player.vimeo.com; style-src 'self' 'unsafe-inline' https:; font-src 'self' data: https:; "
-            . SiteScripts::cspDirective($html, $this->context()) . "; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'self'");
+        header('Content-Security-Policy: ' . \CometCMS\Site\Blocks\BlockScripts::extendPolicy("default-src 'self'; img-src 'self' data: https:; media-src 'self' https:; frame-src 'self' https://www.youtube-nocookie.com https://player.vimeo.com; style-src 'self' 'unsafe-inline' https:; font-src 'self' data: https:; "
+            . SiteScripts::cspDirective($html, $this->context()) . "; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'self'", $html, $this->context()));
         echo $html;
         exit;
     }
