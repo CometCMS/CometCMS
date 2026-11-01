@@ -179,7 +179,7 @@ test('extension validation reports every problem with its file and line', functi
         'blocks/empty/block.json: Every block needs block.json.',
         'blocks/empty/template.html: Every block needs template.html.',
         'blocks/feature/style.css:1: The relative URL "images/bg.png" would resolve against each page\'s address. Reference extension files as url(assets/…).',
-        'blocks/logo-bar/template.html:3: {{{answer}}}: unknown prop "answer". Declared props: label, logos, direction, speed, height, gap, pause_on_hover, empty_label.',
+        'blocks/logo-bar/template.html:3: {{{answer}}}: unknown prop "answer". Declared props: label, logos, direction, speed, height, gap, pause_on_hover, fade_edges, grayscale, empty_label.',
     ], $errors);
     assert_same(['blocks/logo-bar/template.html:2: The style attribute may only set CSS custom properties from color props, as in style="--accent: {{accent}}". Put other CSS in style.css.'], comet_block_errors(fn() => Extension::compile(comet_block_files([
         'blocks/logo-bar/template.html' => "<details>\n  <summary style=\"color: red\">{{label}}</summary>\n</details>",

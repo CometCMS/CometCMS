@@ -1,0 +1,90 @@
+{
+  "title": "Geometric Forms",
+  "description": "Floating rings, angular panels and geometric outlines behind your content.",
+  "icon": "mdi:shape-outline",
+  "props": {
+    "variant": {
+      "type": "enum",
+      "label": "Background style",
+      "options": [
+        "mixed",
+        "rings",
+        "angular"
+      ],
+      "default": "mixed"
+    },
+    "accent": {
+      "type": "color",
+      "label": "Primary effect color",
+      "default": "primary"
+    },
+    "secondary": {
+      "type": "color",
+      "label": "Secondary effect color",
+      "default": "accent"
+    },
+    "intensity": {
+      "type": "enum",
+      "label": "Effect intensity",
+      "options": [
+        "subtle",
+        "balanced",
+        "vivid"
+      ],
+      "default": "balanced"
+    },
+    "motion": {
+      "type": "enum",
+      "label": "Motion",
+      "options": [
+        "still",
+        "drift",
+        "gentle",
+        "lively"
+      ],
+      "default": "gentle"
+    },
+    "scale": {
+      "type": "enum",
+      "label": "Effect scale",
+      "options": [
+        "small",
+        "medium",
+        "large"
+      ],
+      "default": "medium"
+    },
+    "padding": {
+      "type": "enum",
+      "label": "Content padding",
+      "options": [
+        "none",
+        "compact",
+        "comfortable",
+        "spacious"
+      ],
+      "default": "comfortable"
+    },
+    "height": {
+      "type": "enum",
+      "label": "Minimum height",
+      "options": [
+        "content",
+        "compact",
+        "hero",
+        "screen"
+      ],
+      "default": "compact"
+    },
+    "align": {
+      "type": "enum",
+      "label": "Vertical content alignment",
+      "options": [
+        "top",
+        "center",
+        "bottom"
+      ],
+      "default": "center"
+    }
+  }
+}

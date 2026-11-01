@@ -1,6 +1,6 @@
 {
   "title": "Logo bar",
-  "description": "An endlessly scrolling row of logos with optional links and pause on hover.",
+  "description": "An endlessly scrolling row of logos with optional links, faded edges, grayscale and pause on hover.",
   "icon": "mdi:panorama-horizontal-outline",
   "props": {
     "label": { "type": "string", "label": "Accessible name", "max": 100, "default": "Our partners" },
@@ -18,6 +18,8 @@
     "height": { "type": "int", "label": "Logo height (px)", "min": 24, "max": 160, "default": 64 },
     "gap": { "type": "int", "label": "Space between logos (px)", "min": 8, "max": 160, "default": 48 },
     "pause_on_hover": { "type": "bool", "label": "Pause on hover", "default": true },
+    "fade_edges": { "type": "bool", "label": "Fade at edges", "default": false },
+    "grayscale": { "type": "bool", "label": "Grayscale", "default": false },
     "empty_label": { "type": "string", "label": "Empty message", "max": 120, "default": "Add logos to start your logo bar." }
   }
 }

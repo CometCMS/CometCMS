@@ -1,0 +1,89 @@
+{
+  "title": "Deep Space",
+  "description": "Layered starfields with an optional softly glowing nebula behind your content.",
+  "icon": "mdi:star-four-points-outline",
+  "props": {
+    "variant": {
+      "type": "enum",
+      "label": "Background style",
+      "options": [
+        "nebula",
+        "starfield"
+      ],
+      "default": "nebula"
+    },
+    "accent": {
+      "type": "color",
+      "label": "Primary effect color",
+      "default": "primary"
+    },
+    "secondary": {
+      "type": "color",
+      "label": "Secondary effect color",
+      "default": "accent"
+    },
+    "intensity": {
+      "type": "enum",
+      "label": "Effect intensity",
+      "options": [
+        "subtle",
+        "balanced",
+        "vivid"
+      ],
+      "default": "balanced"
+    },
+    "motion": {
+      "type": "enum",
+      "label": "Motion",
+      "options": [
+        "still",
+        "drift",
+        "gentle",
+        "lively"
+      ],
+      "default": "gentle"
+    },
+    "scale": {
+      "type": "enum",
+      "label": "Effect scale",
+      "options": [
+        "small",
+        "medium",
+        "large"
+      ],
+      "default": "medium"
+    },
+    "padding": {
+      "type": "enum",
+      "label": "Content padding",
+      "options": [
+        "none",
+        "compact",
+        "comfortable",
+        "spacious"
+      ],
+      "default": "comfortable"
+    },
+    "height": {
+      "type": "enum",
+      "label": "Minimum height",
+      "options": [
+        "content",
+        "compact",
+        "hero",
+        "screen"
+      ],
+      "default": "compact"
+    },
+    "align": {
+      "type": "enum",
+      "label": "Vertical content alignment",
+      "options": [
+        "top",
+        "center",
+        "bottom"
+      ],
+      "default": "center"
+    }
+  }
+}

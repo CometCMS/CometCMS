@@ -1,0 +1,34 @@
+.c-block-cometcms__fancy-grid .cometcms-fbg--grid > .cometcms-fbg__effects { perspective: 500px; }
+.c-block-cometcms__fancy-grid .cometcms-fbg__grid {
+  inset: 0;
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--fbg-a, #818cf8) 45%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--fbg-a, #818cf8) 45%, transparent) 1px, transparent 1px);
+  background-size: var(--fbg-unit) var(--fbg-unit);
+  mask-image: linear-gradient(transparent, #000 30%, #000 85%, transparent);
+}
+.c-block-cometcms__fancy-grid .cometcms-fbg[data-variant="perspective"] > .cometcms-fbg__effects > .cometcms-fbg__grid {
+  inset: 25% -70% -150%;
+  transform: rotateX(55deg);
+  transform-origin: center top;
+}
+.c-block-cometcms__fancy-grid .cometcms-fbg__horizon {
+  left: 0; right: 0; top: 25%; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--fbg-b, #67e8f9), transparent);
+  box-shadow: 0 0 32px 4px color-mix(in srgb, var(--fbg-b, #67e8f9) 50%, transparent);
+}
+.c-block-cometcms__fancy-grid .cometcms-fbg__scan {
+  inset: -50% 0;
+  background: linear-gradient(transparent 45%, color-mix(in srgb, var(--fbg-b, #67e8f9) 18%, transparent) 50%, transparent 55%);
+  animation: cometcms-fbg-sweep var(--fbg-period) linear infinite alternate;
+}
+.c-block-cometcms__fancy-grid .cometcms-fbg__corners {
+  inset: 1rem;
+  background:
+    linear-gradient(var(--fbg-b, #67e8f9), var(--fbg-b, #67e8f9)) top left / 24px 2px no-repeat,
+    linear-gradient(var(--fbg-b, #67e8f9), var(--fbg-b, #67e8f9)) top left / 2px 24px no-repeat,
+    linear-gradient(var(--fbg-b, #67e8f9), var(--fbg-b, #67e8f9)) bottom right / 24px 2px no-repeat,
+    linear-gradient(var(--fbg-b, #67e8f9), var(--fbg-b, #67e8f9)) bottom right / 2px 24px no-repeat;
+  opacity: .7;
+}
+.c-block-cometcms__fancy-grid .cometcms-fbg[data-variant="flat"] > .cometcms-fbg__effects > .cometcms-fbg__horizon { display: none; }

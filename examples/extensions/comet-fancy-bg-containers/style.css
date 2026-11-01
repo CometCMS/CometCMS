@@ -1,0 +1,89 @@
+/* Shared once per page. Surface defaults yield to the builder's Style controls. */
+:where(.c-block-cometcms__fancy-geometry, .c-block-cometcms__fancy-lights,
+  .c-block-cometcms__fancy-space, .c-block-cometcms__fancy-grid) {
+  background-color: #0b1020;
+  color: #f1f5ff;
+}
+
+/* Each instance resets its settings, including when containers are nested. */
+.cometcms-fbg {
+  --fbg-strength: .55;
+  --fbg-period: 24s;
+  --fbg-unit: 64px;
+  --fbg-padding: clamp(1.5rem, 5vw, 4rem);
+  position: relative;
+  isolation: isolate;
+  border-radius: inherit;
+  min-width: 0;
+}
+.cometcms-fbg[data-intensity="subtle"] { --fbg-strength: .25; }
+.cometcms-fbg[data-intensity="vivid"] { --fbg-strength: .85; }
+.cometcms-fbg[data-motion="drift"] { --fbg-period: 40s; }
+.cometcms-fbg[data-motion="lively"] { --fbg-period: 12s; }
+.cometcms-fbg[data-scale="small"] { --fbg-unit: 36px; }
+.cometcms-fbg[data-scale="large"] { --fbg-unit: 100px; }
+.cometcms-fbg[data-padding="none"] { --fbg-padding: 0px; }
+.cometcms-fbg[data-padding="compact"] { --fbg-padding: clamp(1rem, 3vw, 2rem); }
+.cometcms-fbg[data-padding="spacious"] { --fbg-padding: clamp(2rem, 8vw, 7rem); }
+.cometcms-fbg > .cometcms-fbg__content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-md, 1rem);
+  box-sizing: border-box;
+  min-width: 0;
+  padding: var(--fbg-padding);
+  overflow-wrap: anywhere;
+}
+.cometcms-fbg[data-height="compact"] > .cometcms-fbg__content { min-height: 20rem; }
+.cometcms-fbg[data-height="hero"] > .cometcms-fbg__content { min-height: 36rem; }
+.cometcms-fbg[data-height="screen"] > .cometcms-fbg__content { min-height: 100svh; }
+.cometcms-fbg[data-align="top"] > .cometcms-fbg__content { justify-content: flex-start; }
+.cometcms-fbg[data-align="bottom"] > .cometcms-fbg__content { justify-content: flex-end; }
+
+/* Only the decoration is clipped. Content, focus outlines and menus stay free. */
+.cometcms-fbg > .cometcms-fbg__effects {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+  opacity: var(--fbg-strength);
+}
+.cometcms-fbg__effects > span { position: absolute; display: block; }
+.cometcms-fbg__effects > .cometcms-fbg__wash {
+  inset: 0;
+  background: radial-gradient(ellipse at 15% 10%, color-mix(in srgb, var(--fbg-a, #818cf8) 28%, transparent), transparent 65%);
+}
+
+@keyframes cometcms-fbg-float {
+  from { translate: -2% 0; }
+  to { translate: 6% -8%; }
+}
+@keyframes cometcms-fbg-breathe {
+  from { opacity: .5; scale: .95; }
+  to { opacity: 1; scale: 1.08; }
+}
+@keyframes cometcms-fbg-sweep {
+  from { translate: 0 -75%; }
+  to { translate: 0 75%; }
+}
+
+/* A still option is available per instance. Reduced motion always wins. */
+.cometcms-fbg[data-motion="still"] > .cometcms-fbg__effects > span,
+.cometcms-fbg[data-motion="still"] > .cometcms-fbg__effects > span::before,
+.cometcms-fbg[data-motion="still"] > .cometcms-fbg__effects > span::after {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cometcms-fbg > .cometcms-fbg__effects > span,
+  .cometcms-fbg > .cometcms-fbg__effects > span::before,
+  .cometcms-fbg > .cometcms-fbg__effects > span::after { animation: none; }
+}
+@media (forced-colors: active) {
+  .cometcms-fbg > .cometcms-fbg__effects { display: none; }
+}
