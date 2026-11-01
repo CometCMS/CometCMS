@@ -43,7 +43,7 @@ foreach ([${JSON.stringify(zips.v1)} => false, ${JSON.stringify(zips.v2)} => tru
             $manifest['props']['layout']['default'] = 'centered';
             $bytes = json_encode($manifest);
         }
-        $zip->addFromString('comet-essentials/' . $path, $breaking && $path === 'comet-extension.json' ? str_replace('"1.6.0"', '"2.0.0"', $bytes) : $bytes);
+        $zip->addFromString('comet-essentials/' . $path, $breaking && $path === 'comet-extension.json' ? str_replace('"1.7.0"', '"2.0.0"', $bytes) : $bytes);
     }
     $zip->close();
 }
@@ -218,6 +218,44 @@ try {
     const palette = await command('Page.captureScreenshot', { format: 'png' });
     writeFileSync(process.env.COMET_BLOCK_SCREENSHOT.replace(/\.png$/, '-builder.png'), Buffer.from(palette.data, 'base64'));
   }
+  await click('Vertical Text');
+  await waitFor('!!document.querySelector(\'select[id$="-props-orientation"]\')', 'vertical text inspector');
+  await evaluate(`(() => {
+    const editor = [...document.querySelectorAll('[contenteditable="true"]')].find((el) => el.textContent === 'Vertical Text');
+    editor.focus();
+    const range = document.createRange(); range.selectNodeContents(editor);
+    const selection = window.getSelection(); selection.removeAllRanges(); selection.addRange(range);
+  })()`);
+  await command('Input.insertText', { text: 'HELLO' });
+  await waitFor(`(${previewDocument})?.querySelector('.cometcms-vertical-text__heading')?.textContent === 'HELLO'`, 'vertical heading text updates');
+  // Range rectangles prove glyph order and layout space, including the 180° transform.
+  const checkVerticalText = async (docExpression, orientation) => {
+    const result = await evaluate(`(() => {
+      const doc = ${docExpression};
+      const heading = doc.querySelector('.cometcms-vertical-text__heading');
+      const css = doc.defaultView.getComputedStyle(heading);
+      const rect = heading.getBoundingClientRect();
+      const wrapper = heading.closest('.c-block-cometcms__vertical-text').getBoundingClientRect();
+      const glyph = (index) => { const range = doc.createRange(); range.setStart(heading.firstChild, index); range.setEnd(heading.firstChild, index + 1); return range.getBoundingClientRect(); };
+      const first = glyph(0), last = glyph(heading.textContent.length - 1);
+      return {
+        vertical: rect.height > rect.width && css.writingMode === 'vertical-rl',
+        contained: rect.top >= wrapper.top - 1 && rect.bottom <= wrapper.bottom + 1,
+        order: ${JSON.stringify(orientation)} === 'counterclockwise' ? first.top > last.top : first.top < last.top,
+        orientation: css.textOrientation,
+        text: heading.textContent,
+      };
+    })()`);
+    assert(result.vertical && result.contained && result.order && result.text === 'HELLO'
+      && result.orientation === (orientation === 'stacked' ? 'upright' : 'sideways'), 'Vertical text geometry and intact text (' + orientation + '): ' + JSON.stringify(result));
+  };
+  for (const orientation of ['clockwise', 'counterclockwise', 'stacked']) {
+    await evaluate(`(() => { const select = document.querySelector('select[id$="-props-orientation"]'); select.value = ${JSON.stringify(orientation)}; select.dispatchEvent(new Event('change', { bubbles: true })); })()`);
+    await waitFor(`!!(${previewDocument})?.querySelector('.cometcms-vertical-text--${orientation}')`, 'vertical orientation preview');
+    await checkVerticalText(`(${previewDocument})`, orientation);
+  }
+  await evaluate(`(() => { const select = document.querySelector('select[id$="-props-level"]'); select.value = 'h3'; select.dispatchEvent(new Event('change', { bubbles: true })); })()`);
+  await waitFor(`!!(${previewDocument})?.querySelector('h3.cometcms-vertical-text__heading')`, 'semantic heading level preview');
   await click('Testimonial');
   await waitFor('!!document.querySelector(\'textarea[id$="-props-quote"]\')', 'testimonial quote inspector');
   await field('textarea[id$="-props-quote"]', 'A wonderful result, from start to finish.');
@@ -288,6 +326,9 @@ try {
   const previewCsp = await evaluate(`fetch(location.href).then((res) => res.headers.get('content-security-policy'))`);
   assert(previewCsp.includes('/blocks/') && !/script-src[^;]*'unsafe/.test(previewCsp), 'Full-page preview header allows exact installed block sources');
   await command('Page.navigate', { url: `${origin}/` });
+  await waitFor(`!!document.querySelector('h3.cometcms-vertical-text__heading')`, 'published vertical heading');
+  await checkVerticalText('document', 'stacked');
+  assert(await evaluate(`!document.querySelector('[data-comet-block="cometcms/vertical-text"]')`), 'Vertical text works without a block script');
   await waitFor('!!document.querySelector(".cometcms-callout")', 'published custom block');
   await checkBlockColors('document');
   await waitFor('document.querySelectorAll(".cometcms-compare[data-ready]").length === 2', 'comparison images loaded and sliders mounted');
@@ -432,7 +473,7 @@ try {
   await waitFor('!!document.querySelector(\'[role="alertdialog"]\') && document.body.innerText.includes("cometcms/feature is removed.")', 'breaking update confirmation');
   assert(await evaluate('document.querySelector(\'[role="alertdialog"]\').innerText.includes("Allow JavaScript?")'), 'Breaking changes and script consent share one review');
   await click('Install with JavaScript', '[role="alertdialog"] button');
-  await waitFor('document.body.innerText.includes("updated from 1.6.0 to 2.0.0")', 'confirmed update');
+  await waitFor('document.body.innerText.includes("updated from 1.7.0 to 2.0.0")', 'confirmed update');
   await command('Page.navigate', { url: `${origin}/admin/page-builder/builder/layout/home/detail` });
   await waitFor(`[...document.querySelectorAll('button')].some((el) => el.textContent.trim() === 'Accordion')`, 'built-in accordion remains available');
   assert(await evaluate(`![...document.querySelectorAll('button')].some((el) => el.textContent.trim() === 'FAQ')`), 'Essentials has no FAQ block');
@@ -501,7 +542,7 @@ try {
   await command('Page.navigate', { url: `${origin}/admin/content-types` });
   await waitFor(`document.body.innerText.includes('Projects')`, 'kept type remains in admin');
   assert(errors.length === 0, errors.join('\n'));
-  console.log('Extensions browser checks passed (ZIP picker/drop, script consent and CSP, asset serving, icons, list editing, map slider/coordinates/tiles/zoom, comparison drag/touch/keyboard/instances/fallback, testimonial, slideshow navigation/autoplay/reduced motion, slots, palette, preview, publish, enable/disable, deletion, cancel, reinstall, confirmed update, built-in accordion, seed preview/conflicts, seeded type/preset and selective uninstall).');
+  console.log('Extensions browser checks passed (ZIP picker/drop, script consent and CSP, asset serving, icons, list editing, map slider/coordinates/tiles/zoom, comparison drag/touch/keyboard/instances/fallback, testimonial, vertical text orientations/heading levels/layout, slideshow navigation/autoplay/reduced motion, slots, palette, preview, publish, enable/disable, deletion, cancel, reinstall, confirmed update, built-in accordion, seed preview/conflicts, seeded type/preset and selective uninstall).');
 } finally {
   socket?.close();
   chrome.kill();

@@ -34,18 +34,21 @@ comet-essentials/
     pricing/…               # a list of features
     slideshow/…             # image slides, captions, links and optional autoplay
     testimonial/…           # quote, attribution, portrait and optional star rating
+    vertical-text/…         # rotated or stacked headings
     stats/
       view.js               # optional: JavaScript for the website and previews
 ```
 
 1. Check the extension: `npm run extensions -- validate examples/extensions/comet-essentials`
-2. Pack it: `npm run extensions -- pack examples/extensions/comet-essentials` (writes `comet-essentials-1.6.0.zip`)
+2. Pack it: `npm run extensions -- pack examples/extensions/comet-essentials` (writes `comet-essentials-1.7.0.zip`)
 3. As an administrator, open **Website Settings → Extensions** and drop the ZIP on the upload area.
-4. Open a layout. **Before / after**, **Callout**, **Card**, **Logo bar**, **Feature**, **Pricing plan**, **Maps**, **Slideshow**, **Stats** and **Testimonial** are in the elements palette.
+4. Open a layout. **Before / after**, **Callout**, **Card**, **Logo bar**, **Feature**, **Pricing plan**, **Maps**, **Slideshow**, **Stats**, **Testimonial** and **Vertical Text** are in the elements palette.
 
 **Before / after** compares two media images with editable labels, an initial split from 0 to 100%, an optional caption and landscape (4:3), wide (16:9), square or portrait (3:4) crops. Use similarly framed images for the closest match. The published comparison supports dragging with a mouse or touch and keyboard navigation with arrow keys and Home/End after tabbing to the divider. A visually hidden, labeled native range control provides keyboard and screen-reader support, with a visible focus ring on the divider. Images use media-library alt text. Pages without JavaScript show both images side by side; missing or failed images do not enable the slider.
 
 **Testimonial** displays a translatable quote and attribution (name, role and company), an optional media portrait and an optional one-to-five-star rating. Choose left or centered alignment. The rating has a translatable accessible label; main text and surface styling respect the standard Style controls. It needs no JavaScript.
+
+**Vertical Text** displays a heading rotated 90° clockwise (top to bottom), 90° counterclockwise (bottom to top), or stacked with upright letters. Choose H1–H6 and left, center or right alignment. It uses the theme’s heading typography and the standard Style controls. Text is translatable and bindable, and stays intact for screen readers, copying and search. Spaces create gaps between words in stacked mode. No JavaScript is needed.
 
 **Maps** takes coordinates in `latitude, longitude` order, such as `52.520008, 13.404954`, and an initial zoom level from 1 (world) to 19 (street). The name or address is a display label; it is not geocoded. Use decimal degrees with a dot as the decimal separator. Latitude is limited to ±85.05112878 (the Web Mercator map extent), longitude to ±180. The published map shows a pin, zoom buttons and a link to the full map. It loads visible [OpenStreetMap tiles](https://operations.osmfoundation.org/policies/tiles/) when scrolled into view, with browser caching and attribution; it needs no API key or external JavaScript library. Pages without JavaScript show the name, coordinates and a placeholder. Invalid coordinates and tile failures show an editable message. For high-traffic deployments, use a suitable tile provider under its terms.
 
@@ -61,7 +64,7 @@ Zipping the folder yourself works too. A single top-level folder inside the ZIP 
   "name": "cometcms/essentials",
   "title": "Comet Essentials",
   "description": "Essential builder blocks that work with any theme.",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "author": "CometCMS",
   "license": "MIT"
 }

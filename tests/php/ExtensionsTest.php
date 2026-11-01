@@ -104,8 +104,8 @@ function comet_block_errors(callable $callback): array
 test('extensions register their blocks without changing built-ins or crossing workspaces', function (): void {
     $blocks = ExtensionRegistry::active();
     $result = $blocks->installFiles(comet_block_files(), allowScripts: true);
-    assert_same(['name' => 'cometcms/essentials', 'title' => 'Comet Essentials', 'version' => '1.6.0', 'previous_version' => null,
-        'blocks' => ['cometcms/before-after', 'cometcms/callout', 'cometcms/card', 'cometcms/feature', 'cometcms/logo-bar', 'cometcms/maps', 'cometcms/pricing', 'cometcms/slideshow', 'cometcms/stats', 'cometcms/testimonial'], 'changes' => [], 'scripts' => ['cometcms/before-after', 'cometcms/logo-bar', 'cometcms/maps', 'cometcms/slideshow', 'cometcms/stats']], $result);
+    assert_same(['name' => 'cometcms/essentials', 'title' => 'Comet Essentials', 'version' => '1.7.0', 'previous_version' => null,
+        'blocks' => ['cometcms/before-after', 'cometcms/callout', 'cometcms/card', 'cometcms/feature', 'cometcms/logo-bar', 'cometcms/maps', 'cometcms/pricing', 'cometcms/slideshow', 'cometcms/stats', 'cometcms/testimonial', 'cometcms/vertical-text'], 'changes' => [], 'scripts' => ['cometcms/before-after', 'cometcms/logo-bar', 'cometcms/maps', 'cometcms/slideshow', 'cometcms/stats']], $result);
     $spec = LayoutSchema::spec(blocks: $blocks);
     assert_true(in_array('heading', $spec['elements'], true));
     foreach (['block:cometcms/callout', 'block:cometcms/logo-bar', 'block:cometcms/feature'] as $kind) {
@@ -315,11 +315,11 @@ test('extension updates that break placed blocks need confirmation', function ()
         assert_same(['cometcms/callout: the prop "tone" no longer offers success. Instances using them fall back to the default.',
             'cometcms/callout: the prop "link_label" is removed. Its saved values are dropped the next time a layout is saved.',
             'cometcms/feature is removed. Placed instances will show as missing blocks.'], $e->changes);
-        assert_same('1.6.0', $e->installedVersion);
+        assert_same('1.7.0', $e->installedVersion);
     }
-    assert_same('1.6.0', ExtensionRegistry::active()->extension('cometcms/essentials')['version']);
+    assert_same('1.7.0', ExtensionRegistry::active()->extension('cometcms/essentials')['version']);
     $result = ExtensionRegistry::active()->installFiles($update, true, true);
-    assert_same('1.6.0', $result['previous_version']);
+    assert_same('1.7.0', $result['previous_version']);
     assert_same(3, count($result['changes']));
     assert_null(ExtensionRegistry::active()->get('block:cometcms/feature'));
     $pricing = comet_block_manifest('blocks/pricing/block.json', []);
@@ -396,7 +396,7 @@ test('missing or malformed extensions preserve placed block values and do not di
     mkdir($broken, 0775, true);
     file_put_contents($broken . '/comet-extension.json', '{broken');
     $registry = ExtensionRegistry::active();
-    assert_same(10, count($registry->all()));
+    assert_same(11, count($registry->all()));
     assert_same('other/broken', $registry->metadata()['errors'][0]['extension']);
     $template = $blocks->directory() . '/cometcms/essentials/blocks/callout/template.html';
     unlink($template);
@@ -404,7 +404,7 @@ test('missing or malformed extensions preserve placed block values and do not di
     assert_same([], ExtensionRegistry::active()->all());
     // Reinstalling repairs the linked file without following it when the old extension is removed.
     $blocks->installFiles(comet_block_files(), allowScripts: true);
-    assert_same(10, count(ExtensionRegistry::active()->all()));
+    assert_same(11, count(ExtensionRegistry::active()->all()));
     assert_true(is_file(COMET_BLOCK_EXAMPLE . '/blocks/callout/template.html'));
 });
 
@@ -474,7 +474,7 @@ test('extension uploads report every problem and ask before breaking placed bloc
     assert_same(['cometcms/feature is removed. Placed instances will show as missing blocks.'], $body['error']['details']['changes']);
     [$status, $body] = comet_block_upload($update, ['accept_changes' => '1', 'allow_scripts' => '1'], $seed);
     assert_same(201, $status);
-    assert_same(['cometcms/before-after', 'cometcms/callout', 'cometcms/card', 'cometcms/logo-bar', 'cometcms/maps', 'cometcms/pricing', 'cometcms/slideshow', 'cometcms/stats', 'cometcms/testimonial'], $body['data']['blocks']);
+    assert_same(['cometcms/before-after', 'cometcms/callout', 'cometcms/card', 'cometcms/logo-bar', 'cometcms/maps', 'cometcms/pricing', 'cometcms/slideshow', 'cometcms/stats', 'cometcms/testimonial', 'cometcms/vertical-text'], $body['data']['blocks']);
 });
 
 test('block inventory requires site permission and installation and deletion require an administrator and CSRF', function (): void {
@@ -951,6 +951,49 @@ test('example comparison and testimonial blocks render safe translated content a
     assert_false(str_contains($translated, 'A &lt;wonderful&gt;'));
 });
 
+test('vertical text headings preserve semantics translated text bindings and safe preview output', function (): void {
+    $site = comet_site_test_setup();
+    $site->blocks()->installFiles(comet_block_files(), allowScripts: true);
+    $kind = 'block:cometcms/vertical-text';
+    $spec = LayoutSchema::spec(blocks: $site->blocks())['kinds'][$kind];
+    assert_same('Vertical Text', $spec['label']);
+    assert_same('text', $spec['props']['text']['binding']);
+    assert_true($spec['props']['text']['localized']);
+    $defaults = LayoutSchema::normalizeProps($kind, ['level' => 'script', 'orientation' => 'invalid', 'align' => 'invalid']);
+    assert_same('h2', $defaults['level']);
+    assert_same('clockwise', $defaults['orientation']);
+    assert_same('left', $defaults['align']);
+    $nodes = [];
+    foreach (['h1', 'h2', 'h3', 'h4', 'h5', 'h6'] as $level) {
+        foreach (['clockwise', 'counterclockwise', 'stacked'] as $orientation) {
+            $nodes[] = LayoutSchema::node($kind, [
+                'text' => ['type' => 'localized', 'values' => ['en' => 'Hello <world> & café', 'de' => 'Hallo Welt']],
+                'level' => $level, 'orientation' => $orientation, 'align' => 'center',
+            ], ['text_color' => 'primary']);
+        }
+    }
+    $nodes[] = LayoutSchema::node($kind, ['text' => ['type' => 'reference', 'source' => 'current', 'path' => ['title'], 'filters' => []]]);
+    comet_block_page($site, $nodes);
+    $site = new SiteRepository();
+    $ctx = comet_site_test_context($site);
+    $entry = $ctx->findEntry('about', 'about');
+    foreach ([false, true] as $preview) {
+        $ctx->preview = $preview;
+        $html = (new PageRenderer($ctx))->entryPage($site->types()['about'], $entry);
+        foreach (['h1', 'h2', 'h3', 'h4', 'h5', 'h6'] as $level) {
+            assert_same(3, substr_count($html, '<' . $level . ' class="cometcms-vertical-text__heading">Hello &lt;world&gt; &amp; café</' . $level . '>'));
+        }
+        assert_true(str_contains($html, '<h2 class="cometcms-vertical-text__heading">' . htmlspecialchars($entry['title'], ENT_QUOTES, 'UTF-8') . '</h2>'));
+        assert_true(str_contains($html, 'c-fg-primary'));
+        assert_false(str_contains($html, 'data-comet-block="cometcms/vertical-text"'));
+    }
+    $ctx->locale = 'de';
+    $html = (new PageRenderer($ctx))->entryPage($site->types()['about'], $entry);
+    assert_same(18, substr_count($html, '>Hallo Welt</h'));
+    assert_false(str_contains($html, '>Hello &lt;world&gt;'));
+    assert_same('Hallo Welt', LayoutSchema::text([$nodes[0]], 'de', 'en'));
+});
+
 test('extensions keep custom content and scripts in named page templates', function (): void {
     $site = comet_site_test_setup();
     $site->blocks()->installFiles(comet_block_files(), allowScripts: true);
@@ -1252,7 +1295,7 @@ test('extension status is persistent and workspace scoped and preserves saved bl
     assert_same([], $blocks->all());
     assert_null($blocks->get('block:cometcms/card'));
     assert_false($blocks->metadata()['extensions'][0]['enabled']);
-    assert_same(10, count($blocks->metadata()['extensions'][0]['blocks']));
+    assert_same(11, count($blocks->metadata()['extensions'][0]['blocks']));
     assert_false((new ExtensionRegistry($blocks->workspace))->details('cometcms/essentials')['enabled']);
     assert_true($other->metadata()['extensions'][0]['enabled']);
     assert_same($saved, (new SiteRepository())->layout('about', 'detail'));

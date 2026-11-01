@@ -1,6 +1,6 @@
 # Comet Essentials
 
-The CometCMS builder extension: Before / after, Callout, Card, Logo bar, Feature, Maps, Pricing plan, Slideshow, Stats and Testimonial. Extension ID: `cometcms/essentials`.
+The CometCMS builder extension: Before / after, Callout, Card, Logo bar, Feature, Maps, Pricing plan, Slideshow, Stats, Testimonial and Vertical Text. Extension ID: `cometcms/essentials`.
 
 Validate and extension from the repository root:
 
@@ -24,5 +24,7 @@ Maps accepts a location as decimal `latitude, longitude`, a display name or addr
 Logo bar scrolls logos infinitely to the left or right, with configurable speed, logo height and spacing. Entries accept media and optional links. Pause on hover is optional; keyboard focus always stops motion and reveals the focused link. Reduced-motion preferences show a static, wrapping row. Without JavaScript the original row remains visible.
 
 Slideshow overlays titles, captions, links and navigation on the slide images, with a dark gradient for readability. Slides without images use the block background. Long captions expand the slide, and slide selectors scroll horizontally on narrow screens. Autoplay has a **Pause on hover** toggle, enabled by default; leaving the slideshow resumes rotation. Keyboard focus and manual navigation stop autoplay for that instance, and reduced-motion preferences suppress it. Slide changes are announced to screen readers without a visible counter or play/pause button.
+
+Vertical Text displays a heading rotated 90° clockwise (top to bottom), 90° counterclockwise (bottom to top), or stacked with upright letters. Choose H1–H6 and left, center or right alignment. It uses the theme's heading typography and the standard Style controls. Text is translatable and bindable, and remains one readable text node for screen readers, copying and search. Spaces become gaps between words in stacked mode. No JavaScript is needed.
 
 The root `icon.png` is the full-color icon shown in the Extensions list. It is a transparent 192×192 PNG below 64 KiB.

@@ -1,0 +1,31 @@
+{
+  "title": "Vertical Text",
+  "description": "A heading rotated clockwise or counterclockwise, or stacked letter by letter.",
+  "icon": "mdi:format-text-rotation-vertical",
+  "props": {
+    "text": {
+      "type": "string",
+      "label": "Text",
+      "max": 300,
+      "default": "Vertical Text"
+    },
+    "level": {
+      "type": "enum",
+      "label": "Heading level",
+      "options": ["h1", "h2", "h3", "h4", "h5", "h6"],
+      "default": "h2"
+    },
+    "orientation": {
+      "type": "enum",
+      "label": "Orientation",
+      "options": ["clockwise", "counterclockwise", "stacked"],
+      "default": "clockwise"
+    },
+    "align": {
+      "type": "enum",
+      "label": "Alignment",
+      "options": ["left", "center", "right"],
+      "default": "left"
+    }
+  }
+}

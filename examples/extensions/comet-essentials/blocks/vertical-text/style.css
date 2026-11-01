@@ -1,0 +1,25 @@
+.c-block-cometcms__vertical-text .cometcms-vertical-text {
+  display: flex;
+  justify-content: flex-start;
+}
+.c-block-cometcms__vertical-text .cometcms-vertical-text--center {
+  justify-content: center;
+}
+.c-block-cometcms__vertical-text .cometcms-vertical-text--right {
+  justify-content: flex-end;
+}
+/* Writing mode reserves the heading's vertical dimensions in the page layout. */
+.c-block-cometcms__vertical-text .cometcms-vertical-text__heading {
+  flex: none;
+  margin: 0;
+  writing-mode: vertical-rl;
+  text-orientation: sideways;
+  white-space: pre;
+}
+.c-block-cometcms__vertical-text .cometcms-vertical-text--counterclockwise .cometcms-vertical-text__heading {
+  transform: rotate(180deg);
+}
+/* Keep one text node so copying, search and assistive reading retain whole words. */
+.c-block-cometcms__vertical-text .cometcms-vertical-text--stacked .cometcms-vertical-text__heading {
+  text-orientation: upright;
+}
