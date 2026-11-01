@@ -1,0 +1,11 @@
+<div class="cometcms-plan{{#highlight}} cometcms-plan--highlight{{/highlight}}">
+  <h3 class="cometcms-plan__name">{{name}}</h3>
+  <p class="cometcms-plan__price"><strong>{{price}}</strong> <span>{{period}}</span></p>
+  <ul class="cometcms-plan__features">
+    {{#features}}
+    <li class="cometcms-plan__feature{{^included}} cometcms-plan__feature--excluded{{/included}}">{{text}}</li>
+    {{/features}}
+  </ul>
+  {{#cta}}<a class="cometcms-plan__cta" href="{{cta}}">{{cta_label}}</a>{{/cta}}
+  {{#note}}<p class="cometcms-plan__note">{{note}}</p>{{/note}}
+</div>

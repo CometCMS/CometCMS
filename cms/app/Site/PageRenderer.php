@@ -6,6 +6,7 @@ namespace CometCMS\Site;
 
 use CometCMS\Core\Security;
 use CometCMS\Localization\Messages;
+use CometCMS\Site\Blocks\BlockScripts;
 
 /**
  * Builds complete HTML documents: header region, the layout of the page,
@@ -394,13 +395,14 @@ final class PageRenderer
             }
         }
 
+        $blockScripts = implode('', BlockScripts::elements($this->nodes->blockScripts(), $this->ctx->site->blocks(), $this->ctx));
         $title = Security::e((string) ($meta['title'] ?? $this->ctx->siteTitle()));
         $description = trim((string) ($meta['description'] ?? ''));
         $canonical = (string) ($meta['canonical'] ?? '');
         $noindex = ($meta['noindex'] ?? false) || $embed || $this->ctx->preview || !empty($settings['noindex']);
         $head = '<meta charset="utf-8">'
             . ($this->ctx->preview ? '<meta http-equiv="Content-Security-Policy" content="'
-                . SiteScripts::cspDirective($headScript . $bodyScripts)
+                . SiteScripts::cspDirective($headScript . $bodyScripts . $blockScripts, $this->ctx)
                 . '; object-src \'none\'; base-uri \'none\'; form-action \'none\'">' : '')
             . '<meta name="viewport" content="width=device-width,initial-scale=1">'
             . '<title>' . $title . '</title>'
@@ -467,6 +469,11 @@ final class PageRenderer
             : '<link rel="stylesheet" href="' . Security::e($this->ctx->stylesheetUrl()) . '">'
                 . '<link rel="stylesheet" href="' . Security::e($this->ctx->customStylesheetUrl()) . '">';
 
+        $blockStyles = $this->nodes->blockStylesheet();
+        if ($blockStyles !== '') {
+            $head .= '<style data-comet-blocks>' . $blockStyles . '</style>';
+        }
+
         // The theme toggle's script runs before the body, so a saved choice never flashes.
         $head .= $headScript;
 
@@ -478,6 +485,7 @@ final class PageRenderer
             . $footer
             . $modal
             . $bodyScripts
+            . $blockScripts
             . '</body></html>';
         $banner = '';
         if ($this->ctx->previewBanner && !$embed) {

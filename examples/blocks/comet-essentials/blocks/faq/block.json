@@ -1,0 +1,39 @@
+{
+  "title": "FAQ",
+  "description": "Questions that expand to their answers. Opening one closes the others in the same group.",
+  "icon": "mdi:frequently-asked-questions",
+  "props": {
+    "items": {
+      "type": "list",
+      "label": "Questions",
+      "max": 30,
+      "fields": {
+        "question": {
+          "type": "string",
+          "label": "Question",
+          "max": 300
+        },
+        "answer": {
+          "type": "richtext",
+          "label": "Answer"
+        }
+      },
+      "default": [
+        {
+          "question": "How does this work without JavaScript?",
+          "answer": "<p>It uses the browser's native <strong>details</strong> element.</p>"
+        },
+        {
+          "question": "Can editors add more questions?",
+          "answer": "<p>Yes. Every question is an item of a list prop.</p>"
+        }
+      ]
+    },
+    "group": {
+      "type": "string",
+      "label": "Group (empty: open independently)",
+      "max": 40,
+      "default": "faq"
+    }
+  }
+}

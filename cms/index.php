@@ -253,6 +253,9 @@ $routes = [
         $http->redirect($http->url('/admin/site-preview/' . $type . '/' . $id) . ($query !== '' ? '?' . $query : ''));
     }],
     ['GET',    '#^/admin/api/site$#',                                         [AdminSiteController::class, 'index']],
+    ['GET',    '#^/admin/api/site/blocks$#',                                  [AdminSiteController::class, 'blocks']],
+    ['POST',   '#^/admin/api/site/blocks$#',                                  [AdminSiteController::class, 'installBlock']],
+    ['DELETE', '#^/admin/api/site/blocks/(' . SEG . ')/(' . SEG . ')$#',       [AdminSiteController::class, 'deleteBlock']],
     ['GET',    '#^/admin/api/site/status$#',                                  [AdminSiteController::class, 'status']],
     ['GET',    '#^/admin/api/site/links/(' . SEG . ')/(' . SEG . ')$#',       [AdminSiteController::class, 'links']],
     ['PUT',    '#^/admin/api/site/settings$#',                                [AdminSiteController::class, 'updateSettings']],
@@ -408,6 +411,10 @@ try {
 
     if (preg_match('#^/_site/(' . SEG . ')/fonts/([a-f0-9]{64})\.woff2$#', $path, $m) && in_array($method, ['GET', 'HEAD'], true)) {
         (new SiteController($http))->font($m[1], $m[2]);
+    }
+
+    if (preg_match('#^/_site/(' . SEG . ')/blocks/([a-f0-9]{64}\.[a-z0-9]{2,5})$#', $path, $m) && in_array($method, ['GET', 'HEAD'], true)) {
+        (new SiteController($http))->blockAsset($m[1], $m[2]);
     }
 
     // ── Website (opt-in per workspace) ────────────────────────────────────

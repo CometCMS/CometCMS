@@ -1,0 +1,33 @@
+{
+  "title": "Slideshow",
+  "description": "Image slides with captions, links, keyboard navigation and optional autoplay.",
+  "icon": "mdi:view-carousel-outline",
+  "props": {
+    "label": { "type": "string", "label": "Accessible name", "max": 100, "default": "Highlights" },
+    "slides": {
+      "type": "list",
+      "label": "Slides",
+      "max": 12,
+      "fields": {
+        "title": { "type": "string", "label": "Title", "max": 120 },
+        "image": { "type": "media", "label": "Image" },
+        "caption": { "type": "text", "label": "Caption", "max": 1000 },
+        "link": { "type": "link", "label": "Link" },
+        "link_label": { "type": "string", "label": "Link label", "max": 80, "default": "Learn more" }
+      },
+      "default": [
+        { "title": "Share your story", "caption": "Bring your latest news, projects and ideas into focus." },
+        { "title": "Make it yours", "caption": "Choose images and captions that tell your story." },
+        { "title": "Keep exploring", "caption": "Add a link to help visitors take the next step." }
+      ]
+    },
+    "autoplay": { "type": "bool", "label": "Autoplay", "default": false },
+    "interval": { "type": "int", "label": "Time per slide (ms)", "min": 2000, "max": 20000, "default": 5000 },
+    "previous_label": { "type": "string", "label": "Previous button label", "max": 80, "default": "Previous slide" },
+    "next_label": { "type": "string", "label": "Next button label", "max": 80, "default": "Next slide" },
+    "pause_label": { "type": "string", "label": "Pause button label", "max": 80, "default": "Pause slideshow" },
+    "play_label": { "type": "string", "label": "Play button label", "max": 80, "default": "Play slideshow" },
+    "slide_label": { "type": "string", "label": "Slide selector label", "max": 80, "default": "Slide" },
+    "empty_label": { "type": "string", "label": "Empty slideshow message", "max": 120, "default": "Add slides to start your slideshow." }
+  }
+}

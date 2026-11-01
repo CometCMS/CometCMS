@@ -1,0 +1,25 @@
+/* The wrapper owns the surface, so Style controls can override the defaults. */
+:where(.c-block-cometcms__testimonial) {
+  padding: var(--space-lg, 1.5rem);
+  border: 1px solid var(--c-border, #e2e8f0);
+  border-radius: var(--cometcms-radius);
+  background-color: var(--c-surface, #fff);
+}
+.c-block-cometcms__testimonial .cometcms-testimonial { margin: 0; }
+.c-block-cometcms__testimonial .cometcms-testimonial__quote {
+  margin: 0 0 1.25rem;
+  padding: 0;
+  border: 0;
+  color: inherit;
+  font-size: 1.125em;
+  line-height: 1.6;
+  white-space: pre-line;
+}
+.c-block-cometcms__testimonial .cometcms-testimonial__quote p { margin: 0; }
+.c-block-cometcms__testimonial .cometcms-testimonial__author { display: flex; align-items: center; gap: .75rem; }
+.c-block-cometcms__testimonial .cometcms-testimonial__portrait { flex: none; width: 56px; height: 56px; border-radius: 50%; object-fit: cover; }
+.c-block-cometcms__testimonial .cometcms-testimonial__name { display: block; }
+.c-block-cometcms__testimonial .cometcms-testimonial__detail { display: block; font-size: .875em; opacity: .8; }
+.c-block-cometcms__testimonial .cometcms-testimonial__rating { margin-bottom: .75rem; color: var(--cometcms-accent); letter-spacing: .15em; }
+.c-block-cometcms__testimonial .cometcms-testimonial--centered { text-align: center; }
+.c-block-cometcms__testimonial .cometcms-testimonial--centered .cometcms-testimonial__author { justify-content: center; }

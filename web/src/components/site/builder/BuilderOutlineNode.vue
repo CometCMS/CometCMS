@@ -50,7 +50,7 @@
       </button>
       <span v-else class="w-5 shrink-0"></span>
 
-      <Icon :icon="icon" class="outline-icon h-4 w-4 shrink-0" :class="isSelected ? 'text-white/80' : 'text-slate-400'" />
+      <KindIcon :icon="icon" class="outline-icon h-4 w-4 shrink-0" :class="isSelected ? 'text-white/80' : 'text-slate-400'" />
       <input
         v-if="renaming"
         ref="nameInput"
@@ -107,6 +107,7 @@
 import { computed, nextTick, ref, watch } from "vue";
 import { Icon } from "@iconify/vue";
 import { nodeIcon } from "./kindIcons.js";
+import KindIcon from "./KindIcon.vue";
 import { contains, findNode } from "../../../composables/layoutTree.js";
 import { useFieldTypeMeta } from "../../../composables/useFieldTypeMeta.js";
 import { useSiteBuilder } from "../../../composables/useSiteBuilder.js";
@@ -146,7 +147,7 @@ const icon = computed(() => {
     const config = builder.fieldConfig(props.node);
     return config ? fieldTypeIcon(config.type) : "mdi:alert-outline";
   }
-  return nodeIcon(props.node, builder.isStacked(props.node), builder.componentOf(props.node));
+  return nodeIcon(props.node, builder.isStacked(props.node), builder.componentOf(props.node), builder.spec.value);
 });
 
 // Reveal the selection when it is chosen on the canvas.

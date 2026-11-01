@@ -1,0 +1,75 @@
+{
+  "title": "Pricing plan",
+  "description": "A plan with its price, features and a call to action.",
+  "icon": "mdi:tag-outline",
+  "props": {
+    "name": {
+      "type": "string",
+      "label": "Plan",
+      "max": 80,
+      "default": "Pro"
+    },
+    "price": {
+      "type": "string",
+      "label": "Price",
+      "max": 40,
+      "default": "€19"
+    },
+    "period": {
+      "type": "string",
+      "label": "Period",
+      "max": 40,
+      "default": "per month"
+    },
+    "highlight": {
+      "type": "bool",
+      "label": "Highlight this plan",
+      "default": false
+    },
+    "features": {
+      "type": "list",
+      "label": "Features",
+      "max": 20,
+      "fields": {
+        "text": {
+          "type": "string",
+          "label": "Feature",
+          "max": 200
+        },
+        "included": {
+          "type": "bool",
+          "label": "Included",
+          "default": true
+        }
+      },
+      "default": [
+        {
+          "text": "Unlimited pages"
+        },
+        {
+          "text": "Custom blocks"
+        },
+        {
+          "text": "Priority support",
+          "included": false
+        }
+      ]
+    },
+    "cta": {
+      "type": "link",
+      "label": "Button link",
+      "default": "#signup"
+    },
+    "cta_label": {
+      "type": "string",
+      "label": "Button label",
+      "max": 60,
+      "default": "Choose plan"
+    },
+    "note": {
+      "type": "text",
+      "label": "Small print",
+      "max": 500
+    }
+  }
+}

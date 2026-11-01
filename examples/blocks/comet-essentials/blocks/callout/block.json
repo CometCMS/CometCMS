@@ -1,0 +1,43 @@
+{
+  "title": "Callout",
+  "description": "An announcement with an optional link.",
+  "props": {
+    "title": {
+      "type": "string",
+      "label": "Heading",
+      "max": 200,
+      "default": "Something worth sharing"
+    },
+    "message": {
+      "type": "text",
+      "label": "Message",
+      "max": 2000,
+      "default": "Your custom block is ready.\nEdit this text in the inspector."
+    },
+    "tone": {
+      "type": "enum",
+      "label": "Tone",
+      "options": [
+        "info",
+        "success"
+      ],
+      "default": "info"
+    },
+    "show_link": {
+      "type": "bool",
+      "label": "Show link",
+      "default": true
+    },
+    "link_label": {
+      "type": "string",
+      "label": "Link label",
+      "max": 120,
+      "default": "Learn more"
+    },
+    "url": {
+      "type": "url",
+      "label": "Link URL",
+      "default": "#details"
+    }
+  }
+}

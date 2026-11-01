@@ -1,0 +1,32 @@
+{
+  "title": "Card",
+  "description": "An image, a heading, a link and any elements you place inside.",
+  "icon": "mdi:card-text-outline",
+  "props": {
+    "image": {
+      "type": "media",
+      "label": "Image"
+    },
+    "title": {
+      "type": "string",
+      "label": "Heading",
+      "max": 200,
+      "default": "Card heading"
+    },
+    "accent": {
+      "type": "color",
+      "label": "Accent color",
+      "default": "primary"
+    },
+    "link": {
+      "type": "link",
+      "label": "Link"
+    },
+    "link_label": {
+      "type": "string",
+      "label": "Link label",
+      "max": 80,
+      "default": "Read more"
+    }
+  }
+}

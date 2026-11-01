@@ -1,5 +1,24 @@
 import { describe, expect, it } from 'vitest'
-import { withPreviewStyles } from './previewDocument.js'
+import { needsPreviewReload, withPreviewStyles } from './previewDocument.js'
+
+describe('scripted preview updates', () => {
+  const plain = '<html><head></head><body>Preview</body></html>'
+  const scripted = '<html><body><div data-comet-block="example/map"></div><script type="module">import mount from "/map.js";</script></body></html>'
+
+  it('reloads when adding a script, so its module executes and its CSP takes effect', () => {
+    expect(needsPreviewReload({ querySelector: () => null }, scripted)).toBe(true)
+  })
+
+  it('reloads when updating or removing scripted blocks to discard listeners and timers', () => {
+    const doc = { querySelector: () => ({}) }
+    expect(needsPreviewReload(doc, scripted)).toBe(true)
+    expect(needsPreviewReload(doc, plain)).toBe(true)
+  })
+
+  it('keeps ordinary preview updates in place', () => {
+    expect(needsPreviewReload({ querySelector: () => null }, plain)).toBe(false)
+  })
+})
 
 describe('preview document styles', () => {
   it('includes editor outlines in the head before any builder nodes are parsed', () => {

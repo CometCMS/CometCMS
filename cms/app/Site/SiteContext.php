@@ -530,6 +530,12 @@ final class SiteContext
         return $this->basePath . '/_site/' . rawurlencode($this->site->workspace()->slug()) . '/style.css?v=' . $this->site->stylesheetVersion();
     }
 
+    /** A block package asset, by its content-hashed file name. */
+    public function blockAssetUrl(string $file): string
+    {
+        return $this->basePath . '/_site/' . rawurlencode($this->site->workspace()->slug()) . '/blocks/' . rawurlencode($file);
+    }
+
     public function customStylesheetUrl(): string
     {
         return $this->basePath . '/_site/' . rawurlencode($this->site->workspace()->slug()) . '/theme/style.css?v=' . $this->site->customStylesheetVersion();

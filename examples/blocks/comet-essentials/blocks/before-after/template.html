@@ -1,0 +1,17 @@
+<figure class="cometcms-compare cometcms-compare--{{ratio}}">
+  <div class="cometcms-compare__frame" data-frame dir="ltr">
+    <div class="cometcms-compare__side cometcms-compare__before">
+      {{#before_image}}<img src="{{before_image}}" alt="{{before_image.alt}}">{{/before_image}}
+      {{^before_image}}<p class="cometcms-compare__empty">{{empty_label}}</p>{{/before_image}}
+      <span class="cometcms-compare__label">{{before_label}}</span>
+    </div>
+    <div class="cometcms-compare__side cometcms-compare__after">
+      {{#after_image}}<img src="{{after_image}}" alt="{{after_image.alt}}">{{/after_image}}
+      {{^after_image}}<p class="cometcms-compare__empty">{{empty_label}}</p>{{/after_image}}
+      <span class="cometcms-compare__label">{{after_label}}</span>
+    </div>
+    <span class="cometcms-compare__divider" data-divider aria-hidden="true" hidden><span></span></span>
+  </div>
+  <div class="cometcms-compare__control" data-control hidden></div>
+  {{#caption}}<figcaption class="cometcms-compare__caption">{{caption}}</figcaption>{{/caption}}
+</figure>

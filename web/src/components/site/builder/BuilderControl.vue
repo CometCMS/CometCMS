@@ -1,10 +1,10 @@
 <template>
   <div>
-    <fieldset :disabled="builder.translating?.value && !def.localized" class="min-w-0">
+    <fieldset :disabled="builder.translating?.value && !def.localized && !embedded" class="min-w-0">
     <div v-if="!def.binding" class="mb-1 flex items-center justify-between gap-2">
       <div class="flex shrink-0 items-center gap-1.5">
         <label class="text-xs text-slate-500" :for="isSectionHeight ? `${inputId}-auto` : inputId">{{ label }}</label>
-        <BuilderTranslationStatus v-if="def.localized" :state="translationState" :source="sourceText" :show-source="isSecondaryLocale" :can-reset="isSecondaryLocale && translationState !== 'inherited'" @reset="resetTranslation" />
+        <BuilderTranslationStatus v-if="def.localized && !embedded" :state="translationState" :source="sourceText" :show-source="isSecondaryLocale" :can-reset="isSecondaryLocale && translationState !== 'inherited'" @reset="resetTranslation" />
         <BuilderOverrideStatus v-if="variants" :node="node" :group="group" :name="name" />
         <slot name="status" />
       </div>
@@ -13,7 +13,7 @@
 
     <SmartValueEditor v-if="def.binding" :model-value="value" :node="node" :target="def.binding" :label="label" @update:model-value="emitValue">
       <template #label-status>
-        <BuilderTranslationStatus v-if="def.localized" :state="translationState" :source="sourceText" :show-source="isSecondaryLocale" :can-reset="isSecondaryLocale && translationState !== 'inherited'" @reset="resetTranslation" />
+        <BuilderTranslationStatus v-if="def.localized && !embedded" :state="translationState" :source="sourceText" :show-source="isSecondaryLocale" :can-reset="isSecondaryLocale && translationState !== 'inherited'" @reset="resetTranslation" />
         <slot name="status" />
       </template>
       <template v-if="['media', 'media_list', 'link'].includes(def.binding)" #literal>
@@ -167,6 +167,29 @@
       <option v-for="(child, index) in node.children" :key="child.id" :value="index + 1">{{ builder.valueFor(child, 'props', 'title') || t('site.tabs.tabTitle', { number: index + 1 }) }}</option>
     </select>
 
+    <div v-else-if="def.type === 'int' && def.control === 'slider'" class="flex items-center gap-2">
+      <input
+        :id="inputId"
+        type="range"
+        class="min-w-0 flex-1 accent-theme-600"
+        :min="def.min"
+        :max="def.max"
+        step="1"
+        :value="value ?? def.default"
+        @input="emitNumber($event.target.value)"
+      />
+      <input
+        type="number"
+        class="form-input w-20 shrink-0 rounded-lg border-slate-300 py-1.5 text-xs"
+        :aria-label="label"
+        :min="def.min"
+        :max="def.max"
+        step="1"
+        :value="value ?? def.default"
+        @input="emitNumber($event.target.value)"
+      />
+    </div>
+
     <OptionBar
       v-else-if="def.type === 'int' && numberOptions"
       :model-value="value"
@@ -222,7 +245,7 @@
     />
 
     <input
-      v-else-if="def.type === 'string' || (def.type === 'key' && !keyOptions)"
+      v-else-if="['string', 'url'].includes(def.type) || (def.type === 'key' && !keyOptions)"
       :id="inputId"
       type="text"
       :value="value"
@@ -245,6 +268,17 @@
       :aria-describedby="`${inputId}-hint`"
       @input="emitValue($event.target.value)"
     ></textarea>
+
+      v-else-if="def.type === 'text'"
+      :id="inputId"
+      :value="value ?? ''"
+      :maxlength="def.max"
+      rows="4"
+      class="form-textarea w-full rounded-lg border-slate-300 py-1.5 text-xs"
+      @input="emitValue($event.target.value)"
+    ></textarea>
+
+    <BlockListControl v-else-if="def.type === 'list'" :node="node" :name="name" :def="def" :value="value ?? []" @update="emitValue" />
 
     <div v-else-if="def.type === 'html'" class="site-builder-richtext">
       <FieldInput :name="inputId" :config="{ type: 'html' }" :model-value="value" @update:model-value="emitValue" />
@@ -374,6 +408,7 @@ import { DEVICE_ICONS, barOptions, numberBar } from "./controlOptions.js";
 import { effectiveSpan } from "../../../composables/layoutTree.js";
 import { localeFlagCountry } from "../../../composables/localeOptions.js";
 import FontPicker from "../FontPicker.vue";
+import BlockListControl from "./BlockListControl.vue";
 import { resolveLocalized } from '../../../composables/localizedValues.js';
 import { useSiteStore } from "../../../stores/site.js";
 import { useSiteBuilder } from "../../../composables/useSiteBuilder.js";
@@ -389,6 +424,8 @@ const props = defineProps({
   def: { type: Object, required: true },
   value: { default: null },
   group: { type: String, default: "props" },
+  /** A field inside another control, such as a list item: the parent handles translation. */
+  embedded: { type: Boolean, default: false },
   /** Devices a column width control shows, e.g. only the one previewed. */
   devices: { type: Array, default: () => ["desktop", "tablet", "mobile"] },
   /** Whether device and state values are shown; an instance's own values have none. */
@@ -417,6 +454,7 @@ const customClasses = computed(() => themeCssClasses(siteTheme.value?.custom_css
 const isHoverAnimation = computed(() => props.group === "style" && props.name === "animation" && builder.styleState.value === "hover");
 const label = computed(() => {
   if (props.def.type === "raw_html") return t("site.prop.htmlSource");
+  if (props.def.label) return props.def.label;
   if (props.node.kind === "accordion" && props.name === "items") return t("site.accordion.entries");
   if (props.def.type === "table_rows") return t("site.table.cells");
   if (isHoverAnimation.value) return t("site.style.hover_effect");
@@ -478,6 +516,7 @@ const flagSample = computed(() => {
 });
 
 function optionLabel(option) {
+  if (props.group === "props" && props.node.kind.startsWith("block:")) return option;
   if (option === "") return t(props.group === "style" ? "site.option.default" : "site.option.auto");
   if (/^h[1-6]$/.test(option)) return option.toUpperCase();
   if (/^\d+:\d+$/.test(option)) return option;
@@ -505,7 +544,7 @@ const enumOptions = computed(() => {
 const colorOptions = computed(() => themeColorOptions(siteTheme.value, props.def.options ?? [], optionLabel));
 
 const enumBar = computed(() =>
-  props.def.type === "enum"
+  props.def.type === "enum" && !(props.group === "props" && props.node.kind.startsWith("block:"))
     ? barOptions(props.group, props.name, props.def.options ?? [], {
         title: optionLabel,
         theme: siteTheme.value,

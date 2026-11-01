@@ -1,0 +1,20 @@
+/* Surface defaults belong to the styled wrapper; content inherits its text color. */
+:where(.c-block-cometcms__maps) {
+  border-radius: var(--c-radius, 12px);
+  background-color: var(--c-surface, #fff);
+}
+.c-block-cometcms__maps .cometcms-map { margin: 0; overflow: hidden; border: 1px solid var(--c-border, #dce1e7); border-radius: inherit; }
+.c-block-cometcms__maps .cometcms-map__caption { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .5rem 1rem; padding: 1rem; }
+.c-block-cometcms__maps .cometcms-map__caption span { color: var(--c-muted, #64748b); font-size: .875rem; }
+.c-block-cometcms__maps .cometcms-map__viewport { position: relative; isolation: isolate; height: clamp(240px, 40vw, 420px); overflow: hidden; background: var(--c-background, #f1f5f9); }
+.c-block-cometcms__maps .cometcms-map__tiles { position: absolute; inset: 0; }
+.c-block-cometcms__maps .cometcms-map__tiles img { position: absolute; width: 256px; height: 256px; max-width: none; border: 0; border-radius: 0; }
+.c-block-cometcms__maps .cometcms-map__pin { position: absolute; z-index: 1; top: 50%; left: 50%; width: 24px; height: 24px; border: 3px solid white; border-radius: 50% 50% 50% 0; background: var(--c-primary, #2563eb); box-shadow: 0 2px 6px #0004; transform: translate(-50%, -100%) rotate(-45deg); }
+.c-block-cometcms__maps .cometcms-map__placeholder { position: absolute; inset: 0; display: grid; place-content: center; margin: 0; padding: 2rem; text-align: center; color: var(--c-muted, #64748b); background: var(--c-background, #f1f5f9); }
+.c-block-cometcms__maps .cometcms-map__footer { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem 1rem; padding: .75rem 1rem; font-size: .8rem; }
+.c-block-cometcms__maps .cometcms-map__controls { display: flex; align-items: center; gap: .75rem; }
+.c-block-cometcms__maps .cometcms-map__controls button { width: 36px; height: 36px; border: 1px solid var(--c-border, #dce1e7); border-radius: 6px; background: var(--c-surface, #fff); color: inherit; font: inherit; font-size: 1.25rem; cursor: pointer; }
+.c-block-cometcms__maps .cometcms-map__controls button:disabled { opacity: .4; cursor: default; }
+.c-block-cometcms__maps :where(.cometcms-map__footer a) { color: var(--c-primary, #2563eb); text-decoration: underline; }
+.c-block-cometcms__maps .cometcms-map__attribution { margin-inline-start: auto; }
+.c-block-cometcms__maps [hidden] { display: none; }

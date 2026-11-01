@@ -60,7 +60,7 @@
     </nav>
     <div class="relative z-10 flex shrink-0 items-center gap-2.5 px-3 pb-2 pt-2.5" :class="{ 'border-b border-slate-200': isInstance }">
       <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-theme-50 text-theme-600 ring-1 ring-inset ring-theme-100">
-        <Icon :icon="nodeIcon(node, builder.isStacked(node), builder.componentOf(node))" class="h-[18px] w-[18px]" />
+        <KindIcon :icon="nodeIcon(node, builder.isStacked(node), builder.componentOf(node), builder.spec.value)" class="h-[18px] w-[18px]" />
       </span>
       <div class="min-w-0 flex-1">
         <div class="flex min-w-0 items-center gap-1">
@@ -72,6 +72,9 @@
           />
         </div>
         <p class="min-h-[1rem] truncate text-xs text-slate-500">{{ builder.nodeSummary(node) }}</p>
+        <p v-if="builder.spec.value?.kinds?.[node.kind]?.script" class="mt-1 flex items-start gap-1 text-[11px] leading-snug text-amber-700">
+          <Icon icon="mdi:language-javascript" class="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />{{ t("site.blocks.scriptPreviewHint") }}
+        </p>
       </div>
       <button type="button" class="inspector-action" :title="t('site.builder.duplicate')" :disabled="locked || builder.isCard(node) || node.kind === 'area_content'" @click="builder.duplicate(node.id)">
         <Icon icon="mdi:content-copy" class="h-4 w-4" />
@@ -361,6 +364,7 @@ import ColumnLayoutPicker from "./ColumnLayoutPicker.vue";
 import SegmentedControl from "../SegmentedControl.vue";
 import { DEVICE_ICONS, STATE_ICONS } from "./controlOptions.js";
 import { nodeIcon } from "./kindIcons.js";
+import KindIcon from "./KindIcon.vue";
 import { COMPONENT, findNode, locate } from "../../../composables/layoutTree.js";
 import { FRAME_DEFAULT, FRAME_NONE, frameLabel } from "../../../composables/templates.js";
 import { useBuilderBreadcrumbs } from "../../../composables/useBuilderBreadcrumbs.js";
@@ -447,6 +451,7 @@ function ownOverride(part, key) {
 }
 /** One sentence on what the selected kind of element is for. */
 const kindHint = computed(() => {
+  if (builder.spec.value?.kinds?.[node.value?.kind]?.description) return builder.spec.value.kinds[node.value.kind].description;
   if (!node.value) return "";
   const kind = builder.isCard(node.value) ? "card" : node.value.kind;
   const key = `site.kindHint.${kind}`;

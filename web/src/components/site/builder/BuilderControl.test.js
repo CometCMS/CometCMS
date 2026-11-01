@@ -292,3 +292,19 @@ describe('builder bound controls', () => {
     expect(link).not.toContain('id="builder-h1-props-link"')
   })
 })
+
+describe('block integer sliders', () => {
+  it('renders labeled sliders with an exact numeric value, including zero and small ranges', async () => {
+    for (const value of [0, 2]) {
+      const html = await renderControl('zoom', { type: 'int', label: 'Zoom level', control: 'slider', min: 0, max: 3, default: 1 }, value, {
+        node: { id: 'map1', kind: 'block:cometcms/maps', props: {}, style: {} },
+      })
+      expect(html).toContain('for="builder-map1-props-zoom"')
+      expect(html).toContain('id="builder-map1-props-zoom" type="range"')
+      expect(html).toContain('type="number"')
+      expect(html).toContain('aria-label="Zoom level"')
+      expect(html.match(new RegExp(`value="${value}"`, 'g'))).toHaveLength(2)
+      expect(html).toContain('min="0" max="3" step="1"')
+    }
+  })
+})

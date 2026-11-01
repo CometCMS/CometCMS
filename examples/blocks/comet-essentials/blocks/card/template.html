@@ -1,0 +1,10 @@
+{{! The accent color reaches the CSS as a custom property: var(--c-primary) or similar. }}
+<article class="cometcms-card" style="--cometcms-card-accent: {{accent}}">
+  {{#image}}<img class="cometcms-card__image" src="{{image}}" alt="{{image.alt}}" loading="lazy">{{/image}}
+  <div class="cometcms-card__body">
+    <h3 class="cometcms-card__title">{{title}}</h3>
+    {{! Elements the editor drops into the card appear here. }}
+    <slot></slot>
+    {{#link}}<a class="cometcms-card__link" href="{{link}}">{{link_label}}</a>{{/link}}
+  </div>
+</article>

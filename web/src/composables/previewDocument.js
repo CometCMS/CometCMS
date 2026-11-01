@@ -7,11 +7,17 @@ export function withPreviewStyles(html, css) {
 /** Elements the editor adds to the preview that an update leaves in place, such as overlays. */
 export const PREVIEW_KEEP = "data-preview-keep";
 
+/** Scripted blocks need a fresh realm so their DOM, listeners and timers reset together. */
+export function needsPreviewReload(doc, html) {
+  return !!doc.querySelector('[data-comet-block]')
+    || html.includes('<script type="module">import mount from ');
+}
+
 /**
  * Update a loaded preview document to a newly rendered one without reloading it.
  * Unchanged elements stay, so the page neither blanks nor loses its scroll
- * position, and images keep their decoded pixels. Previews run no scripts,
- * so moving markup over is all a reload would do.
+ * position, and images keep their decoded pixels. Scripted block previews
+ * reload instead: imported script elements do not execute during a DOM patch.
  */
 export function patchDocument(doc, html) {
   const next = new DOMParser().parseFromString(html, "text/html");

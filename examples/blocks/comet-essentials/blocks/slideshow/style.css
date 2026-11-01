@@ -1,0 +1,93 @@
+/* Surface defaults belong to the styled wrapper; content inherits its text color. */
+:where(.c-block-cometcms__slideshow) {
+  border-radius: 1rem;
+  background-color: var(--c-surface, #fff);
+}
+.c-block-cometcms__slideshow .cometcms-slideshow {
+  overflow: hidden;
+  border: 1px solid var(--c-border, #e2e8f0);
+  border-radius: inherit;
+}
+.c-block-cometcms__slideshow .cometcms-slideshow__track {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+}
+.c-block-cometcms__slideshow .cometcms-slideshow__slide {
+  flex: 0 0 100%;
+  min-width: 0;
+  margin: 0;
+  scroll-snap-align: start;
+}
+.c-block-cometcms__slideshow .cometcms-slideshow__image {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+}
+.c-block-cometcms__slideshow .cometcms-slideshow__caption {
+  padding: clamp(1.25rem, 4vw, 2.5rem);
+}
+.c-block-cometcms__slideshow .cometcms-slideshow__title {
+  margin: 0;
+  font-size: clamp(1.25rem, 3vw, 2rem);
+}
+.c-block-cometcms__slideshow .cometcms-slideshow__text {
+  margin: 0.75rem 0 0;
+}
+.c-block-cometcms__slideshow :where(.cometcms-slideshow__link) {
+  display: inline-block;
+  margin-top: 1rem;
+  color: var(--cometcms-accent);
+  text-underline-offset: 0.2em;
+}
+.c-block-cometcms__slideshow .cometcms-slideshow__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0 1rem 1rem;
+}
+.c-block-cometcms__slideshow .cometcms-slideshow__selectors {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.25rem;
+}
+.c-block-cometcms__slideshow .cometcms-slideshow__controls button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0.5rem;
+  border: 1px solid var(--c-border, #e2e8f0);
+  border-radius: 0.5rem;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.c-block-cometcms__slideshow .cometcms-slideshow__controls button[aria-current="true"] {
+  border-color: var(--cometcms-accent);
+  background: var(--cometcms-accent);
+  color: var(--c-on-primary, #fff);
+}
+.c-block-cometcms__slideshow .cometcms-slideshow a:focus-visible,
+.c-block-cometcms__slideshow .cometcms-slideshow button:focus-visible {
+  outline: 2px solid var(--cometcms-accent);
+  outline-offset: 3px;
+}
+.c-block-cometcms__slideshow .cometcms-slideshow__status {
+  color: var(--c-muted, #64748b);
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}
+.c-block-cometcms__slideshow .cometcms-slideshow__empty {
+  margin: 0;
+  padding: 2rem;
+}
+.c-block-cometcms__slideshow .cometcms-slideshow [hidden] {
+  display: none;
+}

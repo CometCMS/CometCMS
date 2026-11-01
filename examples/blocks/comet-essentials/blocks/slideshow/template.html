@@ -1,0 +1,23 @@
+{{! Without JavaScript, every slide stays readable in a horizontally scrollable list. }}
+<section class="cometcms-slideshow" aria-label="{{label}}" aria-roledescription="carousel">
+  <div class="cometcms-slideshow__track">
+    {{#slides}}
+    <figure class="cometcms-slideshow__slide" data-slide role="group" aria-roledescription="slide">
+      {{#image}}<img class="cometcms-slideshow__image" src="{{image}}" alt="{{image.alt}}" loading="lazy">{{/image}}
+      <figcaption class="cometcms-slideshow__caption">
+        {{#title}}<h3 class="cometcms-slideshow__title">{{title}}</h3>{{/title}}
+        {{#caption}}<p class="cometcms-slideshow__text">{{caption}}</p>{{/caption}}
+        {{#link}}<a class="cometcms-slideshow__link" href="{{link}}">{{link_label}}</a>{{/link}}
+      </figcaption>
+    </figure>
+    {{/slides}}
+    {{^slides}}<p class="cometcms-slideshow__empty">{{empty_label}}</p>{{/slides}}
+  </div>
+  <div class="cometcms-slideshow__controls" data-controls hidden>
+    <button class="cometcms-slideshow__arrow" type="button" data-previous aria-label="{{previous_label}}"><span aria-hidden="true">←</span></button>
+    <div class="cometcms-slideshow__selectors" data-selectors role="group" aria-label="{{label}}"></div>
+    <button class="cometcms-slideshow__arrow" type="button" data-next aria-label="{{next_label}}"><span aria-hidden="true">→</span></button>
+    <button class="cometcms-slideshow__play" type="button" data-play hidden>{{play_label}}</button>
+    <span class="cometcms-slideshow__status" data-status aria-live="polite" aria-atomic="true"></span>
+  </div>
+</section>

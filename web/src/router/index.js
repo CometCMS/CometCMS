@@ -83,7 +83,7 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
-    path: '/page-builder/:tab(design|templates|menus|fonts|components)?',
+    path: '/page-builder/:tab(design|templates|menus|fonts|components|blocks)?',
     component: () => import('../views/PageBuilderView.vue'),
     meta: { requiresAuth: true },
   },
