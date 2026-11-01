@@ -309,7 +309,7 @@ try {
     const selection = window.getSelection(); selection.removeAllRanges(); selection.addRange(range);
   })()`);
   await command('Input.insertText', { text: '0, 0' });
-  await waitFor(`(${previewDocument})?.querySelector('.cometcms-map__caption span')?.textContent === '0, 0'`, 'map coordinates in preview');
+  await waitFor(`JSON.parse((${previewDocument})?.querySelector('[data-comet-block="cometcms/maps"]')?.dataset.cometProps || '{}').location === '0, 0'`, 'map coordinates in preview');
   await waitFor(`!!(${previewDocument})?.querySelector('[data-comet-block="cometcms/maps"][data-mounted="true"]')`, 'map mounts in preview');
   assert(await evaluate(`!(${previewDocument}).querySelector('.cometcms-map [data-controls]').hidden && (${previewDocument}).querySelector('.cometcms-map [data-status]').textContent.endsWith('15')`), 'Map preview uses unsaved coordinates and zoom');
   // A selected slot block takes the next element inside it.

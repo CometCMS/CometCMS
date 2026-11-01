@@ -1,20 +1,18 @@
 <figure class="cometcms-map">
-  <figcaption class="cometcms-map__caption">
-    {{#label}}<strong>{{label}}</strong>{{/label}}
-    <span>{{location}}</span>
-  </figcaption>
-  <div class="cometcms-map__viewport" data-viewport role="img" aria-label="{{label}}">
+  <div class="cometcms-map__viewport" data-viewport role="group" aria-label="{{label}}">
     <div class="cometcms-map__tiles" data-tiles aria-hidden="true"></div>
     <span class="cometcms-map__pin" data-pin aria-hidden="true" hidden></span>
     <p class="cometcms-map__placeholder" data-placeholder>{{preview_label}}</p>
-  </div>
-  <div class="cometcms-map__footer">
-    <div class="cometcms-map__controls" data-controls hidden>
-      <button type="button" data-zoom-out aria-label="{{zoom_out_label}}">−</button>
-      <span data-status aria-live="polite" aria-atomic="true">{{zoom_label}} {{zoom}}</span>
-      <button type="button" data-zoom-in aria-label="{{zoom_in_label}}">+</button>
+    <div class="cometcms-map__footer">
+      <div class="cometcms-map__controls" data-controls hidden>
+        <button type="button" data-zoom-in aria-label="{{zoom_in_label}}">+</button>
+        <button type="button" data-zoom-out aria-label="{{zoom_out_label}}">−</button>
+        <span class="cometcms-map__status" data-status aria-live="polite" aria-atomic="true">{{zoom_label}} {{zoom}}</span>
+      </div>
+      <div class="cometcms-map__links">
+        <a href="https://www.openstreetmap.org/" data-open target="_blank">{{open_label}}</a>
+        <a class="cometcms-map__attribution" href="https://www.openstreetmap.org/copyright" target="_blank">© OpenStreetMap contributors</a>
+      </div>
     </div>
-    <a href="https://www.openstreetmap.org/" data-open target="_blank">{{open_label}}</a>
-    <a class="cometcms-map__attribution" href="https://www.openstreetmap.org/copyright" target="_blank">© OpenStreetMap contributors</a>
   </div>
 </figure>

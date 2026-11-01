@@ -888,8 +888,8 @@ test('maps render escaped location labels and include their script in editor pre
     $type = $site->types()['about'];
     $entry = \CometCMS\Content\ContentRepository::make()->findByIdentifier('about', 'about');
     $html = (new PageRenderer($context))->entryPage($type, $entry);
-    assert_true(str_contains($html, '<strong>Our &lt;office&gt;</strong>'));
-    assert_true(str_contains($html, '<span>0, 0</span>'));
+    assert_true(str_contains($html, 'role="group" aria-label="Our &lt;office&gt;"'));
+    assert_false(str_contains($html, '<figcaption class="cometcms-map__caption">'));
     assert_true(str_contains($html, '© OpenStreetMap contributors'));
     assert_true(str_contains($html, 'data-comet-block="cometcms/maps"'));
     assert_true(str_contains($html, '&quot;zoom&quot;:7'));

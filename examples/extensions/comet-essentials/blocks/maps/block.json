@@ -3,7 +3,7 @@
   "description": "An OpenStreetMap location pin. Enter latitude, longitude and choose the initial zoom level; no API key needed.",
   "icon": "mdi:map-marker-radius-outline",
   "props": {
-    "label": { "type": "string", "label": "Location name or address", "max": 200, "default": "Find us in Berlin" },
+    "label": { "type": "string", "label": "Accessible location name", "max": 200, "default": "Find us in Berlin" },
     "location": { "type": "string", "label": "Coordinates (latitude, longitude)", "max": 100, "default": "52.520008, 13.404954" },
     "zoom": { "type": "int", "control": "slider", "label": "Zoom level", "min": 1, "max": 19, "default": 13 },
     "zoom_in_label": { "type": "string", "label": "Zoom in button label", "max": 80, "default": "Zoom in" },
