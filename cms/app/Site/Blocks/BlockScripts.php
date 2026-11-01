@@ -80,7 +80,8 @@ final class BlockScripts
         if (str_contains(strtolower($source), '</script')) {
             $problems[] = [null, 'view.js cannot contain "</script".'];
         }
-        if (preg_match('/^\s*export\s+default\s/m', $source) !== 1) {
+        // Bundlers emit export { mount as default }, often without whitespace before {.
+        if (preg_match('/\bexport\b\s*(?:default\b|\{[^}]*\bas\s+default\b)/s', $source) !== 1) {
             $problems[] = [null, 'view.js must export its mount function: export default function (element, props) { … }'];
         }
         if (preg_match_all('/^\s*import(?:\s+[\w*{\'"]|\s*[{*\'"(])/m', $source, $matches, PREG_OFFSET_CAPTURE)) {

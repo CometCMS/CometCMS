@@ -239,7 +239,7 @@ final class SiteSearch
     private function text(mixed $value, array $config): string
     {
         if (($config['type'] ?? '') === 'page') {
-            return self::lower(LayoutSchema::text(LayoutSchema::pageNodes($value), $this->ctx->htmlLang(), $this->ctx->defaultLocale()));
+            return self::lower(LayoutSchema::text(LayoutSchema::pageNodes($value), $this->ctx->htmlLang(), $this->ctx->defaultLocale(), $this->ctx->site->blocks()));
         }
         $values = is_array($value) ? $value : [$value];
         $options = is_array($config['options'] ?? null) ? $config['options'] : [];

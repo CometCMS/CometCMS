@@ -9,10 +9,8 @@ use CometCMS\Content\ContentRepository;
 use CometCMS\Core\Http;
 use CometCMS\Core\ValidationException;
 use CometCMS\Extensions\Extension;
-use CometCMS\Extensions\ExtensionChanges;
 use CometCMS\Extensions\ExtensionException;
-use CometCMS\Extensions\ExtensionScripts;
-use CometCMS\Extensions\ExtensionSeeds;
+use CometCMS\Extensions\ExtensionReview;
 use CometCMS\Site\FormRepository;
 use CometCMS\Site\FormCaptchaSettings;
 use CometCMS\Site\LayoutSchema;
@@ -119,18 +117,8 @@ final class SiteController extends BaseController
             $this->json(['data' => $result], 201);
         } catch (ExtensionException $e) {
             $this->json(['error' => ['code' => 'invalid_extension', 'message' => $e->getMessage(), 'details' => $e->errors()]], 422);
-        } catch (ExtensionChanges $e) {
-            $this->json(['error' => ['code' => 'extension_changes', 'message' => $e->getMessage(), 'details' => [
-                'extension' => $e->extension, 'installed_version' => $e->installedVersion, 'version' => $e->version, 'changes' => $e->changes,
-            ]]], 409);
-        } catch (ExtensionSeeds $e) {
-            $this->json(['error' => ['code' => 'extension_seeds', 'message' => $e->getMessage(), 'details' => [
-                'extension' => $e->extension, 'plan' => $e->plan,
-            ]]], 409);
-        } catch (ExtensionScripts $e) {
-            $this->json(['error' => ['code' => 'extension_scripts', 'message' => $e->getMessage(), 'details' => [
-                'extension' => $e->extension, 'blocks' => $e->blocks,
-            ]]], 409);
+        } catch (ExtensionReview $e) {
+            $this->json(['error' => ['code' => 'extension_review', 'message' => $e->getMessage(), 'details' => $e->details()]], 409);
         } catch (\RuntimeException $e) {
             $this->json(['error' => ['code' => 'extension_unavailable', 'message' => $e->getMessage()]], 503);
         }

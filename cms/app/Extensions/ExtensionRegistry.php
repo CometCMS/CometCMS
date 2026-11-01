@@ -18,7 +18,7 @@ final class ExtensionRegistry
     public const MAX_EXTENSIONS = 64;
     public const MAX_BLOCKS = 256;
     /** Bump whenever compiled extensions change shape, so cached indexes are rebuilt. */
-    private const COMPILER = 6;
+    private const COMPILER = 7;
 
     private ?array $index = null;
     private ?string $signature = null;
@@ -183,16 +183,10 @@ final class ExtensionRegistry
             $extension['seeds'] = $seeder->resolve($extension['seeds']);
             $validated = $seeder->validate($extension['seeds']);
             $changes = $previous === null ? [] : $this->breakingChanges($previous, $extension);
-            if ($changes !== [] && !$acceptChanges) {
-                throw new ExtensionChanges($name, $previous['version'], $extension['version'], $changes);
-            }
             // Scripts run with the website's origin, so installing them is a separate decision.
             $scripts = self::scriptBlocks(array_keys($extension['blocks']), $extension['blocks']);
-            if ($scripts !== [] && !$allowScripts) {
-                throw new ExtensionScripts($name, $scripts);
-            }
-            if ($validated !== [] && $seeds === null) {
-                throw new ExtensionSeeds($name, $seeder->plan($extension['seeds']));
+            if (($changes !== [] && !$acceptChanges) || ($scripts !== [] && !$allowScripts) || ($validated !== [] && $seeds === null)) {
+                throw new ExtensionReview($name, $previous['version'] ?? null, $extension['version'], $changes, $scripts, $seeder->plan($extension['seeds']));
             }
             // Revalidate the effective dependency graph after skip/overwrite choices.
             $seeder->validate($seeder->selected($extension['seeds'], $seeds ?? []));
@@ -323,8 +317,14 @@ final class ExtensionRegistry
                 $changes[] = $prefix . $key . '" changes from ' . $spec['type'] . ' to ' . $next['type'] . '. Saved values that do not fit fall back to the default.';
             } elseif ($spec['type'] === 'enum' && array_diff($spec['options'], $next['options']) !== []) {
                 $changes[] = $prefix . $key . '" no longer offers ' . implode(', ', array_diff($spec['options'], $next['options'])) . '. Instances using them fall back to the default.';
-            } elseif ($spec['type'] === 'list') {
-                array_push($changes, ...self::propChanges($prefix . $key . '" item field "', $spec['fields'], $next['fields']));
+            } else {
+                if ($spec['type'] === 'int' && ($next['min'] > $spec['min'] || $next['max'] < $spec['max'])) {
+                    $changes[] = $prefix . $key . '" narrows its range to ' . $next['min'] . '–' . $next['max'] . '. Saved values outside it are clamped.';
+                }
+                if (in_array($spec['type'], ['string', 'text', 'url', 'list'], true) && $next['max'] < $spec['max']) {
+                    $changes[] = $prefix . $key . '" reduces its limit from ' . $spec['max'] . ' to ' . $next['max'] . '. Saved content beyond it is dropped the next time a layout is saved.';
+                }
+                if ($spec['type'] === 'list') array_push($changes, ...self::propChanges($prefix . $key . '" item field "', $spec['fields'], $next['fields']));
             }
         }
 

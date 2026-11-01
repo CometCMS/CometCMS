@@ -841,15 +841,21 @@ final class LayoutSchema
      * literal texts in $locale. Texts bound to fields are left out; the
      * fields are read on their own.
      */
-    public static function text(array $nodes, string $locale, string $defaultLocale): string
+    public static function text(array $nodes, string $locale, string $defaultLocale, ?ExtensionRegistry $blocks = null): string
     {
+        $blocks ??= ExtensionRegistry::active();
         $parts = [];
-        $visit = static function (array $nodes) use (&$visit, &$parts, $locale, $defaultLocale): void {
+        $visit = static function (array $nodes) use (&$visit, &$parts, $locale, $defaultLocale, $blocks): void {
             foreach ($nodes as $node) {
                 if (!is_array($node)) {
                     continue;
                 }
                 $props = LocalizedValue::tree(is_array($node['props'] ?? null) ? $node['props'] : [], $locale, $defaultLocale);
+                if (ExtensionRegistry::isKind((string) ($node['kind'] ?? ''))) {
+                    $block = $blocks->get($node['kind']);
+                    if ($block === null) continue;
+                    array_push($parts, ...self::blockText($props, $block['props']));
+                }
                 foreach (['text', 'html', 'label', 'title', 'alt', 'caption'] as $key) {
                     $value = $props[$key] ?? null;
                     if (is_string($value) && $value !== '' && in_array($key, self::LOCALIZED_PROPS[$node['kind'] ?? ''] ?? [], true)) {
@@ -869,6 +875,25 @@ final class LayoutSchema
         $visit($nodes);
 
         return trim((string) preg_replace('/\s+/u', ' ', implode(' ', $parts)));
+    }
+
+    /** Literal content props, including list items; bindings are indexed through their source fields. */
+    private static function blockText(array $values, array $specs): array
+    {
+        $parts = [];
+        foreach ($specs as $key => $spec) {
+            $value = $values[$key] ?? $spec['default'];
+            if ($spec['type'] === 'list' && is_array($value)) {
+                foreach ($value as $item) {
+                    if (is_array($item)) array_push($parts, ...self::blockText($item, $spec['fields']));
+                }
+            } elseif (is_string($value) && in_array($spec['type'], ['string', 'text', 'richtext'], true)) {
+                $parts[] = $spec['type'] === 'richtext'
+                    ? html_entity_decode(strip_tags(str_replace(['</p>', '<br>', '<br />'], ' ', HtmlSanitizer::sanitize($value))), ENT_QUOTES | ENT_HTML5, 'UTF-8')
+                    : $value;
+            }
+        }
+        return $parts;
     }
 
     /** The kind a node is placed as: a component instance counts as its root kind. */
@@ -1498,7 +1523,9 @@ final class LayoutSchema
             }
             // Inside a component: props each placement may set (see applyOverrides()).
             $editableKeys = self::keyList($node['editable'] ?? null);
-            $editable = in_array($kind, [self::COMPONENT, self::AREA_CONTENT], true) ? [] : array_values(array_intersect($editableKeys, array_keys(self::propSpec($kind, $blocks))));
+            $editable = in_array($kind, [self::COMPONENT, self::AREA_CONTENT], true) ? []
+                : (ExtensionRegistry::isKind($kind) && $blocks->get($kind) === null ? array_slice($editableKeys, 0, 32)
+                    : array_values(array_intersect($editableKeys, array_keys(self::propSpec($kind, $blocks)))));
             if ($editable !== []) {
                 $entry['editable'] = $editable;
             }
@@ -1729,12 +1756,13 @@ final class LayoutSchema
     private static function inert(array $values, int $depth): array
     {
         $kept = [];
-        foreach (array_slice($values, 0, 100, true) as $key => $value) {
+        // v1 permits 50,000-character HTML, 500-part bindings and translated lists.
+        foreach (array_slice($values, 0, 500, true) as $key => $value) {
             if (is_string($value)) {
-                $kept[$key] = Text::limit($value, 5000);
+                $kept[$key] = Text::limit($value, 50000);
             } elseif (is_scalar($value) || $value === null) {
                 $kept[$key] = $value;
-            } elseif (is_array($value) && $depth < 4) {
+            } elseif (is_array($value) && $depth < 12) {
                 $kept[$key] = self::inert($value, $depth + 1);
             }
         }

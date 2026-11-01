@@ -10,6 +10,7 @@ use CometCMS\Content\ContentTypeRepository;
 use CometCMS\Core\ConflictException;
 use CometCMS\Core\HtmlSanitizer;
 use CometCMS\Core\ValidationException;
+use CometCMS\Extensions\ExtensionRegistry;
 use CometCMS\Localization\LocalizedValue;
 use CometCMS\Site\ElementConditions;
 use CometCMS\Site\LayoutSchema;
@@ -81,11 +82,13 @@ final class PageBuilderTools
 
     /** Content areas of the components placed so far: id => [{id, name}], null when the component is missing. */
     private array $componentAreas = [];
+    private ?array $builderSpec = null;
 
     public function __construct(private readonly WorkspaceContext $workspace, private readonly array $principal, private readonly PermissionService $permissions = new PermissionService()) {}
 
     public function call(string $tool, array $args): array
     {
+        $this->builderSpec = null;
         $contract = self::schemas()[$tool]['inputSchema'];
         ToolArguments::validate($tool, $args, $contract);
         if ($tool === 'get_builder_schema') return ['data' => $this->vocabulary($args)];
@@ -290,14 +293,13 @@ final class PageBuilderTools
      */
     private function vocabulary(array $args): array
     {
-        $spec = LayoutSchema::spec(true);
+        $spec = $this->spec();
         $usable = $this->usableKinds();
         if (array_key_exists('kind', $args)) {
             $kinds = is_array($args['kind']) && array_is_list($args['kind']) && $args['kind'] !== [] ? $args['kind'] : [$args['kind']];
             $result = [];
             foreach ($kinds as $index => $kind) {
-                $kind = $this->identifier($kind, is_array($args['kind']) ? 'kind.' . $index : 'kind');
-                if (!in_array($kind, $usable, true)) $this->invalid('kind', 'Unknown kind. Call get_builder_schema without kind to list available kinds.');
+                if (!is_string($kind) || !in_array($kind, $usable, true)) $this->invalid('kind', 'Unknown kind. Call get_builder_schema without kind to list available kinds.');
                 $node = $spec['kinds'][$kind];
                 // Icon names are listed once, without kind.
                 $props = array_map(static fn(array $prop): array => $prop['type'] === 'icon' ? ['options' => in_array('', $prop['options'], true) ? 'icons, or "" for none' : 'icons'] + $prop : $prop, $node['props']);
@@ -333,9 +335,11 @@ final class PageBuilderTools
     /** Kinds a layout or an entry's content can hold: those reachable from the top level, and component instances with their area content. */
     private function usableKinds(): array
     {
+        $spec = $this->spec();
         $kinds = ['root' => true];
         for ($queue = ['root']; $queue !== [];) {
-            foreach (LayoutSchema::childrenFor(array_shift($queue), true, false) as $child) {
+            $parent = array_shift($queue);
+            foreach ($parent === 'root' ? $spec['root'] : ($spec['kinds'][$parent]['children'] ?? []) as $child) {
                 if (isset($kinds[$child])) continue;
                 $kinds[$child] = true;
                 $queue[] = $child;
@@ -343,6 +347,11 @@ final class PageBuilderTools
         }
         unset($kinds['root']);
         return [...array_keys($kinds), LayoutSchema::COMPONENT, LayoutSchema::AREA_CONTENT];
+    }
+
+    private function spec(): array
+    {
+        return $this->builderSpec ??= LayoutSchema::spec(true, blocks: new ExtensionRegistry($this->workspace));
     }
 
     /** $map with keys of equal values joined into one "a, b" key. */
@@ -385,7 +394,7 @@ final class PageBuilderTools
     private function compact(array $node, bool $summary = false): array
     {
         $result = $this->summary($node);
-        $defaults = array_map(static fn(array $spec): mixed => $spec['default'], LayoutSchema::propSpec($node['kind']));
+        $defaults = array_map(static fn(array $spec): mixed => $spec['default'], $this->spec()['kinds'][$node['kind']]['props'] ?? []);
         $props = array_filter($node['props'] ?? [], static fn(mixed $value, string $key): bool => $value !== ($defaults[$key] ?? null), ARRAY_FILTER_USE_BOTH);
         if (!$summary && $props !== []) $result['props'] = $props;
         if (($node['style'] ?? []) !== []) $result['style'] = $node['style'];
@@ -497,7 +506,7 @@ final class PageBuilderTools
             if (++$count > LayoutSchema::MAX_NODES) $this->invalid($nodePath, 'Layout exceeds the ' . LayoutSchema::MAX_NODES . ' node limit.');
             $this->map($node, $nodePath);
             $this->keys($node, ['id', 'kind', 'name', 'props', 'style', 'responsive', 'states', 'children'], $nodePath);
-            if (!is_string($node['kind'] ?? null) || !in_array($node['kind'], [...LayoutSchema::STRUCTURE, ...LayoutSchema::ELEMENTS, 'tab', LayoutSchema::COMPONENT, LayoutSchema::PAGE_CONTENT, LayoutSchema::AREA_CONTENT], true)) $this->invalid($nodePath . '.kind', 'Unknown or missing kind.');
+            if (!is_string($node['kind'] ?? null) || !in_array($node['kind'], $this->usableKinds(), true)) $this->invalid($nodePath . '.kind', 'Unknown or missing kind.');
             $this->placement($node, $nodePath, $at, $areas);
             if (!array_key_exists('id', $node)) $node['id'] = LayoutSchema::newId();
             $id = $this->identifier($node['id'], $nodePath . '.id');
@@ -507,13 +516,11 @@ final class PageBuilderTools
             foreach (['props', 'style'] as $key) {
                 if (!array_key_exists($key, $node)) continue;
                 $this->map($node[$key], $nodePath . '.' . $key);
-                $specs = $key === 'props' ? LayoutSchema::propSpec($node['kind']) : array_intersect_key(LayoutSchema::styleSpec(), array_flip(LayoutSchema::styleKeys($node['kind'])));
+                $specs = $key === 'props' ? $this->spec()['kinds'][$node['kind']]['props'] : array_intersect_key($this->spec()['style'], array_flip($this->spec()['kinds'][$node['kind']]['style']));
                 foreach ($node[$key] as $property => $value) {
                     $valuePath = $nodePath . '.' . $key . '.' . $property;
                     if (!isset($specs[$property])) $this->invalid($valuePath, 'Unknown ' . $key . ' key for ' . $node['kind'] . '.');
-                    $localized = $key === 'props' ? in_array($property, LayoutSchema::LOCALIZED_PROPS[$node['kind']] ?? [], true) : !empty($specs[$property]['localized']);
-                    $binding = $key === 'props' ? SmartValue::PROPERTIES[$node['kind']][$property] ?? null : SmartValue::STYLE_PROPERTIES[$property] ?? null;
-                    $this->valueShape($value, $specs[$property]['type'], $valuePath, $localized, $binding !== null);
+                    $this->valueShape($value, $specs[$property], $valuePath, !empty($specs[$property]['localized']), isset($specs[$property]['binding']));
                 }
             }
             foreach (['responsive' => array_keys(StyleVariants::DEVICES), 'states' => StyleVariants::STATES] as $group => $variants) {
@@ -530,7 +537,7 @@ final class PageBuilderTools
             if ($kind === LayoutSchema::COMPONENT) $node['children'] = $this->areaContents($node, $nodePath);
             $node['children'] = $this->prepare($node['children'] ?? [], $nodePath . '.children', $seen, $count, [
                 // A repeater's item template may not contain another one.
-                'parent' => $kind === 'field' ? ($at['item'] ? '' : 'field') : $kind,
+                'parent' => ($this->spec()['kinds'][$kind]['slot'] ?? false) ? ($at['item'] ? 'item-slot' : 'slot') : ($kind === 'field' ? ($at['item'] ? '' : 'field') : $kind),
                 // Cards, item templates, an area's default content and an instance's content areas hold no Entry content area.
                 'page_content' => $at['page_content'] && !in_array($kind, ['field', 'collection', LayoutSchema::PAGE_CONTENT, LayoutSchema::COMPONENT], true),
                 'rows' => match ($kind) {
@@ -614,14 +621,24 @@ final class PageBuilderTools
     }
 
     /** Reject malformed compound values before lenient normalizers can cast them. */
-    private function valueShape(mixed $value, string $type, string $path, bool $localized = false, bool $binding = false): void
+    private function valueShape(mixed $value, array $spec, string $path, bool $localized = false, bool $binding = false): void
     {
+        $type = $spec['type'];
         if ($localized && LocalizedValue::is($value)) {
             $this->map($value['values'] ?? null, $path . '.values');
-            foreach ($value['values'] as $locale => $item) $this->valueShape($item, $type, $path . '.values.' . $locale, false, $binding);
+            foreach ($value['values'] as $locale => $item) $this->valueShape($item, $spec, $path . '.values.' . $locale, false, $binding);
             return;
         }
         if ($binding && SmartValue::isDynamic($value)) return; // SmartValue validates its own structure.
+        if ($type === 'list') {
+            if (!is_array($value) || !array_is_list($value)) $this->invalid($path, 'Expected an array of item objects.');
+            foreach ($value as $index => $item) {
+                $this->map($item, $path . '.' . $index);
+                $this->keys($item, array_keys($spec['fields']), $path . '.' . $index);
+                foreach ($item as $key => $field) $this->valueShape($field, $spec['fields'][$key], $path . '.' . $index . '.' . $key);
+            }
+            return;
+        }
         if (in_array($type, ['set', 'media_list', 'content_types', 'search_fields', 'sort_fields'], true)) {
             if (!is_array($value) || !array_is_list($value)) $this->invalid($path, 'Expected an array of strings.');
             foreach ($value as $index => $item) if (!is_string($item)) $this->invalid($path . '.' . $index, 'Expected a string.');
@@ -686,7 +703,7 @@ final class PageBuilderTools
         if (count($input) !== count($output)) $this->invalid($path, 'Invalid child placement, nesting limit, duplicate page placeholder or collection card count. Inspect allowed children with get_builder_schema.');
         $styles = LayoutSchema::styleSpec();
         foreach ($input as $index => $node) {
-            $props = LayoutSchema::propSpec($node['kind']);
+            $props = $this->spec()['kinds'][$node['kind']]['props'];
             $actual = $output[$index];
             $nodePath = $path . '.' . $index;
             foreach (['id', 'kind', 'name'] as $key) {

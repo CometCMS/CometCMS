@@ -85,6 +85,11 @@
       <ul class="list-disc space-y-1 pl-5 font-mono text-xs">
         <li v-for="(issue, index) in data.errors" :key="index">{{ issue.extension ? `${issue.extension}: ` : "" }}{{ formatIssue(issue) }}</li>
       </ul>
+      <div v-if="data.can_install" class="flex flex-wrap gap-2">
+        <button v-for="name in brokenExtensions" :key="name" type="button" class="btn-secondary btn-sm" :disabled="busy" :aria-label="t('site.extensions.deleteLabel', { name })" @click="previewRemove({ name })">
+          {{ t('common.delete') }} {{ name }}
+        </button>
+      </div>
     </div>
     <ConfirmModal
       :model-value="!!deleteTarget"
@@ -109,62 +114,53 @@
       </div>
     </ConfirmModal>
     <ConfirmModal
-      :model-value="!!pendingUpdate"
+      :model-value="!!pendingReview"
       variant="warning"
-      :title="t('site.extensions.changesTitle')"
-      :message="t('site.extensions.changesMessage', pendingUpdate ?? {})"
-      :confirm-label="t('site.extensions.changesConfirm')"
+      :title="t('site.extensions.reviewTitle')"
+      :message="t('site.extensions.reviewMessage', pendingReview ?? {})"
+      :confirm-label="t(pendingReview?.scripts.length ? 'site.extensions.scriptsConfirm' : 'site.extensions.seedsConfirm')"
+      :loading-label="t('site.extensions.upload')"
       :loading="busy"
-      @update:model-value="(open) => { if (!open) pendingUpdate = null }"
-      @confirm="confirmUpdate"
+      @update:model-value="(open) => { if (!open) pendingReview = null }"
+      @confirm="confirmReview"
     >
-      <ul class="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600">
-        <li v-for="change in pendingUpdate?.changes ?? []" :key="change">{{ change }}</li>
-      </ul>
-    </ConfirmModal>
-    <ConfirmModal
-      :model-value="!!pendingScripts"
-      variant="warning"
-      :title="t('site.extensions.scriptsTitle')"
-      :message="t('site.extensions.scriptsMessage', { extension: pendingScripts?.extension ?? '' })"
-      :confirm-label="t('site.extensions.scriptsConfirm')"
-      :loading="busy"
-      @update:model-value="(open) => { if (!open) pendingScripts = null }"
-      @confirm="confirmScripts"
-    >
-      <ul class="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600">
-        <li v-for="block in pendingScripts?.blocks ?? []" :key="block">{{ block }}</li>
-      </ul>
-    </ConfirmModal>
-    <ConfirmModal
-      :model-value="!!pendingSeeds"
-      variant="warning"
-      :title="t('site.extensions.seedsTitle')"
-      :message="t('site.extensions.seedsMessage')"
-      :confirm-label="t('site.extensions.seedsConfirm')"
-      :loading="busy"
-      @update:model-value="(open) => { if (!open) pendingSeeds = null }"
-      @confirm="confirmSeeds"
-    >
-      <div class="mt-3 max-h-80 space-y-3 overflow-y-auto">
-        <section v-for="group in seedGroups" :key="group.kind">
-          <h4 class="text-sm font-semibold">{{ t(`site.extensions.kind.${group.kind}`) }}</h4>
-          <table class="w-full text-left text-xs">
-            <thead><tr><th scope="col" class="py-1">{{ t('common.name') }}</th><th scope="col">{{ t('site.extensions.seedStatus') }}</th><th scope="col">{{ t('site.extensions.seedAction') }}</th></tr></thead>
-            <tbody>
-              <tr v-for="item in group.items" :key="seedKey(item)">
-                <td class="py-2 pr-2">{{ item.name }}</td>
-                <td class="pr-2"><span class="rounded bg-slate-100 px-1.5 py-0.5">{{ t(item.exists ? 'site.extensions.exists' : 'site.extensions.new') }}</span></td>
-                <td>
-                  <select v-if="item.exists" v-model="seedChoices[seedKey(item)]" :aria-label="t('site.extensions.choiceFor', { name: item.name })" :disabled="busy" class="form-input py-1 text-xs">
-                    <option value="skip">{{ t('site.extensions.skip') }}</option>
-                    <option value="overwrite">{{ t('site.extensions.overwrite') }}</option>
-                  </select>
-                  <span v-else>{{ t('site.extensions.create') }}</span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+      <div class="mt-3 max-h-[60vh] space-y-4 overflow-y-auto text-sm">
+        <section v-if="pendingReview?.changes.length" class="space-y-2">
+          <h4 class="font-semibold">{{ t('site.extensions.changesTitle') }}</h4>
+          <p>{{ t('site.extensions.changesMessage', pendingReview) }}</p>
+          <ul class="list-disc space-y-1 pl-5">
+            <li v-for="change in pendingReview.changes" :key="change">{{ change }}</li>
+          </ul>
+        </section>
+        <section v-if="pendingReview?.scripts.length" class="space-y-2 rounded-lg bg-amber-50 p-3 text-amber-900">
+          <h4 class="font-semibold">{{ t('site.extensions.scriptsTitle') }}</h4>
+          <p>{{ t('site.extensions.scriptsMessage', pendingReview) }}</p>
+          <ul class="list-disc space-y-1 pl-5">
+            <li v-for="block in pendingReview.scripts" :key="block">{{ block }}</li>
+          </ul>
+        </section>
+        <section v-if="seedGroups.length" class="space-y-2">
+          <h4 class="font-semibold">{{ t('site.extensions.seedsTitle') }}</h4>
+          <p>{{ t('site.extensions.seedsMessage') }}</p>
+          <section v-for="group in seedGroups" :key="group.kind">
+            <h4 class="text-sm font-semibold">{{ t(`site.extensions.kind.${group.kind}`) }}</h4>
+            <table class="w-full text-left text-xs">
+              <thead><tr><th scope="col" class="py-1">{{ t('common.name') }}</th><th scope="col">{{ t('site.extensions.seedStatus') }}</th><th scope="col">{{ t('site.extensions.seedAction') }}</th></tr></thead>
+              <tbody>
+                <tr v-for="item in group.items" :key="seedKey(item)">
+                  <td class="py-2 pr-2">{{ item.name }}</td>
+                  <td class="pr-2"><span class="rounded bg-slate-100 px-1.5 py-0.5">{{ t(item.exists ? 'site.extensions.exists' : 'site.extensions.new') }}</span></td>
+                  <td>
+                    <select v-if="item.exists" v-model="seedChoices[seedKey(item)]" :aria-label="t('site.extensions.choiceFor', { name: item.name })" :disabled="busy" class="form-input py-1 text-xs">
+                      <option value="skip">{{ t('site.extensions.skip') }}</option>
+                      <option value="overwrite">{{ t('site.extensions.overwrite') }}</option>
+                    </select>
+                    <span v-else>{{ t('site.extensions.create') }}</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
         </section>
       </div>
     </ConfirmModal>
@@ -193,13 +189,13 @@ const success = ref("");
 const progress = ref(null);
 const dragDepth = ref(0);
 const deleteTarget = ref(null);
-const pendingUpdate = ref(null);
-const pendingScripts = ref(null);
-const pendingSeeds = ref(null);
+const pendingReview = ref(null);
 const seedChoices = ref({});
 const removeChoices = ref([]);
 const seedKey = (item) => `${item.kind}/${item.id}`;
-const seedGroups = computed(() => ['content_types', 'components', 'templates', 'presets'].map((kind) => ({ kind, items: (pendingSeeds.value?.plan ?? []).filter((item) => item.kind === kind) })).filter((group) => group.items.length));
+const seedGroups = computed(() => ['content_types', 'components', 'templates', 'presets'].map((kind) => ({ kind, items: (pendingReview.value?.plan ?? []).filter((item) => item.kind === kind) })).filter((group) => group.items.length));
+const brokenExtensions = computed(() => [...new Set((data.value?.errors ?? []).map((issue) => issue.extension))]
+  .filter((name) => name && !(data.value?.extensions ?? []).some((pkg) => pkg.name === name)));
 let generation = 0;
 
 const formatIssue = (issue) => `${issue.file}${issue.line ? `:${issue.line}` : ""}${issue.file ? ": " : ""}${issue.message}`;
@@ -212,9 +208,7 @@ async function load() {
   success.value = "";
   dragDepth.value = 0;
   deleteTarget.value = null;
-  pendingUpdate.value = null;
-  pendingScripts.value = null;
-  pendingSeeds.value = null;
+  pendingReview.value = null;
   busy.value = true;
   try {
     const result = await api.extensions.list();
@@ -245,7 +239,7 @@ function drop(event) {
   upload(Array.from(event.dataTransfer?.files ?? []));
 }
 
-/** Consent travels with retries: confirming one question keeps the answer to the other. */
+/** Review all install decisions together; the server revalidates the ZIP on confirmation. */
 async function upload(files, consent = { acceptChanges: false, allowScripts: false }) {
   if (busy.value || !data.value?.can_install || !files.length) return;
   const problem = extensionUploadError(files);
@@ -263,9 +257,7 @@ async function upload(files, consent = { acceptChanges: false, allowScripts: fal
   try {
     const { data: installed } = await api.extensions.install(files[0], { ...consent, onProgress: (value) => { progress.value = value; } });
     if (current !== generation || workspace !== getActiveWorkspace()) return;
-    pendingUpdate.value = null;
-    pendingScripts.value = null;
-    pendingSeeds.value = null;
+    pendingReview.value = null;
     types.invalidate();
     await Promise.all([site.refreshExtensions(), types.fetch()]);
     const result = await api.extensions.list();
@@ -277,15 +269,9 @@ async function upload(files, consent = { acceptChanges: false, allowScripts: fal
     }
   } catch (err) {
     if (current !== generation) return;
-    pendingUpdate.value = null;
-    pendingScripts.value = null;
-    pendingSeeds.value = null;
-    if (err.code === "extension_changes" && err.details) {
-      pendingUpdate.value = { ...err.details, file: files[0], consent };
-    } else if (err.code === "extension_scripts" && err.details) {
-      pendingScripts.value = { ...err.details, file: files[0], consent };
-    } else if (err.code === "extension_seeds" && err.details) {
-      pendingSeeds.value = { ...err.details, file: files[0], consent };
+    pendingReview.value = null;
+    if (err.code === "extension_review" && err.details) {
+      pendingReview.value = { ...err.details, file: files[0] };
       seedChoices.value = Object.fromEntries(err.details.plan.map((item) => [seedKey(item), item.exists ? 'skip' : 'create']));
     } else {
       error.value = fail(err);
@@ -298,19 +284,13 @@ async function upload(files, consent = { acceptChanges: false, allowScripts: fal
   }
 }
 
-function confirmUpdate() {
-  const pending = pendingUpdate.value;
-  if (pending) upload([pending.file], { ...pending.consent, acceptChanges: true });
-}
-
-function confirmScripts() {
-  const pending = pendingScripts.value;
-  if (pending) upload([pending.file], { ...pending.consent, allowScripts: true });
-}
-
-function confirmSeeds() {
-  const pending = pendingSeeds.value;
-  if (pending) upload([pending.file], { ...pending.consent, seeds: { ...seedChoices.value } });
+function confirmReview() {
+  const pending = pendingReview.value;
+  if (pending) upload([pending.file], {
+    acceptChanges: pending.changes.length > 0,
+    allowScripts: pending.scripts.length > 0,
+    seeds: { ...seedChoices.value },
+  });
 }
 
 async function toggleEnabled(pkg) {

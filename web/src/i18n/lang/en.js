@@ -47,6 +47,8 @@ const messages = {
     'localization.alt': 'Alternative text',
     'localization.caption': 'Caption',
 
+  "site.extensions.reviewTitle": "Review extension",
+  "site.extensions.reviewMessage": "Review {extension} {version} before installing.",
   "site.extensions.seedsTitle": "Brings along",
   "site.extensions.seedsMessage": "These items are copied into your site. Choose what to do with existing items. The theme preset is added as a choice in the designer; installation never applies it.",
   "site.extensions.seedsConfirm": "Install extension",
@@ -84,7 +86,6 @@ const messages = {
   "site.extensions.loadErrors": "These extensions in the workspace folder could not be loaded:",
   "site.extensions.changesTitle": "Update changes placed blocks",
   "site.extensions.changesMessage": "Updating {extension} from {installed_version} to {version} affects blocks that may already be placed in layouts:",
-  "site.extensions.changesConfirm": "Update anyway",
   "site.extensions.zipOnly": "Choose a single .zip file. To install a extension folder, zip the folder first.",
   "site.extensions.tooLarge": "Extensions are limited to 25 MiB.",
   "site.extensions.listAdd": "Add item",

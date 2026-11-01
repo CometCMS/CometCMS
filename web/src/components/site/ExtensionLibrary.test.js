@@ -84,21 +84,39 @@ describe('extension confirmations', () => {
     expect(find(root, (el) => el.props['aria-label'] === 'Enable extension: Portfolio')).toBeUndefined()
   })
 
-  it('keeps script consent and submits skip/overwrite choices from the seed table', async () => {
-    api.extensions.install.mockRejectedValueOnce({ code: 'extension_scripts', details: { extension: pkg.name, blocks: ['test/card'] } })
-      .mockRejectedValueOnce({ code: 'extension_seeds', details: { extension: pkg.name, plan: [{ kind: 'content_types', id: 'project', name: 'Projects', exists: false }, { kind: 'components', id: 'hero', name: 'Hero', exists: true }] } })
-      .mockResolvedValueOnce({ data: pkg })
+  it('reviews breaking changes scripts and seed choices together and confirms in one retry', async () => {
+    api.extensions.install.mockRejectedValueOnce({ code: 'extension_review', details: {
+      extension: pkg.name, installed_version: '1.0.0', version: '2.0.0',
+      changes: ['test/card removes a prop.'], scripts: ['test/card'],
+      plan: [{ kind: 'content_types', id: 'project', name: 'Projects', exists: false }, { kind: 'components', id: 'hero', name: 'Hero', exists: true }],
+    } }).mockResolvedValueOnce({ data: pkg })
     const root = await mount()
     const file = new File(['zip'], 'portfolio.zip')
     find(root, (el) => el.props.id === 'extension-upload').props.onChange({ target: { files: [file], value: 'selected' } })
-    await vi.waitFor(() => expect(find(root, (el) => el.tag === 'dialog')?.props.title).toBe('Allow JavaScript?'))
-    find(root, (el) => el.tag === 'dialog').children.at(-1).props.onClick()
-    await vi.waitFor(() => expect(find(root, (el) => el.tag === 'dialog')?.props.title).toBe('Brings along'))
+    await vi.waitFor(() => expect(find(root, (el) => el.tag === 'dialog')?.props.title).toBe('Review extension'))
+    expect(text(root)).toContain('test/card removes a prop.')
+    expect(text(root)).toContain('Allow JavaScript?')
+    expect(text(root)).toContain('Brings along')
+    expect(api.extensions.install).toHaveBeenCalledTimes(1)
     const select = find(root, (el) => el.tag === 'select')
     select.props['onUpdate:modelValue']('overwrite')
     find(root, (el) => el.tag === 'dialog').children.at(-1).props.onClick()
-    await vi.waitFor(() => expect(api.extensions.install).toHaveBeenCalledTimes(3))
-    expect(api.extensions.install.mock.calls[2][1]).toMatchObject({ allowScripts: true, seeds: { 'content_types/project': 'create', 'components/hero': 'overwrite' } })
+    await vi.waitFor(() => expect(api.extensions.install).toHaveBeenCalledTimes(2))
+    expect(api.extensions.install.mock.calls[1][1]).toMatchObject({ acceptChanges: true, allowScripts: true, seeds: { 'content_types/project': 'create', 'components/hero': 'overwrite' } })
+  })
+
+  it('offers deletion for broken extensions without an inventory row', async () => {
+    api.extensions.list.mockResolvedValue({ data: { can_install: true, extensions: [], errors: [
+      { extension: 'test/broken', file: 'comet-extension.json', line: null, message: 'Invalid manifest.' },
+      { extension: 'test/broken', file: '', line: null, message: 'Another issue.' },
+    ] } })
+    api.extensions.get.mockResolvedValue({ data: { name: 'test/broken', title: 'test/broken', seeded: [] } })
+    const root = await mount()
+    const buttons = findAll(root, (el) => el.props['aria-label'] === 'Delete extension: test/broken')
+    expect(buttons).toHaveLength(1)
+    buttons[0].props.onClick()
+    await vi.waitFor(() => expect(api.extensions.get).toHaveBeenCalledWith('test/broken'))
+    await vi.waitFor(() => expect(find(root, (el) => el.tag === 'dialog')).toBeTruthy())
   })
 
   it('leaves uninstall items unchecked and warns only after selecting edited content with entries', async () => {

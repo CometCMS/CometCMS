@@ -13,9 +13,8 @@ use CometCMS\Site\Blocks\BlockScripts;
 use CometCMS\Site\Blocks\BlockTemplate;
 
 /**
- * A extension: comet-extension.json, blocks/<name>/{block.json, template.html, style.css}
- * and assets/. Extensions are data. Nothing in them is executed; templates and CSS
- * compile once, here, into the structures the renderer uses.
+ * An extension: a manifest, optional blocks, assets and site-content seeds.
+ * Templates and CSS compile here; optional trusted view.js modules run in the browser.
  */
 final class Extension
 {

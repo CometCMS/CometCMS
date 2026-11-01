@@ -4,7 +4,7 @@
 
 Extensions bring reusable blocks and optional starter content to a workspace. An extension is a ZIP with `comet-extension.json`; everything else is optional. Blocks stay installed with the extension. Content types, components, template lists with their layouts, and a theme preset are copied into normal site storage once, then belong to your site.
 
-The install preview lists every item being copied. Existing items default to **Skip**; choose **Overwrite** per item when you want to replace them. Reinstalling or updating an extension asks again. Installing a theme preset adds it to the designer without applying it.
+One install preview shows breaking changes, blocks with JavaScript, and every site item being copied. Confirming it submits these decisions together. Existing items default to **Skip**; choose **Overwrite** per item when you want to replace them. Reinstalling or updating an extension asks again. Installing a theme preset adds it to the designer without applying it.
 
 ## Quick start
 
@@ -82,7 +82,7 @@ Other fields are rejected, so a typo cannot go unnoticed.
 
 ### block.json
 
-Every folder `blocks/<name>/` is one block. Its name combines the extension vendor and the folder name: `blocks/callout` in `cometcms/essentials` is the block **`cometcms/callout`**, stored in layouts as the kind `block:cometcms/callout`. Block folder names follow the same rules as name parts. A block name belongs to one extension; installing another extension that defines it is rejected.
+Every folder `blocks/<name>/` is one block. Its name combines the extension vendor and the folder name: `blocks/callout` in `cometcms/essentials` is the block **`cometcms/callout`**, stored in layouts as the kind `block:cometcms/callout`. Block folder names follow the same rules as name parts. Block names are vendor-wide: two extensions from the same vendor must use different block folder names. A block name belongs to one extension; installing another extension that defines it is rejected. Treat block kinds and prop names as persistent storage keys. To rename one in v1, keep the old block or prop working alongside its replacement; there are no automatic data migrations.
 
 ```json
 {
@@ -141,7 +141,7 @@ For example, `"zoom": { "type": "int", "label": "Zoom level", "min": 1, "max": 1
 
 Defaults are checked against their types. Theme colors are `primary`, `secondary`, `accent`, `background`, `surface`, `text`, `muted` and `border`. List item defaults may leave out fields, which then use the field's default.
 
-Text, rich text, URL, link, media and list props are translated per language. A list is translated as a whole, so translations can add or remove items. Values are validated whenever layouts are saved and loaded. Values of props an extension no longer declares are dropped the next time the layout is saved.
+Text, rich text, URL, link, media and list props are translated per language. A list is translated as a whole, so translations can add or remove items. Values are validated whenever layouts are saved and loaded. Values of props an extension no longer declares are dropped the next time the layout is saved. Literal string, text and rich-text props, including list fields, contribute to search and automatic descriptions of entry page content; bound content is indexed through its source fields.
 
 ### template.html
 
@@ -158,7 +158,7 @@ Templates are HTML with Mustache tags. All values are HTML-escaped.
 | `<details {{#open}}open{{/open}}>` | Inside a start tag, a section toggles one boolean attribute: `open`, `hidden`, `inert`, `disabled`, `controls`, `autoplay`, `muted`, `loop`, `playsinline` or `reversed`. |
 | `{{! comment }}` | Removed. |
 
-Elsewhere inside a start tag, tags may only appear in quoted attribute values: `class="cometcms-callout cometcms-callout--{{tone}}"`. Sections can nest 16 deep. Each section must open and close inside the same element, or inside the same attribute value, so every combination of values produces well-formed HTML. Raw output is only for `richtext` props; there are no partials and no delimiter changes, and the only dotted names are `.url` and `.alt` on media props. Lists cannot be nested.
+Elsewhere inside a start tag, tags may only appear in quoted attribute values: `class="cometcms-callout cometcms-callout--{{tone}}"`. Sections can nest 16 deep. Each section must open and close inside the same element, or inside the same attribute value, so every combination of values produces well-formed HTML. Raw output is only for `richtext` props; there are no partials and no delimiter changes, and the only dotted names are `.url` and `.alt` on media props. List iteration cannot be nested, including reusing an enclosing list inside itself. Scalar conditions inside lists are supported.
 
 **Links.** Put a `link` prop in an `<a href="{{cta}}">`. When the editor chooses "open in new tab", CometCMS adds `target="_blank" rel="noopener noreferrer"` itself, unless the template sets its own `target`.
 
@@ -241,7 +241,7 @@ export default function mount(element, props) {
 
 - **Values.** `props` holds each prop by name: text as strings, `int` as numbers, `bool` as booleans, lists as arrays of item objects, and media, links and colors as objects whose `_` is the URL, the address or the color key (media also have `alt`, links `new_tab`, colors `css`). Bound and translated props are already resolved.
 - **Website and previews.** Scripts run in the builder iframe and in full-page draft previews with the resolved block props. After edits, previews containing scripted blocks reload to reset generated markup, listeners and timers while preserving scroll position. Blocks should still provide readable HTML when JavaScript is unavailable (progressive enhancement).
-- **Self-contained.** `view.js` must `export default` its mount function and cannot `import` anything. Bundle dependencies into the file, for example `esbuild src/stats.js --bundle --format=esm --outfile=blocks/stats/view.js`. It is limited to 128 KiB and cannot contain `</script`.
+- **Self-contained.** `view.js` must export its mount function as the default export and cannot `import` anything. Both `export default function mount(…) { … }` and bundled `export { mount as default }` are accepted. The browser parses and executes the module; installer checks do not replace testing it in a preview. Bundle dependencies into the file, for example `esbuild src/stats.js --bundle --format=esm --outfile=blocks/stats/view.js`. It is limited to 128 KiB and cannot contain `</script`.
 - **Errors.** An exception in one instance is logged to the console and does not stop the others.
 
 The script is served as a content-hashed module. Each page that contains the block gets one small loader, which imports the module and calls it for each instance with `data-comet-props`. The website's Content-Security-Policy allows exactly these loaders, by hash, and exactly these module URLs; it never allows the whole site, so other files on the server, such as uploaded media, still cannot run as scripts. Scripts may use `fetch`, but only to the website itself and to the sources the policy allows.
@@ -298,7 +298,7 @@ A component contains one structure root (`section`, `row` or `column`) in `nodes
 
 Try **Comet Portfolio** (`examples/extensions/comet-portfolio/`): install Essentials first, then upload `examples/extensions/comet-portfolio.zip`. The preview lists **Projects**, **Portfolio hero**, **project/detail** and **Portfolio dusk**. The project schema and field-bound case-study template demonstrate media, Markdown, selects, dates, numbers, booleans, a range meter, a color swatch, result repeaters and related-project cards. After installing, Projects appears in the admin and Portfolio dusk appears in the designer. Upload it again to try the per-item conflict choices.
 
-The ledger at `site/extensions-seeded.json` records each installed seed's kind, id, SHA-256 hash and installation time, grouped by extension name. Hashes describe the final stored JSON, including all layouts for a template seed. Skipping an item keeps its original ledger record. Updates do not synchronize site-owned data automatically.
+The ledger at `site/extensions-seeded.json` records each installed seed's kind, id, SHA-256 hash and installation time, grouped by extension name. Hashes describe the final stored JSON, including all layouts for a template seed. Skipping an item keeps its original ledger record. Creating or explicitly overwriting an item transfers its tracking to the installing extension; an older importer can no longer hide it on disable or offer it for deletion. Updates do not synchronize site-owned data automatically. Uninstalling while keeping an item drops that tracking and leaves it independent of extension status.
 
 On uninstall, the dialog lists seeded items with every checkbox unchecked. Select only the items to delete. Items edited since installation and types containing entries display warnings when selected. Removing a content type also removes its entries and its site layouts, just as deleting the type in the admin does. Unchecked items remain normal site content. Blocks and assets are always removed, and the extension's ledger entry is dropped. Presets are tracked by their site id, so renaming one does not detach it from the uninstall preview.
 
@@ -309,14 +309,14 @@ A failed seed write restores the previous extension directory and the seeded des
 | Action | How | Effect |
 | --- | --- | --- |
 | Install | Upload a ZIP in **Website Settings → Extensions**, or copy the extension folder to `cms/storage/workspaces/<workspace>/site/extensions/<vendor>/<extension>/` (`storage/…` in a production build) | The extension is validated completely before anything is written. A rejected upload changes nothing. |
-| Update | Upload an extension with the same name | Placed blocks change immediately. If the update removes a block, removes a prop, changes a prop's type or drops an enum option, the upload lists these changes and asks for confirmation first. |
+| Update | Upload an extension with the same name | Placed blocks change immediately. If the update removes a block, slot or prop, changes a prop's type, drops an enum option, narrows an integer range or reduces a text, URL or list limit, the preview lists these changes and asks for confirmation first. |
 | Delete | **Delete** beside the extension, or remove its folder | Placed blocks keep their settings in the layouts. The builder shows them as missing blocks, and the website omits them until the extension is installed again. |
 
 Use **Enable** or **Disable** in **Website Settings → Extensions** to change an extension’s status. Extensions are enabled when installed. Disabling removes their blocks from the builder palette and stops rendering their blocks, styles and scripts on the website. Imported content types and their entries are also hidden from admin navigation, entry lists, the API and public pages while disabled. Their files, saved block values, nested content, routes and homepage settings remain stored. Re-enabling restores the blocks and imported types with their entries; updating a disabled extension keeps it disabled. Status is stored per workspace in `site/extensions-state.json` and included in workspace backups. Reload an open builder after changing status.
 
 Extensions belong to one workspace and are independent of its theme. Workspace backups include them. A workspace holds up to 64 extensions and 256 blocks; an extension holds up to 64 blocks, 500 files and 25 MiB.
 
-Copied folders register their blocks on the next request. They do not seed site content; upload the ZIP through the admin to preview and copy seeds. CometCMS keeps a compiled index of all extensions and rebuilds it whenever an extension file's size, modification time or inode changes. Extensions in the folder that fail validation are listed with their errors in **Extensions**, without affecting the other extensions. The folder name must match the extension `name`. Reload an open builder after installing or updating an extension.
+Copied folders register their blocks on the next request. They do not seed site content; upload the ZIP through the admin to preview and copy seeds. CometCMS keeps a compiled index of all extensions and rebuilds it whenever an extension file's size, modification time or inode changes. Extensions in the folder that fail validation are listed with their errors and a **Delete** action in **Extensions**, without affecting the other extensions. The folder name must match the extension `name`. Reload an open builder after installing or updating an extension.
 
 Keep your extensions in version control. Versions are informational: dependencies are checked by extension name, without version constraints, automatic downloads or rollback beyond reinstalling an older ZIP.
 
@@ -363,7 +363,7 @@ Extension CSS and scripts load in the preview document, including the builder if
 | Request | Purpose |
 | --- | --- |
 | `GET /admin/api/site/extensions` | Installed extensions with their blocks, folder extensions that failed to load (`errors`), and `can_install`. Requires `site.manage`. |
-| `POST /admin/api/site/extensions` | Multipart upload with the ZIP in `extension`. Returns 201 with `name`, `version`, `previous_version`, `blocks` and `changes`. Invalid extensions return 422 `invalid_extension` with `details`: a list of `{file, line, message}`. Breaking updates return 409 `extension_changes` with `details.changes`; send `accept_changes=1` to proceed. Extensions with scripts return 409 `extension_scripts` with `details.blocks`; send `allow_scripts=1` to install them. Seeds return 409 `extension_seeds` with `details.plan`: `{kind, id, name, exists}` per item. Resubmit `seeds` as a JSON object, for example `{"content_types/project":"create","components/portfolio-hero":"skip","templates/project/detail":"overwrite","presets/portfolio-dusk":"create"}`. New items default to create, existing items to skip. A successful response lists the blocks with scripts in `scripts`. |
+| `POST /admin/api/site/extensions` | Multipart upload with the ZIP in `extension`. Returns 201 with `name`, `version`, `previous_version`, `blocks` and `changes`. Invalid extensions return 422 `invalid_extension` with `details`: a list of `{file, line, message}`. When confirmation is needed, returns 409 `extension_review` with `details`: `{extension, installed_version, version, changes, scripts, plan}`. `changes` lists destructive block changes, `scripts` names every block with JavaScript, and `plan` lists `{kind, id, name, exists}` for each seed. Review them together, then resubmit the ZIP with `accept_changes=1` for breaking changes, `allow_scripts=1` to trust scripts, and `seeds` as a JSON object, for example `{"content_types/project":"create","components/portfolio-hero":"skip","templates/project/detail":"overwrite","presets/portfolio-dusk":"create"}`. New items default to create, existing items to skip. The server revalidates everything before writing; no uploaded ZIP is retained between requests. A successful response lists the blocks with scripts in `scripts`. |
 | `GET /admin/api/site/extensions/{vendor}/{name}` | Extension metadata plus `seeded`: `{kind, id, name, modified, entry_count?}`. Content types include their entry count. |
 | `PUT /admin/api/site/extensions/{vendor}/{name}` | Set `{ "enabled": true }` or `{ "enabled": false }`. Requires an administrator, `site.manage` and CSRF. Returns the extension name and enabled status. |
 | `DELETE /admin/api/site/extensions/{vendor}/{name}` | JSON body `{"remove":["components/portfolio-hero"]}` chooses seeded items to delete. Blocks and assets are always removed; unchecked items stay. Returns 404 `not_found` when it is not installed. |
@@ -373,6 +373,7 @@ The workspace header and CSRF handling are those of the other admin endpoints.
 ## Not yet supported
 
 - **Shared modules** between the scripts of several blocks; bundle shared code into each `view.js`.
+- **Version-constrained dependencies**, automatic block/prop migrations, and localized extension editor labels. Keep backwards-compatible storage keys and test supported CMS releases before distributing an extension.
 - **Nested lists**, binding a whole list to a repeater field, and several named slots.
 
 </div>

@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use CometCMS\Extensions\Extension;
-use CometCMS\Extensions\ExtensionChanges;
+use CometCMS\Extensions\ExtensionReview;
 use CometCMS\Extensions\ExtensionException;
 use CometCMS\Extensions\ExtensionRegistry;
 use CometCMS\Site\Blocks\BlockTemplate;
@@ -311,7 +311,7 @@ test('extension updates that break placed blocks need confirmation', function ()
     try {
         $blocks->installFiles($update, allowScripts: true);
         throw new RuntimeException('Expected confirmation to be required.');
-    } catch (ExtensionChanges $e) {
+    } catch (ExtensionReview $e) {
         assert_same(['cometcms/callout: the prop "tone" no longer offers success. Instances using them fall back to the default.',
             'cometcms/callout: the prop "link_label" is removed. Its saved values are dropped the next time a layout is saved.',
             'cometcms/feature is removed. Placed instances will show as missing blocks.'], $e->changes);
@@ -333,7 +333,7 @@ test('extension updates that break placed blocks need confirmation', function ()
     try {
         ExtensionRegistry::active()->installFiles($slotless, allowScripts: true);
         throw new RuntimeException('Expected confirmation to be required.');
-    } catch (ExtensionChanges $e) {
+    } catch (ExtensionReview $e) {
         assert_same(['cometcms/card no longer has a slot. Elements placed inside it are removed the next time a layout is saved.',
             'cometcms/pricing: the prop "features" item field "included" is removed. Its saved values are dropped the next time a layout is saved.'], $e->changes);
     }
@@ -470,7 +470,7 @@ test('extension uploads report every problem and ask before breaking placed bloc
     $seed = '\\CometCMS\\Extensions\\ExtensionRegistry::active()->installFiles(\\CometCMS\\Extensions\\Extension::readDirectory(' . var_export(COMET_BLOCK_EXAMPLE, true) . '), allowScripts: true);';
     [$status, $body] = comet_block_upload($update, ['allow_scripts' => '1'], $seed);
     assert_same(409, $status);
-    assert_same('extension_changes', $body['error']['code']);
+    assert_same('extension_review', $body['error']['code']);
     assert_same(['cometcms/feature is removed. Placed instances will show as missing blocks.'], $body['error']['details']['changes']);
     [$status, $body] = comet_block_upload($update, ['accept_changes' => '1', 'allow_scripts' => '1'], $seed);
     assert_same(201, $status);
@@ -753,9 +753,9 @@ test('installing block scripts needs explicit consent and is reported in the inv
     try {
         $blocks->installFiles(comet_block_files());
         throw new RuntimeException('Expected consent to be required.');
-    } catch (\CometCMS\Extensions\ExtensionScripts $e) {
+    } catch (\CometCMS\Extensions\ExtensionReview $e) {
         assert_same('cometcms/essentials', $e->extension);
-        assert_same(['cometcms/before-after', 'cometcms/logo-bar', 'cometcms/maps', 'cometcms/slideshow', 'cometcms/stats'], $e->blocks);
+        assert_same(['cometcms/before-after', 'cometcms/logo-bar', 'cometcms/maps', 'cometcms/slideshow', 'cometcms/stats'], $e->scripts);
     }
     assert_same([], ExtensionRegistry::active()->all());
     $blocks->installFiles(comet_block_files(), allowScripts: true);
@@ -813,8 +813,10 @@ test('published pages and previews mount block scripts through exact CSP sources
 test('extension uploads with scripts ask for consent before installing', function (): void {
     [$status, $body] = comet_block_upload(comet_block_zip(comet_block_files()));
     assert_same(409, $status);
-    assert_same('extension_scripts', $body['error']['code']);
-    assert_same(['extension' => 'cometcms/essentials', 'blocks' => ['cometcms/before-after', 'cometcms/logo-bar', 'cometcms/maps', 'cometcms/slideshow', 'cometcms/stats']], $body['error']['details']);
+    assert_same('extension_review', $body['error']['code']);
+    assert_same(['cometcms/before-after', 'cometcms/logo-bar', 'cometcms/maps', 'cometcms/slideshow', 'cometcms/stats'], $body['error']['details']['scripts']);
+    assert_same([], $body['error']['details']['changes']);
+    assert_same([], $body['error']['details']['plan']);
     [$status, $body] = comet_block_upload(comet_block_zip(comet_block_files()), ['allow_scripts' => '1']);
     assert_same(201, $status);
     assert_same(['cometcms/before-after', 'cometcms/logo-bar', 'cometcms/maps', 'cometcms/slideshow', 'cometcms/stats'], $body['data']['scripts']);
@@ -1012,7 +1014,7 @@ test('extension seed preview lists new and existing items and does not write sit
     try {
         $registry->installFiles($files);
         throw new RuntimeException('Expected seed confirmation.');
-    } catch (\CometCMS\Extensions\ExtensionSeeds $e) {
+    } catch (\CometCMS\Extensions\ExtensionReview $e) {
         $plan = array_column($e->plan, null, 'kind');
         assert_true($plan['content_types']['exists']);
         assert_false($plan['components']['exists']);
@@ -1062,7 +1064,7 @@ test('extension seed choices overwrite or skip each item and retain the original
     try {
         $registry->installFiles($files);
         throw new RuntimeException('Expected another preview.');
-    } catch (\CometCMS\Extensions\ExtensionSeeds $e) {
+    } catch (\CometCMS\Extensions\ExtensionReview $e) {
         assert_same([true, true, true, true], array_column($e->plan, 'exists'));
     }
     $choices = comet_extension_choices($files, 'skip');
@@ -1173,7 +1175,7 @@ test('extension seed upload API returns a plan accepts JSON choices and exposes 
     $essentials = '\\CometCMS\\Extensions\\ExtensionRegistry::active()->installFiles(\\CometCMS\\Extensions\\Extension::readDirectory(' . var_export(COMET_BLOCK_EXAMPLE, true) . '), allowScripts: true);';
     [$status, $body] = comet_block_upload($zip, [], $essentials);
     assert_same(409, $status);
-    assert_same('extension_seeds', $body['error']['code']);
+    assert_same('extension_review', $body['error']['code']);
     assert_same(4, count($body['error']['details']['plan']));
     [$status] = comet_block_upload($zip, ['seeds' => '[]'], $essentials);
     assert_same(422, $status);
@@ -1195,7 +1197,7 @@ test('extension preset ledger follows renamed presets and resolves existing pres
     $files = ['comet-extension.json' => json_encode(['api_version' => 1, 'name' => 'test/preset', 'title' => 'Preset', 'version' => '1.0.0']), 'theme.json' => '{"name":"My preset","theme":{"colors":{"primary":"#123456"}}}'];
     $site = new SiteRepository();
     $preset = $site->createThemePreset('My preset', []);
-    try { $registry->installFiles($files); } catch (\CometCMS\Extensions\ExtensionSeeds $e) {
+    try { $registry->installFiles($files); } catch (\CometCMS\Extensions\ExtensionReview $e) {
         assert_true($e->plan[0]['exists']);
         assert_same($preset['id'], $e->plan[0]['id']);
     }
@@ -1265,7 +1267,7 @@ test('extension status is persistent and workspace scoped and preserves saved bl
     assert_false(in_array('block:cometcms/card', LayoutSchema::spec(blocks: $blocks)['elements'], true));
     $blocks->installFiles(comet_block_files(), allowScripts: true);
     assert_false($blocks->metadata()['extensions'][0]['enabled']);
-    assert_throws(ExtensionChanges::class, fn() => $blocks->installFiles(comet_block_files([
+    assert_throws(ExtensionReview::class, fn() => $blocks->installFiles(comet_block_files([
         'blocks/feature/block.json' => null, 'blocks/feature/template.html' => null, 'blocks/feature/style.css' => null,
     ]), allowScripts: true));
     assert_true($blocks->setEnabled('cometcms/essentials', true));

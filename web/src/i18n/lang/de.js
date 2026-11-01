@@ -47,6 +47,8 @@ const messages = {
     'localization.alt': 'Alternativtext',
     'localization.caption': 'Bildunterschrift',
 
+  "site.extensions.reviewTitle": "Erweiterung prüfen",
+  "site.extensions.reviewMessage": "Prüfe {extension} {version} vor der Installation.",
   "site.extensions.seedsTitle": "Enthaltene Inhalte",
   "site.extensions.seedsMessage": "Diese Inhalte werden in deine Website kopiert. Wähle, was mit vorhandenen Inhalten geschieht. Die Theme-Vorlage steht anschließend im Designer zur Auswahl; sie wird bei der Installation nicht angewendet.",
   "site.extensions.seedsConfirm": "Erweiterung installieren",
@@ -84,7 +86,6 @@ const messages = {
   "site.extensions.loadErrors": "Diese Erweiterungen im Workspace-Ordner konnten nicht geladen werden:",
   "site.extensions.changesTitle": "Update ändert platzierte Blöcke",
   "site.extensions.changesMessage": "Das Update von {extension} von {installed_version} auf {version} betrifft Blöcke, die bereits in Layouts platziert sein können:",
-  "site.extensions.changesConfirm": "Trotzdem aktualisieren",
   "site.extensions.zipOnly": "Wähle eine einzelne .zip-Datei. Um einen Erweiterungsordner zu installieren, packe ihn zuerst als ZIP.",
   "site.extensions.tooLarge": "Erweiterungen sind auf 25 MiB begrenzt.",
   "site.extensions.listAdd": "Eintrag hinzufügen",

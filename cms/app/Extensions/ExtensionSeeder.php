@@ -111,7 +111,7 @@ final class ExtensionSeeder
         foreach ($seeds as $seed) {
             if ($seed['kind'] !== 'components') continue;
             $validate($seed, function () use ($seed, $types, &$components, $blocks): array {
-                $this->validateBlocks($seed['data']['nodes'] ?? [], $blocks);
+                $this->validateNodes($seed['data']['nodes'] ?? [], $blocks, $components, $seed['data']['type'] ?? '');
                 $data = $this->site->normalizeExtensionComponent($seed['id'], $seed['data'], $types, $components, $blocks);
                 return $components[$seed['id']] = $data;
             });
@@ -142,7 +142,7 @@ final class ExtensionSeeder
                 if (!is_array($layouts)) throw new ValidationException(['layouts' => 'Layouts must be keyed by template id.']);
                 foreach ($layouts as $area => &$nodes) {
                     if (!in_array($area, array_column($list, 'id'), true) || !is_array($nodes)) throw new ValidationException(['layouts' => 'Each layout must belong to a template in this list.']);
-                    $this->validateBlocks($nodes, $blocks);
+                    $this->validateNodes($nodes, $blocks, $components, $type);
                     $nodes = LayoutSchema::normalize($nodes, $variant === 'detail', $blocks);
                 }
                 unset($nodes);
@@ -160,7 +160,7 @@ final class ExtensionSeeder
         return array_values($normalized);
     }
 
-    private function validateBlocks(mixed $nodes, ExtensionRegistry $blocks): void
+    private function validateNodes(mixed $nodes, ExtensionRegistry $blocks, array $components, mixed $type): void
     {
         if (!is_array($nodes)) throw new ValidationException(['nodes' => 'Nodes must be a list.']);
         foreach ($nodes as $node) {
@@ -169,7 +169,15 @@ final class ExtensionSeeder
             if (is_string($kind) && str_starts_with($kind, 'block:') && $blocks->get($kind) === null) {
                 throw new ValidationException(['nodes' => 'Unknown extension block: ' . $kind]);
             }
-            $this->validateBlocks($node['children'] ?? [], $blocks);
+            if ($kind === LayoutSchema::COMPONENT) {
+                $id = $node['props']['component'] ?? '';
+                $component = is_string($id) ? ($components[$id] ?? null) : null;
+                if ($component === null || ($node['props']['root'] ?? 'section') !== $component['root']
+                    || (($component['type'] ?? '') !== '' && $component['type'] !== $type)) {
+                    throw new ValidationException(['nodes' => 'Unknown or incompatible component reference: ' . (is_string($id) ? $id : '')]);
+                }
+            }
+            $this->validateNodes($node['children'] ?? [], $blocks, $components, $type);
         }
     }
 
@@ -244,7 +252,16 @@ final class ExtensionSeeder
                 }
             }
             // Layout saves can add page fields to types. Hash the final stored items.
-            foreach ($written as $seed) $entries[self::key($seed)]['hash'] = $this->hash($seed);
+            foreach ($written as $seed) {
+                $entries[self::key($seed)]['hash'] = $this->hash($seed);
+                // An explicit overwrite transfers tracking; an older importer must not
+                // hide or delete content now maintained by a different extension.
+                foreach ($ledger as $owner => $items) {
+                    if ($owner === $this->extension) continue;
+                    $ledger[$owner] = array_values(array_filter($items, static fn(array $item): bool => self::key($item) !== self::key($seed)));
+                    if ($ledger[$owner] === []) unset($ledger[$owner]);
+                }
+            }
             if ($entries !== []) $ledger[$this->extension] = array_values($entries);
             $this->store->write($ledger, 'extensions-seeded');
         } catch (\Throwable $e) {

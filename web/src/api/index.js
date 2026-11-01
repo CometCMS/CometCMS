@@ -493,8 +493,8 @@ export const api = {
     get: (name) => request('GET', `/site/extensions/${name.split('/').map(encodeURIComponent).join('/')}`),
     delete: (name, remove = []) => request('DELETE', `/site/extensions/${name.split('/').map(encodeURIComponent).join('/')}`, { remove }),
     /**
-     * Install or update an extension ZIP. Updates that break placed blocks, and extensions
-     * with JavaScript, fail with 409 until acceptChanges and allowScripts are set.
+     * Install or update an extension ZIP. A 409 extension_review contains changes,
+     * scripts and seed choices together; resubmit the ZIP with the reviewed decisions.
      */
     install: (file, { acceptChanges = false, allowScripts = false, seeds, onProgress } = {}) => {
       const body = new FormData()

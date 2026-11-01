@@ -421,8 +421,8 @@ try {
   assert(await evaluate(`fetch('/').then((res) => res.text()).then((html) => html.includes('>Extensions work</p>'))`), 'Reinstall restores saved instance props');
   await dropFiles([zips.v2]);
   await waitFor('!!document.querySelector(\'[role="alertdialog"]\') && document.body.innerText.includes("cometcms/feature is removed.")', 'breaking update confirmation');
-  await click('Update anyway', '[role="alertdialog"] button');
-  await allowScripts();
+  assert(await evaluate('document.querySelector(\'[role="alertdialog"]\').innerText.includes("Allow JavaScript?")'), 'Breaking changes and script consent share one review');
+  await click('Install with JavaScript', '[role="alertdialog"] button');
   await waitFor('document.body.innerText.includes("updated from 1.6.0 to 2.0.0")', 'confirmed update');
   await command('Page.navigate', { url: `${origin}/admin/page-builder/builder/layout/home/detail` });
   await waitFor(`[...document.querySelectorAll('button')].some((el) => el.textContent.trim() === 'Accordion')`, 'built-in accordion remains available');

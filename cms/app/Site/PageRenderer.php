@@ -605,7 +605,7 @@ final class PageRenderer
         }
 
         if ($field !== '' && ($fields[$field]['type'] ?? '') === 'page') {
-            $text = LayoutSchema::text(LayoutSchema::pageNodes($entry[$field] ?? null), $this->ctx->htmlLang(), $this->ctx->defaultLocale());
+            $text = LayoutSchema::text(LayoutSchema::pageNodes($entry[$field] ?? null), $this->ctx->htmlLang(), $this->ctx->defaultLocale(), $this->ctx->site->blocks());
             if ($text !== '') {
                 return Text::summary($text);
             }

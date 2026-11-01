@@ -284,6 +284,9 @@ final class BlockTemplate
                 continue;
             }
             $spec = $resolve($raw, $type, $key, $field, $option, $line, $rawOutput);
+            if ($type === '#' && ($spec['type'] ?? '') === 'list' && count($scopes) > 1) {
+                $error($line, 'List sections cannot be nested, including references to an enclosing list.');
+            }
             if ($type === '') {
                 if ($spec === null) continue;
                 $tags[] = ['type' => $rawOutput ? 'raw' : 'value', 'key' => $key, 'field' => $field, 'option' => null, 'spec' => $spec, 'line' => $line, 'pair' => null, 'source' => $raw];
