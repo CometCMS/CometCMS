@@ -83,7 +83,7 @@ function comet_site_test_get(string $path, array $query = []): array
 test('layout schema drops unknown kinds, misplaced nodes and unsafe values', function (): void {
     $nodes = LayoutSchema::normalize([
         ['kind' => 'heading', 'props' => ['text' => 'Not allowed at the root']],
-        ['id' => 'dup', 'kind' => 'section', 'props' => ['width' => 'gigantic', 'unknown' => 1], 'style' => ['padding_y' => 'lg', 'background' => 'url(evil)', 'class' => 'ok bad"class <x> also-ok'], 'children' => [
+        ['id' => 'dup', 'kind' => 'section', 'props' => ['width' => 'gigantic', 'unknown' => 1], 'style' => ['padding_top' => 'lg', 'padding_bottom' => 'lg', 'background' => 'url(evil)', 'class' => 'ok bad"class <x> also-ok'], 'children' => [
             ['id' => 'dup', 'kind' => 'row', 'children' => [
                 ['kind' => 'column', 'props' => ['span' => ['mobile' => 40, 'tablet' => 6]], 'children' => [
                     ['kind' => 'text', 'props' => ['html' => '<p onclick="x()">Hi<script>alert(1)</script></p>']],
@@ -103,7 +103,7 @@ test('layout schema drops unknown kinds, misplaced nodes and unsafe values', fun
     $section = $nodes[0];
     assert_same('contained', $section['props']['width']);
     assert_false(array_key_exists('unknown', $section['props']));
-    assert_same(['padding_y' => 'lg', 'class' => 'ok also-ok'], $section['style']);
+    assert_same(['padding_top' => 'lg', 'padding_bottom' => 'lg', 'class' => 'ok also-ok'], $section['style']);
 
     $row = $section['children'][0];
     assert_true($row['id'] !== 'dup', 'Duplicate ids are replaced.');
@@ -118,10 +118,9 @@ test('layout schema drops unknown kinds, misplaced nodes and unsafe values', fun
     assert_same([], $template[0]['children'], 'Item templates cannot nest.');
 });
 
-test('individual spacing survives saving and renders alongside legacy paired padding', function (): void {
+test('individual spacing survives saving and renders on every edge', function (): void {
     $site = comet_site_test_setup();
     $style = [
-        'padding_y' => 'lg', 'padding_x' => 'md',
         'padding_top' => 'none', 'padding_right' => '2xl', 'padding_bottom' => 'sm', 'padding_left' => 'xs',
         'margin_top' => 'xs', 'margin_right' => 'sm', 'margin_bottom' => 'md', 'margin_left' => 'lg',
     ];
@@ -142,7 +141,7 @@ test('individual spacing survives saving and renders alongside legacy paired pad
         $current = $current['children'][0] ?? [];
     }
     $html = (new NodeRenderer(comet_site_test_context($site)))->render($reloaded);
-    foreach (['py-lg', 'px-md', 'pt-none', 'pr-2xl', 'pb-sm', 'pl-xs', 'mt-xs', 'mr-sm', 'mb-md', 'ml-lg'] as $class) {
+    foreach (['pt-none', 'pr-2xl', 'pb-sm', 'pl-xs', 'mt-xs', 'mr-sm', 'mb-md', 'ml-lg'] as $class) {
         assert_same(4, substr_count($html, 'c-' . $class));
     }
     $invalid = LayoutSchema::normalize([LayoutSchema::node('section', [], ['padding_top' => '999px', 'margin_left' => '-1', 'margin_right' => 'none'])]);
@@ -242,7 +241,7 @@ test('collections without a card of their own show the standard card', function 
 
     $store = new JsonStore(comet_test_workspace_path() . '/site/theme');
     $store->write(['format_version' => LayoutSchema::FORMAT_VERSION, 'nodes' => [
-        LayoutSchema::node('section', [], ['background' => 'accent', 'padding_y' => 'xl'], [LayoutSchema::node('row', [], [], [
+        LayoutSchema::node('section', [], ['background' => 'accent', 'padding_top' => 'xl', 'padding_bottom' => 'xl'], [LayoutSchema::node('row', [], [], [
             LayoutSchema::node('column', [], [], [LayoutSchema::node('text', ['html' => '<p>Legacy card</p>'])]),
         ])]),
     ]], 'layouts', 'blog', 'card');
@@ -553,6 +552,43 @@ test('website sitemap and robots list only public pages', function (): void {
     assert_false(str_contains($sitemap['body'], 'secret-draft'));
     assert_false(str_contains($sitemap['body'], 'private-note'));
     assert_true(str_contains(comet_site_test_get('/robots.txt')['body'], 'Sitemap: https://example.test/sitemap.xml'));
+});
+
+test('hidden websites stay crawlable so search engines read their noindex', function (): void {
+    comet_site_test_setup(settings: ['noindex' => true]);
+    $robots = comet_site_test_get('/robots.txt')['body'];
+
+    assert_false(str_contains($robots, "Disallow: /\n"));
+    assert_true(str_contains($robots, 'Disallow: /admin'));
+    assert_false(str_contains($robots, 'Sitemap:'), 'A hidden site does not advertise its pages.');
+    assert_true(str_contains(comet_site_test_get('/blog/hello')['body'], '<meta name="robots" content="noindex,nofollow">'));
+});
+
+test('paginated lists keep their page in canonical URLs and end with a 404', function (): void {
+    $site = comet_site_test_setup();
+    $content = ContentRepository::make();
+    foreach (['second', 'third'] as $slug) {
+        $content->save('blog', ['title' => ucfirst($slug), 'slug' => $slug, 'status' => 'published'], comet_site_test_user());
+    }
+    $list = static fn(): array => [LayoutSchema::node('section', [], [], [LayoutSchema::node('row', [], [], [LayoutSchema::node('column', [], [], [
+        LayoutSchema::node('collection', ['type' => 'blog', 'paginate' => true, 'limit' => 1]),
+    ])])])];
+    $site->saveLayout('blog', 'index', $list());
+    $site->saveLayout('about', 'detail', $list());
+
+    foreach (['/blog', '/about'] as $path) {
+        $last = comet_site_test_get($path, ['page' => 3]);
+        assert_same(200, $last['status']);
+        assert_true(str_contains($last['body'], '<link rel="canonical" href="https://example.test' . $path . '?page=3">'), $path);
+
+        $beyond = comet_site_test_get($path, ['page' => 4]);
+        assert_same(404, $beyond['status'], $path . ' has no fourth page.');
+        assert_true(str_contains($beyond['body'], 'noindex'));
+    }
+
+    $plain = comet_site_test_get('/blog/hello', ['page' => 2]);
+    assert_same(200, $plain['status'], 'A page without a paginated list ignores the page number.');
+    assert_true(str_contains($plain['body'], '<link rel="canonical" href="https://example.test/blog/hello">'));
 });
 
 test('website answers for its domains or as the default workspace', function (): void {
@@ -1312,14 +1348,14 @@ test('borders pick their sides and only keep a look while a side is set', functi
 test('entrance animations keep their timing only while an animation is set', function (): void {
     $nodes = LayoutSchema::normalize([LayoutSchema::node('section', [], ['animation' => 'fade-up', 'animation_trigger' => 'load', 'animation_duration' => 'slow', 'animation_delay' => 9], [
         LayoutSchema::node('row', [], ['animation' => 'spin', 'animation_delay' => 2], [LayoutSchema::node('column', [], [], [LayoutSchema::node('heading', ['text' => 'Hello'])])]),
-        LayoutSchema::node('row', [], ['animation' => 'zoom-in', 'animation_trigger' => 'hover', 'animation_duration' => 'fast', 'animation_delay' => 2], [LayoutSchema::node('column', [], [], [LayoutSchema::node('heading', ['text' => 'Hover'])])]),
+        LayoutSchema::node('row', [], [], [LayoutSchema::node('column', [], [], [LayoutSchema::node('heading', ['text' => 'Hover'])])]) + ['states' => ['hover' => ['style' => ['animation' => 'zoom-in', 'animation_duration' => 'fast', 'animation_delay' => 2]]]],
         LayoutSchema::node('row', [], ['animation_trigger' => 'hover']),
     ])]);
 
     assert_same(['animation' => 'fade-up', 'animation_trigger' => 'load', 'animation_duration' => 'slow', 'animation_delay' => 6], $nodes[0]['style'], 'Delay steps are clamped.');
     assert_same([], $nodes[0]['children'][0]['style'], 'Unknown animations and their orphaned timing are dropped.');
     assert_same([], $nodes[0]['children'][1]['style']);
-    assert_same(['animation' => 'zoom-in', 'animation_duration' => 'fast', 'animation_delay' => 2], $nodes[0]['children'][1]['states']['hover']['style'], 'Legacy hover settings move to their own state.');
+    assert_same(['animation' => 'zoom-in', 'animation_duration' => 'fast', 'animation_delay' => 2], $nodes[0]['children'][1]['states']['hover']['style'], 'Hover settings keep their own state.');
     assert_same([], $nodes[0]['children'][2]['style'], 'Hover is dropped without an animation.');
 
     $html = (new NodeRenderer(comet_site_test_context()))->render($nodes);
@@ -1415,7 +1451,6 @@ PHP;
     }
 });
 
-
 test('hover animations are independent, validated and restricted to hover', function (): void {
     $section = LayoutSchema::node('section', [], ['animation' => 'fade-up', 'animation_trigger' => 'load', 'animation_duration' => 'slow', 'animation_delay' => 1], [LayoutSchema::node('row', [], [], [LayoutSchema::node('column', [], [], [LayoutSchema::node('heading', ['text' => 'Animated'])])])]);
     $section['states'] = [
@@ -1444,19 +1479,4 @@ test('hover animations are independent, validated and restricted to hover', func
     }
     $section['states']['hover']['style'] = ['animation' => 'blur', 'animation_duration' => 'invalid', 'animation_delay' => -5];
     assert_same(['animation' => 'blur'], LayoutSchema::normalize([$section])[0]['states']['hover']['style']);
-});
-
-test('legacy hover migration preserves explicit hover settings and works without saving', function (): void {
-    $section = LayoutSchema::node('section', [], ['animation' => 'zoom-in', 'animation_trigger' => 'hover', 'animation_duration' => 'slow', 'animation_delay' => 3], [LayoutSchema::node('heading', ['text' => 'Legacy'])]);
-    $section['states'] = ['hover' => ['style' => ['animation' => 'fade-up', 'animation_duration' => 'fast']]];
-    $node = LayoutSchema::normalize([$section])[0];
-    assert_same([], $node['style']);
-    assert_same(['animation' => 'fade-up', 'animation_duration' => 'fast'], $node['states']['hover']['style']);
-    $html = (new NodeRenderer(comet_site_test_context()))->render([$section]);
-    assert_true(str_contains($html, 'c-hover-anim c-hover-anim-fade-up c-hover-anim-fast'));
-    assert_false(str_contains($html, 'c-anim-zoom-in'));
-    $section['states']['hover']['style'] = ['animation' => 'none'];
-    assert_false(isset(LayoutSchema::normalize([$section])[0]['states']));
-    $section['states'] = 'invalid';
-    assert_same('zoom-in', LayoutSchema::normalize([$section])[0]['states']['hover']['style']['animation']);
 });

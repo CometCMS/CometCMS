@@ -94,17 +94,18 @@ describe('component settings library', () => {
     const router = await mount()
     expect(textOf(root)).toContain('Shared promo')
     expect(textOf(root)).toContain('Placements: 3')
-    expect(textOf(root)).toContain('Articles')
+    // Components fit every type, so none is named.
+    expect(textOf(root)).not.toContain('Articles')
     const edit = find(root, (el) => el.tag === 'a' && textOf(el).startsWith('Edit component') && textOf(el).includes('Shared promo'))
     expect(edit.props.href).toContain('/page-builder/builder/component/shared')
     await router.push(edit.props.href)
     expect(router.currentRoute.value.query.back).toBe('/page-builder/components')
   })
 
-  it('searches by component name and content type, and shows no-match feedback', async () => {
+  it('searches by component name and kind, and shows no-match feedback', async () => {
     await mount()
     const search = find(root, (el) => el.tag === 'input')
-    search.props['onUpdate:modelValue']('Articles')
+    search.props['onUpdate:modelValue']('teaser')
     await nextTick()
     expect(textOf(root)).toContain('Article teaser')
     expect(textOf(root)).not.toContain('Shared promo')

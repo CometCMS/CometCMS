@@ -20,6 +20,7 @@ import { templatePartBounds } from "../../../composables/builderTemplateParts.js
 import { cssCanvasTarget } from "../../../composables/cssCanvasPicker.js";
 import { findNode, isStructure } from "../../../composables/layoutTree.js";
 import { isReference } from "../../../composables/smartValues.js";
+import { MAX_ROWS, isMultiCell, parseTsv, pasteAt } from "../../../composables/tableGrid.js";
 import { useSiteBuilder } from "../../../composables/useSiteBuilder.js";
 import { useI18n } from "../../../i18n/index.js";
 import { activateTab, revealTabPanel } from "../../../../../cms/app/Site/assets/tabs.js";
@@ -121,8 +122,8 @@ html.cometcms-css-picking .cometcms-resize{display:none!important;}
   --builder-color:#b7653e;
 }
 
-/* Each entry replaces this area with its own content, so it stays marked. */
-[data-kind="page_content"], [data-kind="site_content"]{
+/* Content areas: whoever uses the design (each entry, each placement of a component) fills them, so they stay marked. */
+[data-kind="page_content"], [data-kind="site_content"], [data-kind="component_area"], [data-kind="area_content"]{
   --builder-color:#217f98;
   background-image:repeating-linear-gradient(-45deg,transparent 0 8px,color-mix(in srgb,var(--builder-color) 4%,transparent) 8px 16px);
   outline:2px dashed color-mix(in srgb,var(--builder-color) 75%,transparent);
@@ -146,6 +147,29 @@ html.cometcms-css-picking .cometcms-resize{display:none!important;}
 
 .c-view-page-edit [data-page-area=""]{
   cursor:default;
+}
+
+/* Positioned sections can paint over their content area's inset outline.
+   Repeat it above the content without adding space or intercepting clicks.
+   Inherit the outline so hover and selection keep their normal appearance. */
+:where([data-kind="page_content"], [data-kind="site_content"], [data-kind="component_area"], [data-kind="area_content"], .c-view-page-edit .c-page-content[data-drop-root]){
+  position:relative;
+}
+
+[data-kind="page_content"]::after,
+[data-kind="site_content"]::after,
+[data-kind="component_area"]::after,
+[data-kind="area_content"]::after,
+.c-view-page-edit .c-page-content[data-drop-root]::after,
+.c-view-page-edit [data-page-area]::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:2147483646;
+  pointer-events:none;
+  outline:inherit;
+  outline-offset:inherit;
+  border-radius:inherit;
 }
 
 .c-view-page-edit [data-page-area]::after{
@@ -199,11 +223,39 @@ html.cometcms-css-picking .cometcms-resize{display:none!important;}
   .c-builder .c-hide-desktop::after{display:block}
 }
 
+/* Conditions not met for the previewed entry: kept selectable, but greyed out and labelled. */
+:where(.c-builder .c-condition-off){
+  position:relative;
+}
+
+.c-builder .c-condition-off{
+  filter:grayscale(1) opacity(.5);
+}
+
+.c-builder .c-condition-off::after{
+  content:attr(data-condition-label);
+  position:absolute;
+  inset:0;
+  z-index:1000;
+  display:flex;
+  align-items:flex-start;
+  justify-content:flex-end;
+  pointer-events:none;
+  padding:2px 4px;
+  font:600 max(10px,calc(10px * var(--cometcms-ui-scale,1)))/1.4 system-ui,sans-serif;
+  color:#5b21b6;
+  background:repeating-linear-gradient(-45deg,rgba(139,92,246,.25) 0 10px,transparent 10px 20px);
+}
+
 /* Hover and selection */
 [data-builder-hover]{
   outline:max(2px,calc(2px * var(--cometcms-ui-scale,1))) dashed var(--builder-color)!important;
 }
 
+[data-builder-cell]{
+  outline:2px solid #2563eb;
+  outline-offset:-2px;
+}
 [data-builder-selected]{
   outline:max(3px,calc(3px * var(--cometcms-ui-scale,1))) solid var(--builder-color)!important;
   outline-offset:calc(-1 * max(3px,calc(3px * var(--cometcms-ui-scale,1))));
@@ -466,7 +518,15 @@ const INLINE_TEXT = {
   heading: { key: "text", selector: ".c-heading" },
   text: { key: "html", selector: ".c-prose", rich: true },
   button: { key: "label", selector: ".c-button-label" },
+  // Each cell is edited on its own; Tab moves through them.
+  table: { key: "rows", selector: "[data-cell]", rich: true, cells: true },
 };
+
+/** Row and column of a rendered table cell. */
+function cellAt(target) {
+  const [row, column] = (target?.dataset?.cell ?? "").split(":").map(Number);
+  return Number.isInteger(row) && Number.isInteger(column) ? { row, column } : null;
+}
 
 
 function attach(document) {
@@ -599,6 +659,7 @@ function prepare(document) {
   doc.querySelectorAll('[data-drop-root], [data-kind="tab"]').forEach((element) => {
     element.setAttribute("data-empty-label", t("site.builder.dropHere"));
   });
+  doc.querySelectorAll(".c-condition-off").forEach((element) => element.setAttribute("data-condition-label", t("site.condition.notMet")));
   doc.querySelectorAll("[data-page-area]").forEach((element) => {
     const label = builder.pageFields().find((field) => field.key === element.dataset.pageArea)?.label;
     element.setAttribute("data-page-area-label", label ? t("site.page.editArea", { label }) : t("site.page.areaWithoutField"));
@@ -674,8 +735,12 @@ function paintCssTarget() {
 
 function applySelection(scroll) {
   if (!doc) return;
+  measureNestedRow();
   doc.querySelectorAll("[data-builder-selected]").forEach((el) => el.removeAttribute("data-builder-selected"));
+  doc.querySelectorAll("[data-builder-cell]").forEach((el) => el.removeAttribute("data-builder-cell"));
   const el = element(builder.selectedId.value);
+  const cell = builder.selectedCell?.value;
+  if (el && cell?.id === el.dataset.node) el.querySelector(`[data-cell="${cell.row}:${cell.column}"]`)?.setAttribute("data-builder-cell", "");
 
   if (!el) {
     if (badge) badge.hidden = true;
@@ -810,6 +875,9 @@ function onClick(event) {
   const part = templatePartAt(event.target);
   selectedFromCanvas = true;
   builder.select(part ? null : el?.dataset.node ?? null);
+  // A table cell picked on the canvas opens in the inspector.
+  const cell = el?.dataset.kind === "table" && cellAt(event.target.closest?.("[data-cell]"));
+  if (cell) builder.selectedCell.value = { id: el.dataset.node, ...cell };
   emit("select-template-part", part);
 }
 
@@ -830,11 +898,20 @@ function onDoubleClick(event) {
     return;
   }
   const config = node && INLINE_TEXT[node.kind];
-  const target = config && el.querySelector(config.selector);
-  if (!target) return;
+  const target = config && (config.cells ? event.target.closest?.(config.selector) : el.querySelector(config.selector));
+  if (!target || (config.cells && target.closest("[data-node]") !== el)) return;
   // Bound and templated values are edited in the Inspector.
   const def = builder.spec.value?.kinds?.[node.kind]?.props?.[config.key];
-  if (typeof builder.valueFor(node, "props", config.key) !== "string" || (builder.translating.value && !def?.localized)) return;
+  const value = builder.valueFor(node, "props", config.key);
+  if (builder.translating.value && !def?.localized) return;
+  if (config.cells) {
+    const cell = cellAt(target);
+    if (!Array.isArray(value) || !cell || typeof value[cell.row]?.[cell.column] !== "string") return;
+    event.preventDefault();
+    startInlineEdit(target, node.id, config, { ...cell, rows: value.map((row) => row.slice()) });
+    return;
+  }
+  if (typeof value !== "string") return;
   event.preventDefault();
   startInlineEdit(target, node.id, config);
 }
@@ -855,11 +932,17 @@ function entryFieldsShown(node) {
   return fields;
 }
 
-function startInlineEdit(target, id, { key, rich = false }) {
+/**
+ * Edits a text in place. Table cells pass `cell` ({ row, column, rows }): the
+ * table's rows collect each cell's text while Tab moves between cells, and are
+ * saved once editing ends, so the preview is not rendered again in between.
+ */
+function startInlineEdit(target, id, { key, rich = false }, cell = null) {
   const abort = new AbortController();
-  inlineEdit = { target, id, key, rich, original: target.innerHTML, abort };
+  inlineEdit = { target, id, key, rich, cell, original: target.innerHTML, abort };
   selectedFromCanvas = true;
   builder.select(id);
+  if (cell) builder.selectedCell.value = { id, row: cell.row, column: cell.column };
   showResizeEdge(null);
 
   // Draggable ancestors would turn selecting text with the mouse into a drag.
@@ -883,7 +966,15 @@ function startInlineEdit(target, id, { key, rich = false }) {
       event.preventDefault();
       event.stopPropagation();
       finishInlineEdit(false);
-    } else if (event.key === "Enter" && (!rich || event.ctrlKey || event.metaKey)) {
+    } else if (cell && event.key === "Tab") {
+      event.preventDefault();
+      event.stopPropagation();
+      moveCellEdit(event.shiftKey ? -1 : 1);
+    } else if (cell && event.key === "Enter" && !event.shiftKey) {
+      // Shift+Enter keeps the browser's line break within the cell.
+      event.preventDefault();
+      finishInlineEdit(true);
+    } else if (!cell && event.key === "Enter" && (!rich || event.ctrlKey || event.metaKey)) {
       event.preventDefault();
       finishInlineEdit(true);
     } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
@@ -895,13 +986,72 @@ function startInlineEdit(target, id, { key, rich = false }) {
   target.addEventListener("paste", (event) => {
     if (!rich) return;
     event.preventDefault();
-    doc.execCommand("insertText", false, event.clipboardData?.getData("text/plain") ?? "");
+    const text = event.clipboardData?.getData("text/plain") ?? "";
+    // Cells copied from a spreadsheet fill the table from this cell on.
+    if (cell && isMultiCell(text)) {
+      cell.rows[cell.row][cell.column] = cellHtml(target);
+      cell.rows = pasteAt(cell.rows, cell.row, cell.column, parseTsv(text));
+      cell.pasted = true;
+      finishInlineEdit(true);
+      return;
+    }
+    doc.execCommand("insertText", false, text);
   }, options);
+}
+
+/** A cell's edited text: the inline HTML the browser produced, without a trailing line break. */
+function cellHtml(target) {
+  return target.innerHTML.replace(/(<br\s*\/?>|\s|&nbsp;)+$/i, "").trim();
+}
+
+/** Tab and Shift+Tab: the next or previous cell, reading row by row; Tab past the last cell adds a row. */
+function moveCellEdit(step) {
+  const { target, id, cell, abort } = inlineEdit;
+  const width = cell.rows[0].length;
+  let index = cell.row * width + cell.column + step;
+  if (index < 0) return;
+  const table = target.closest("table");
+  if (index >= cell.rows.length * width) {
+    if (cell.rows.length >= MAX_ROWS) return;
+    appendCellRow(table, cell.rows.length, width);
+    cell.rows.push(Array(width).fill(""));
+      }
+  const row = Math.floor(index / width);
+  const column = index % width;
+  const next = table.querySelector(`[data-cell="${row}:${column}"]`);
+  // Bound cells are edited in the Inspector; Tab passes over them.
+  if (!next || typeof cell.rows[row][column] !== "string") return;
+  cell.rows[cell.row][cell.column] = cellHtml(target);
+  // The old cell lets go first, so its blur does not end editing.
+  abort.abort();
+  target.removeAttribute("contenteditable");
+  target.removeAttribute("spellcheck");
+  forEachNodeAround(target, (node) => node.setAttribute("draggable", "true"));
+  inlineEdit = null;
+  startInlineEdit(next, id, INLINE_TEXT.table, { ...cell, row, column });
+  const selection = doc.getSelection();
+  selection?.selectAllChildren(next);
+  selection?.collapseToEnd();
+}
+
+/** A new empty row at the end of a rendered table, shaped like the last one. */
+function appendCellRow(table, row, width) {
+  const last = table.querySelector("tbody tr:last-child") ?? table.querySelector("tr:last-child");
+  const body = table.tBodies[0] ?? table.appendChild(doc.createElement("tbody"));
+  const tr = doc.createElement("tr");
+  for (let column = 0; column < width; column++) {
+    const model = last?.closest("tbody") ? last.children[column] : null;
+    const cell = doc.createElement(model?.tagName.toLowerCase() === "th" ? "th" : "td");
+    for (const name of ["scope", "data-label"]) if (model?.hasAttribute(name)) cell.setAttribute(name, model.getAttribute(name));
+    cell.dataset.cell = `${row}:${column}`;
+    tr.append(cell);
+  }
+  body.append(tr);
 }
 
 function finishInlineEdit(commit) {
   if (!inlineEdit) return;
-  const { target, id, key, rich, original, abort } = inlineEdit;
+  const { target, id, key, rich, cell, original, abort } = inlineEdit;
   inlineEdit = null;
   abort.abort();
   target.removeAttribute("contenteditable");
@@ -910,6 +1060,13 @@ function finishInlineEdit(commit) {
   if (target.isConnected) target.blur();
 
   const node = findNode(builder.nodes.value, id);
+  if (cell) {
+    // Escape undoes only the cell being edited; cells already left keep their text.
+    if (commit && !cell.pasted) cell.rows[cell.row][cell.column] = cellHtml(target);
+    else if (!commit) target.innerHTML = original;
+    if (node && JSON.stringify(cell.rows) !== JSON.stringify(builder.valueFor(node, "props", key))) builder.updateValue(id, "props", key, cell.rows);
+    return;
+  }
   const def = node && builder.spec.value?.kinds?.[node.kind]?.props?.[key];
   const value = rich ? target.innerHTML.trim() : target.textContent.replace(/\s+/g, " ").trim().slice(0, def?.max ?? Infinity);
   // A heading or button without text would vanish from the page, so empty text is undone like Escape.
@@ -1010,13 +1167,47 @@ function contentWidth(el) {
   return el.clientWidth - (parseFloat(style.paddingLeft) || 0) - (parseFloat(style.paddingRight) || 0);
 }
 
+/** Computed percentage gaps remain expressions; resolve them against the row's content box. */
+function columnGap(row) {
+  const value = doc.defaultView.getComputedStyle(row).columnGap;
+  if (value === "normal") return 0;
+  if (/^[\d.]+px$/.test(value)) return parseFloat(value);
+  const box = doc.createElement("div");
+  const measure = doc.createElement("div");
+  box.style.cssText = `all:initial;position:fixed;left:0;top:0;height:0;visibility:hidden;pointer-events:none;width:${contentWidth(row)}px`;
+  measure.style.cssText = "all:initial;display:block;height:0";
+  measure.style.width = value;
+  box.append(measure);
+  doc.body.append(box);
+  const gap = measure.getBoundingClientRect().width;
+  box.remove();
+  return gap;
+}
+
 /**
  * The device whose span a column shows: by the screen width, or for a nested
  * row by the row's own width (see the grid in site.css).
  */
 function spanDeviceOf(row) {
-  const width = row.classList.contains("c-row-nested") ? contentWidth(row) : doc.defaultView.innerWidth;
+  if (row.classList.contains("c-row-nested")) return nestedDevice(contentWidth(row));
+  const width = doc.defaultView.innerWidth;
   return width >= 1024 ? "desktop" : width >= 768 ? "tablet" : "mobile";
+}
+
+function nestedDevice(width) {
+  return width >= 640 ? "desktop" : width >= 480 ? "tablet" : "mobile";
+}
+
+/** Report the selected row's own width when it is nested, for the inspector's hint. */
+function measureNestedRow() {
+  const row = builder.columnRowFor(builder.selected.value);
+  const el = row ? element(row.id) : null;
+  if (!el?.classList.contains("c-row-nested")) {
+    builder.nestedRow.value = null;
+    return;
+  }
+  const width = Math.round(contentWidth(el));
+  builder.nestedRow.value = { id: row.id, width, device: nestedDevice(width) };
 }
 
 function onResizeStart(event) {
@@ -1027,7 +1218,7 @@ function onResizeStart(event) {
 
   const { el, side } = resizeEdge;
   const row = el.parentElement;
-  const gap = parseFloat(doc.defaultView.getComputedStyle(row).columnGap) || 0;
+  const gap = columnGap(row);
   const positioned = ["absolute", "fixed"].includes(doc.defaultView.getComputedStyle(el).position);
   // Positioned columns use a fraction of the pin area; grid columns include the row's gap.
   const unit = positioned ? positioningBox(el).width / 12 : (contentWidth(row) + gap) / 12;
@@ -1321,6 +1512,7 @@ watch(
   },
 );
 watch(() => builder.hoverId.value, applyHover);
+watch(() => builder.selectedCell?.value, () => applySelection(false));
 watch(() => builder.cssPicker.value, (picker) => {
   if (picker) {
     finishInlineEdit(true);

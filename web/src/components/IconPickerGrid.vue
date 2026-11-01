@@ -24,7 +24,7 @@
         class="flex-1 truncate"
         :class="modelValue ? 'text-slate-700' : 'text-slate-400'"
       >
-        {{ modelValue || emptyLabel || placeholder }}
+        {{ modelValue ? iconLabel(modelValue) : emptyLabel || iconLabel(placeholder) }}
       </span>
       <Icon
         v-if="!compact"
@@ -65,8 +65,8 @@
             v-for="icon in filteredIcons"
             :key="icon"
             type="button"
-            :title="icon"
-            :aria-label="icon"
+            :title="iconLabel(icon)"
+            :aria-label="iconLabel(icon)"
             :aria-pressed="icon === modelValue"
             @click="select(icon)"
             class="w-8 h-8 flex items-center justify-center rounded transition-colors"
@@ -245,11 +245,20 @@ const searchInputRef = ref(null);
 const isOpen = ref(false);
 const query = ref("");
 
+function iconLabel(icon) {
+  return icon
+    .replace(/^[^:]+:/, "")
+    .replace(/[-_]+/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
 const filteredIcons = computed(() => {
   const q = query.value.trim().toLowerCase();
   const icons = props.icons ?? ALL_ICONS;
   if (!q) return icons;
-  return icons.filter((icon) => icon.toLowerCase().includes(q));
+  return icons.filter((icon) =>
+    icon.toLowerCase().includes(q) || iconLabel(icon).toLowerCase().includes(q),
+  );
 });
 
 // ── open / close ──────────────────────────────────────────────────────────────

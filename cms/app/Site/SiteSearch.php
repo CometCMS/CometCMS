@@ -139,11 +139,20 @@ final class SiteSearch
     {
         $best = '';
         $most = 0;
+        $candidates = [];
+        foreach ($this->targets() as $type => $fields) {
+            foreach ($this->ctx->query($type, [])['data'] as $raw) {
+                $entry = $this->ctx->localize($type, $raw);
+                if ($this->ctx->entryUrl($type, $entry) !== null) $candidates[] = ['entry' => $entry, 'fields' => $fields];
+            }
+        }
+        $counts = [];
         foreach ($this->samples([], 10) as $sample) {
             $title = (string) ($this->ctx->localize($sample['type'], $sample['entry'])['title'] ?? '');
             preg_match_all('/[\p{L}\p{N}]{3,}/u', $title, $words);
             foreach (array_slice(array_unique($words[0]), 0, 3) as $word) {
-                $hits = count($this->matches($word, [], []));
+                $query = self::lower(self::normalizeQuery($word));
+                $hits = $counts[$query] ??= count(array_filter($candidates, fn(array $candidate): bool => $query !== '' && $this->rank($candidate['entry'], $candidate['fields'], $query) !== null));
                 if ($hits > $most) [$best, $most] = [self::normalizeQuery($word), $hits];
             }
         }

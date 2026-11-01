@@ -147,6 +147,32 @@
       <BuilderGroup v-model:open="expanded.layout" icon="mdi:view-quilt-outline" :title="t('site.theme.layout')" content-class="mt-2 space-y-4 px-1">
         <RangeRow v-model="theme.container_width" :label="t('site.theme.containerWidth')" :min="720" :max="1920" :step="20" unit="px" />
         <RangeRow v-model="theme.narrow_width" :label="t('site.theme.narrowWidth')" :min="480" :max="1200" :step="20" unit="px" />
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-xs text-slate-500">{{ t("site.theme.paddingDevice") }}</span>
+          <DeviceToggle v-model="paddingDevice" />
+        </div>
+        <div class="relative h-60">
+          <div
+            v-for="kind in ['section', 'grid', 'column']"
+            :key="kind"
+            role="group"
+            :aria-label="t(`site.theme.${kind}Padding`)"
+            class="absolute rounded-md border border-slate-200"
+            :class="paddingBoxClasses[kind]"
+          >
+            <span class="pointer-events-none absolute left-[9px] top-[7px] text-[10px] leading-[14px] text-slate-500">{{ t(`site.kind.${kind === 'grid' ? 'row' : kind}`) }}</span>
+            <SpacingTokenSelect
+              :key="paddingDevice"
+              v-model="theme[`${kind}_padding${paddingDevice === 'desktop' ? '' : `_${paddingDevice}`}`]"
+              :label="t(`site.theme.${kind}Padding`)"
+              :options="paddingOptions"
+              :empty-label="paddingDevice === 'desktop' ? '' : t(`site.theme.paddingInherit.${paddingDevice}`)"
+              empty-short-label="="
+              class="absolute right-1 top-0.5"
+            />
+            <div v-if="kind === 'column'" class="absolute inset-x-4 bottom-4 top-11 rounded border border-slate-200 bg-[rgb(var(--color-surface))]" aria-hidden="true"></div>
+          </div>
+        </div>
       </BuilderGroup>
 
       <BuilderGroup v-model:open="expanded.spacing" icon="mdi:arrow-expand-horizontal" :title="t('site.theme.spacingScale')" content-class="mt-2 space-y-4 px-1">
@@ -236,6 +262,8 @@ import ConfirmModal from "../../ConfirmModal.vue";
 import LoadingSpinner from "../../LoadingSpinner.vue";
 import RangeRow from "../RangeRow.vue";
 import SegmentedControl from "../SegmentedControl.vue";
+import DeviceToggle from "../DeviceToggle.vue";
+import SpacingTokenSelect from "./SpacingTokenSelect.vue";
 import ThemeHeadingsSettings from "../ThemeHeadingsSettings.vue";
 import TokenInput from "../TokenInput.vue";
 import FontPicker from "../FontPicker.vue";
@@ -323,6 +351,17 @@ const { t } = useI18n();
 const theme = computed(() => site.draft?.theme ?? null);
 const savedPresets = computed(() => site.data?.theme_presets ?? []);
 const saveOpen = ref(false);
+/** Which screen size the default padding controls edit; tablet and mobile may inherit the larger one. */
+const paddingDevice = ref("desktop");
+const paddingOptions = computed(() => [
+  ...(paddingDevice.value === "desktop" ? [] : [""]),
+  "none", ...SPACE_TOKENS,
+]);
+const paddingBoxClasses = {
+  section: "inset-0 rounded-[10px] bg-slate-100/75",
+  grid: "inset-x-5 bottom-5 top-12 border-dashed border-slate-300 bg-[rgb(var(--color-surface))]",
+  column: "inset-x-10 bottom-10 top-24 bg-slate-50",
+};
 const deleteTarget = ref(null);
 const busy = ref(false);
 const expanded = ref({ presets: false, colors: false, typography: false, headings: false, links: false, layout: false, spacing: false, corners: false, shadows: false, motion: false });

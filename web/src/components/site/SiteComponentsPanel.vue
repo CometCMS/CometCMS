@@ -33,7 +33,7 @@
         <div class="min-w-0 flex-1">
           <router-link :to="editPath(component)" class="break-words text-sm font-semibold text-slate-900 hover:text-theme-700" :class="{ 'pointer-events-none': busy }" :aria-disabled="busy || undefined" :tabindex="busy ? -1 : undefined">{{ component.name }}</router-link>
           <p class="mt-1 text-xs text-slate-500">
-            {{ t(`site.kind.${component.root}`) }}<template v-if="component.type"> · {{ typeLabel(component.type) }}</template>
+            {{ t(`site.kind.${component.root}`) }}
             · {{ t('site.component.usedIn', { count: component.usages ?? 0 }) }}
           </p>
         </div>
@@ -86,12 +86,10 @@ import LoadingSpinner from "../LoadingSpinner.vue";
 import IconPickerGrid from "../IconPickerGrid.vue";
 import ComponentNameModal from "./ComponentNameModal.vue";
 import { api } from "../../api/index.js";
-import { useSiteStore } from "../../stores/site.js";
 import { useToastStore } from "../../stores/toast.js";
 import { useI18n } from "../../i18n/index.js";
 import { SITE_ICONS } from "../../composables/siteIcons.js";
 
-const site = useSiteStore();
 const toast = useToastStore();
 const { t } = useI18n();
 const search = ref("");
@@ -126,15 +124,11 @@ const components = computed(() => {
   const terms = search.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
   return [...allComponents.value]
     .filter((component) => {
-      const text = [component.name, t(`site.kind.${component.root}`), typeLabel(component.type)].join(" ").toLowerCase();
+      const text = [component.name, t(`site.kind.${component.root}`)].join(" ").toLowerCase();
       return terms.every((term) => text.includes(term));
     })
     .sort((a, b) => a.name.localeCompare(b.name));
 });
-
-function typeLabel(name) {
-  return (site.data?.types ?? []).find((type) => type.name === name)?.label ?? name;
-}
 
 async function rename(name) {
   if (busy.value || !renameTarget.value) return;

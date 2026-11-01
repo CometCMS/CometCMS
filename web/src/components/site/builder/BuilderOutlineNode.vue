@@ -9,7 +9,7 @@
         accent && !isSelected ? `outline-accent outline-accent-${accent}` : '',
       ]"
       :style="{ paddingLeft: `${depth * 14 + 4}px` }"
-      :draggable="!renaming"
+      :draggable="!renaming && !isAreaContent"
       @click="builder.select(node.id)"
       @mouseenter="builder.hoverId.value = node.id"
       @mouseleave="builder.hoverId.value = null"
@@ -20,6 +20,22 @@
       @drop.prevent.stop="onDrop"
       @contextmenu.prevent="builder.openContextMenu(node.id, $event.clientX, $event.clientY)"
     >
+      <span
+        v-for="(continues, level) in ancestorGuides"
+        v-show="level > 0 && continues"
+        :key="level"
+        aria-hidden="true"
+        class="outline-guide outline-guide-continuation"
+        :class="{ 'outline-guide-selected': isSelected }"
+        :style="{ left: `${level * 14}px` }"
+      ></span>
+      <span
+        v-if="depth > 0"
+        aria-hidden="true"
+        class="outline-guide outline-guide-branch"
+        :class="{ 'outline-guide-last': last, 'outline-guide-selected': isSelected }"
+        :style="{ left: `${depth * 14}px` }"
+      ></span>
       <span v-if="dropPosition === 'before'" class="pointer-events-none absolute inset-x-0 -top-px h-0.5 rounded bg-theme-500"></span>
       <span v-if="dropPosition === 'after'" class="pointer-events-none absolute inset-x-0 -bottom-px h-0.5 rounded bg-theme-500"></span>
 
@@ -51,20 +67,22 @@
         @dragstart.prevent.stop
       />
       <template v-else>
-        <span class="min-w-0 truncate font-medium" :title="builder.nodeLabel(node)" @dblclick.stop="startRename">{{ builder.nodeLabel(node) }}</span>
+        <span class="min-w-0 truncate font-medium" :title="builder.nodeLabel(node)" @dblclick.stop="!isAreaContent && startRename()">{{ builder.nodeLabel(node) }}</span>
         <span class="min-w-0 flex-1 truncate" :class="isSelected ? 'text-white/70' : 'text-slate-400'">{{ builder.nodeSummary(node) }}</span>
       </template>
 
       <span v-if="!renaming" class="hidden shrink-0 items-center group-hover:flex group-focus-within:flex" :class="{ '!flex': isSelected }">
-        <button type="button" class="outline-action" :title="t('site.builder.rename')" :aria-label="t('site.builder.rename')" @click.stop="startRename">
-          <Icon icon="mdi:pencil-outline" class="h-3.5 w-3.5" />
-        </button>
-        <button type="button" class="outline-action" :disabled="first" :title="t('site.builder.moveUp')" @click.stop="builder.shift(node.id, -1)">
-          <Icon icon="mdi:arrow-up" class="h-3.5 w-3.5" />
-        </button>
-        <button type="button" class="outline-action" :disabled="last" :title="t('site.builder.moveDown')" @click.stop="builder.shift(node.id, 1)">
-          <Icon icon="mdi:arrow-down" class="h-3.5 w-3.5" />
-        </button>
+        <template v-if="!isAreaContent">
+          <button type="button" class="outline-action" :title="t('site.builder.rename')" :aria-label="t('site.builder.rename')" @click.stop="startRename">
+            <Icon icon="mdi:pencil-outline" class="h-3.5 w-3.5" />
+          </button>
+          <button type="button" class="outline-action" :disabled="first" :title="t('site.builder.moveUp')" @click.stop="builder.shift(node.id, -1)">
+            <Icon icon="mdi:arrow-up" class="h-3.5 w-3.5" />
+          </button>
+          <button type="button" class="outline-action" :disabled="last" :title="t('site.builder.moveDown')" @click.stop="builder.shift(node.id, 1)">
+            <Icon icon="mdi:arrow-down" class="h-3.5 w-3.5" />
+          </button>
+        </template>
         <button type="button" class="outline-action" :title="t('site.menu.more')" @click.stop="openMenu">
           <Icon icon="mdi:dots-horizontal" class="h-3.5 w-3.5" />
         </button>
@@ -77,6 +95,7 @@
         :key="child.id"
         :node="child"
         :depth="depth + 1"
+        :ancestor-guides="[...ancestorGuides, !last]"
         :first="index === 0"
         :last="index === node.children.length - 1"
       />
@@ -96,6 +115,7 @@ import { useI18n } from "../../../i18n/index.js";
 const props = defineProps({
   node: { type: Object, required: true },
   depth: { type: Number, default: 0 },
+  ancestorGuides: { type: Array, default: () => [] },
   first: { type: Boolean, default: false },
   last: { type: Boolean, default: false },
 });
@@ -114,9 +134,11 @@ const hasChildren = computed(() => (props.node.children?.length ?? 0) > 0);
 const isSelected = computed(() => builder.selectedId.value === props.node.id);
 const isHovered = computed(() => builder.hoverId.value === props.node.id);
 const isContainer = computed(() => builder.isDropContainer(props.node));
-// Entry content areas and component instances stand out, in the same colors the canvas marks them with.
+/** An instance's content for one area: named by its component and kept in place. */
+const isAreaContent = computed(() => props.node.kind === "area_content");
+// Content areas and component instances stand out, in the same colors the canvas marks them with.
 const accent = computed(() => {
-  if (props.node.kind === "page_content" || props.node.kind === "site_content") return "entry";
+  if (["page_content", "site_content", "component_area", "area_content"].includes(props.node.kind)) return "entry";
   return props.node.kind === "component" ? "component" : "";
 });
 const icon = computed(() => {
@@ -211,6 +233,38 @@ function onDrop() {
 </script>
 
 <style scoped>
+.outline-guide {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-left: 1px solid rgb(var(--color-slate-300));
+  opacity: var(--outline-guide-opacity, 0);
+  transition: opacity 200ms ease;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .outline-guide {
+    transition: none;
+  }
+}
+.outline-guide-selected {
+  border-color: rgb(255 255 255 / 0.4);
+}
+.outline-guide-branch::after {
+  content: "";
+  position: absolute;
+  top: 16px;
+  left: 0;
+  width: 6px;
+  border-top: 1px solid rgb(var(--color-slate-300));
+}
+.outline-guide-selected::after {
+  border-color: rgb(255 255 255 / 0.4);
+}
+.outline-guide-last {
+  bottom: auto;
+  height: 16px;
+}
 .outline-accent-entry {
   --outline-accent: 33 127 152;
 }

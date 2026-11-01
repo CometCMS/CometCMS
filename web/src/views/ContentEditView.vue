@@ -53,19 +53,23 @@
         >
           {{ t("contentEdit.preview") }}
         </span>
-        <button
+        <SplitButton
           v-if="canSaveEntry"
           type="submit"
           :disabled="saving"
-          class="btn-primary relative"
           form="entry-form"
+          :menu-label="t('common.moreActions')"
+          :items="saveMenuItems"
+          @select="saveDraft"
         >
           {{ saving ? t("common.saving") : saveLabel }}
-          <span
-            v-if="isDirty && !saving"
-            class="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-400 ring-2 ring-white"
-          ></span>
-        </button>
+          <template #badge>
+            <span
+              v-if="isDirty && !saving"
+              class="pointer-events-none absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-400 ring-2 ring-white"
+            ></span>
+          </template>
+        </SplitButton>
       </div>
     </div>
 
@@ -168,7 +172,8 @@
     <form
       v-if="!loadError"
       id="entry-form"
-      @submit.prevent="handleSave"
+      ref="entryForm"
+      @submit.prevent="handleSave(form.status === 'draft')"
       class="space-y-6"
     >
       <!-- Core fields -->
@@ -342,7 +347,7 @@
                 <Icon icon="mdi:alert-outline" class="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                 <div class="space-y-1">
                   <p>{{ t("contentEdit.websiteUrlConflict") }}</p>
-                  <router-link v-if="siteLinks.can_manage" to="/page-builder/overview" class="inline-block font-medium underline hover:no-underline">{{ t("contentEdit.websiteUrlDomains") }}</router-link>
+                  <router-link v-if="siteLinks.can_manage" to="/website/general" class="inline-block font-medium underline hover:no-underline">{{ t("contentEdit.websiteUrlDomains") }}</router-link>
                   <p v-else>{{ t("contentEdit.websiteUrlAskAdmin") }}</p>
                 </div>
               </div>
@@ -743,6 +748,7 @@ import { useUnsavedChangesGuard } from "../composables/useUnsavedChangesGuard.js
 import { usePermissions } from "../composables/usePermissions.js";
 import PageBuilderCta from "../components/site/PageBuilderCta.vue";
 import SlidePanel from "../components/SlidePanel.vue";
+import SplitButton from "../components/SplitButton.vue";
 import TabNavigation from "../components/TabNavigation.vue";
 import { api } from "../api/index.js";
 import { fieldDefaultValue } from "../composables/fieldDefaults.js";
@@ -823,7 +829,11 @@ const editorTitle = computed(() => {
     ? t("contentEdit.newEntryTitle")
     : t("contentEdit.editEntryTitle", { title: form.value.title });
 });
-const saveLabel = computed(() => t("contentEdit.saveEntry"));
+const entryForm = ref(null);
+const saveLabel = computed(() => t(form.value.status === "draft" ? "contentEdit.publishEntry" : "contentEdit.saveEntry"));
+const saveMenuItems = computed(() => form.value.status === "draft"
+  ? [{ key: "save", label: t("contentEdit.saveEntry") }]
+  : []);
 const deleteLabel = computed(() => t("contentEdit.deleteEntry"));
 const contentTypeEditLink = computed(() => `/content-types/${collection}/edit`);
 const canEditContentType = computed(() => {
@@ -1350,8 +1360,14 @@ watch(
   { immediate: true },
 );
 
-async function handleSave() {
-  if (!canSaveEntry.value) return;
+function saveDraft() {
+  if (entryForm.value?.reportValidity()) handleSave();
+}
+
+async function handleSave(publish = false) {
+  if (!canSaveEntry.value || saving.value) return;
+  const values = cloneLocaleValue(form.value);
+  if (publish) values.status = "published";
   saveError.value = "";
   fieldErrors.value = {};
   saving.value = true;
@@ -1359,15 +1375,16 @@ async function handleSave() {
   try {
     if (isNew.value) {
       const res = await api.content.create(collection, {
-        ...payloadForSave(),
+        ...payloadForSave(values),
         ...(contentTypeSchema.value?.hierarchical ? { parent: parentUid.value } : {}),
       });
       parentBaseline.value = parentUid.value;
       toast.success(t("contentEdit.entryCreated"));
+      form.value.status = values.status;
       newEntryBaseline.value = cloneLocaleValue(form.value);
       router.push(`/content/${collection}/${res.data.uid || res.data.id}`);
     } else {
-      const drafts = { ...localeDrafts.value, [currentLocale.value]: { form: cloneLocaleValue(form.value), resets: [...resetFields.value] } };
+      const drafts = { ...localeDrafts.value, [currentLocale.value]: { form: values, resets: [...resetFields.value] } };
       let latest = liveEntryBeforeRestore.value ?? fullEntry.value;
       for (const [language, draft] of Object.entries(drafts)) {
         const payload = payloadForSave(draft.form, language, draft.resets, latest);

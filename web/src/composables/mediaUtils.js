@@ -217,5 +217,5 @@ export function mediaUrl(workspace, value) {
 }
 
 export function mediaThumbUrl(workspace, value) {
-  return `${mediaUrl(workspace, value)}?variant=thumbnail`;
+  return `${mediaUrl(workspace, value)}?size=thumbnail`;
 }

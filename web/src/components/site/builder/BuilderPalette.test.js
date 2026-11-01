@@ -35,12 +35,12 @@ async function renderPanel() {
 }
 
 describe('components in the Add panel', () => {
-  it('lists saved components and disables incompatible placements and self-reference', async () => {
+  it('lists saved components and disables only self-reference, whatever the type', async () => {
     const html = await renderPanel()
     expect(html).toContain('Shared promo')
     expect(html).toContain('Article teaser')
     expect(html).toContain('Current component')
-    expect(html.match(/draggable="false"/g)).toHaveLength(2)
+    expect(html.match(/draggable="false"/g)).toHaveLength(1)
     expect(html).toContain(t('site.component.unavailable'))
     expect(html).toContain('Manage components')
     expect(html).toContain('data-icon="mdi:star-outline"')

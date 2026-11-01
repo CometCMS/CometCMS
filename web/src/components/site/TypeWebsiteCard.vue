@@ -1,18 +1,18 @@
 <template>
-  <section id="website" class="card scroll-mt-24 space-y-4 p-6">
+  <section :id="section === 'seo' ? 'type-seo' : 'website'" class="card scroll-mt-24 space-y-4 p-6">
     <div class="flex flex-wrap items-start gap-3">
       <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-theme-50 text-theme-600">
-        <Icon icon="mdi:web" class="h-5 w-5" />
+        <Icon :icon="section === 'seo' ? 'mdi:magnify' : 'mdi:web'" class="h-5 w-5" />
       </div>
       <div class="min-w-0 flex-1">
-        <h2 class="card-title">{{ t("site.typeCard.title") }}</h2>
+        <h2 class="card-title">{{ t(section === "seo" ? "contentTypeEdit.tab.seo" : "site.typeCard.title") }}</h2>
         <p class="mt-0.5 text-sm text-slate-500">{{ summary }}</p>
       </div>
     </div>
 
     <!-- The first frontend pages take a headless workspace online. -->
     <div
-      v-if="editable && route.enabled && !status.enabled"
+      v-if="section === 'builder' && editable && route.enabled && !status.enabled"
       class="flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800"
     >
       <Icon icon="mdi:information-outline" class="h-4 w-4 shrink-0" />
@@ -21,7 +21,7 @@
     </div>
 
     <template v-if="editable && route.enabled">
-      <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
+      <div v-if="section === 'builder'" class="grid grid-cols-1 gap-5 md:grid-cols-2">
         <div>
           <LocalizedInput
             id="type-route-pattern"
@@ -67,36 +67,30 @@
         </div>
       </div>
 
-      <details class="group border-t border-slate-100 pt-4">
-        <summary class="cursor-pointer list-none text-sm font-medium text-slate-600 hover:text-slate-900">
-          <Icon icon="mdi:chevron-right" class="-ml-1 inline h-4 w-4 transition-transform group-open:rotate-90" />
-          {{ t("site.pages.seo") }}
-        </summary>
-        <div class="mt-3 grid grid-cols-1 gap-4 md:grid-cols-3">
-          <div v-if="route.index_enabled">
-            <label class="form-label" for="type-route-index-title">{{ t("site.pages.listTitle") }}</label>
-            <LocalizedInput id="type-route-index-title" :model-value="route.index_title" class="w-full" :placeholder="label" @update:model-value="(value) => update({ index_title: value })" />
-          </div>
-          <div>
-            <label class="form-label" for="type-route-description">{{ t("site.pages.descriptionField") }}</label>
-            <select id="type-route-description" :value="route.seo_description_field" class="form-select w-full rounded-lg border-slate-300 text-sm" @change="update({ seo_description_field: $event.target.value })">
-              <option value="">{{ t("site.pages.automatic") }}</option>
-              <option v-for="field in fieldsOf(['text', 'textarea', 'markdown', 'html'])" :key="field.key" :value="field.key">{{ field.label || field.key }}</option>
-            </select>
-          </div>
-          <div>
-            <label class="form-label" for="type-route-image">{{ t("site.pages.imageField") }}</label>
-            <select id="type-route-image" :value="route.seo_image_field" class="form-select w-full rounded-lg border-slate-300 text-sm" @change="update({ seo_image_field: $event.target.value })">
-              <option value="">{{ t("site.pages.automatic") }}</option>
-              <option v-for="field in fieldsOf(['media'])" :key="field.key" :value="field.key">{{ field.label || field.key }}</option>
-            </select>
-          </div>
-          <label class="flex items-center gap-3">
-            <ToggleSwitch :model-value="route.sitemap !== false" @update:model-value="update({ sitemap: $event })" />
-            <span class="text-sm text-slate-700">{{ t("site.pages.inSitemap") }}</span>
-          </label>
+      <div v-if="section === 'seo'" class="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div v-if="route.index_enabled">
+          <label class="form-label" for="type-route-index-title">{{ t("site.pages.listTitle") }}</label>
+          <LocalizedInput id="type-route-index-title" :model-value="route.index_title" class="w-full" :placeholder="label" @update:model-value="(value) => update({ index_title: value })" />
         </div>
-      </details>
+        <div>
+          <label class="form-label" for="type-route-description">{{ t("site.pages.descriptionField") }}</label>
+          <select id="type-route-description" :value="route.seo_description_field" class="form-select w-full rounded-lg border-slate-300 text-sm" @change="update({ seo_description_field: $event.target.value })">
+            <option value="">{{ t("site.pages.automatic") }}</option>
+            <option v-for="field in fieldsOf(['text', 'textarea', 'markdown', 'html'])" :key="field.key" :value="field.key">{{ localizedText(field.label) || field.key }}</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label" for="type-route-image">{{ t("site.pages.imageField") }}</label>
+          <select id="type-route-image" :value="route.seo_image_field" class="form-select w-full rounded-lg border-slate-300 text-sm" @change="update({ seo_image_field: $event.target.value })">
+            <option value="">{{ t("site.pages.automatic") }}</option>
+            <option v-for="field in fieldsOf(['media'])" :key="field.key" :value="field.key">{{ localizedText(field.label) || field.key }}</option>
+          </select>
+        </div>
+        <label class="flex items-center gap-3">
+          <ToggleSwitch :model-value="route.sitemap !== false" @update:model-value="update({ sitemap: $event })" />
+          <span class="text-sm text-slate-700">{{ t("site.pages.inSitemap") }}</span>
+        </label>
+      </div>
     </template>
   </section>
 </template>
@@ -111,6 +105,7 @@ import ToggleSwitch from "../ToggleSwitch.vue";
 import { useI18n } from "../../i18n/index.js";
 
 const props = defineProps({
+  section: { type: String, default: "builder", validator: (value) => ["builder", "seo"].includes(value) },
   /** Website settings of this type, or null when they cannot be edited. */
   modelValue: { type: Object, default: null },
   /** Website status: { enabled (live), can_manage, types }. */
@@ -131,9 +126,9 @@ const editable = computed(() => !!props.modelValue && !!props.status?.can_manage
 
 // Follow the current route, including changes not yet saved.
 const languages = useLanguages();
-const pathText = (value) => resolveLocalized(value, languages.activeLocale.value, languages.defaultLocale.value);
+const localizedText = (value) => resolveLocalized(value, languages.activeLocale.value, languages.defaultLocale.value);
 function fullUrl(value) {
-  const path = pathText(value);
+  const path = localizedText(value);
   if (!path) return "";
   const base = (props.status?.site_url ?? "").replace(/\/+$/, "");
   const locale = languages.activeLocale.value;
@@ -156,7 +151,7 @@ function update(patch) {
 
 /** Turning the list page on suggests a URL when none is set yet. */
 function setListPage(enabled) {
-  update({ index_enabled: enabled, ...(enabled && !pathText(route.value.index_path) && props.name ? { index_path: `/${props.name}` } : {}) });
+  update({ index_enabled: enabled, ...(enabled && !localizedText(route.value.index_path) && props.name ? { index_path: `/${props.name}` } : {}) });
 }
 
 function fieldsOf(types) {

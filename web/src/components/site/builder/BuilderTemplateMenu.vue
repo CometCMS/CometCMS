@@ -4,13 +4,14 @@
       type="button"
       class="template-primary flex min-w-0 max-w-[16rem] items-center gap-1.5 rounded-l-md px-2.5 py-1 text-xs font-medium transition-colors"
       :aria-pressed="active"
+      :aria-current="active ? 'page' : undefined"
       :title="shownTitle"
       :disabled="disabled"
       @click="emit('navigate')"
       @keydown.down.prevent="openMenu()"
     >
       <Icon icon="mdi:page-layout-header-footer" class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-      <span class="truncate">{{ t("site.templates.shown", { name: shownName }) }}</span>
+      <span class="truncate">{{ shownName }}</span>
     </button>
     <button
       ref="triggerRef"
@@ -32,7 +33,7 @@
     <div
       v-if="open"
       :id="menuId"
-      class="absolute left-0 top-full z-50 mt-1 w-80 overflow-hidden rounded-lg border border-slate-200 bg-white text-sm text-slate-700 shadow-lg"
+      class="builder-switcher-menu absolute left-0 top-full z-50 mt-1 w-80 overflow-hidden rounded-lg border border-slate-200 bg-white text-sm text-slate-700 shadow-lg"
       @keydown="onMenuKeydown"
     >
       <div class="border-b border-slate-100 px-3 py-2">
@@ -61,7 +62,6 @@
                 :title="t('site.templates.liveHint')"
               >{{ t("site.templates.liveTag") }}</span>
             </span>
-            <span class="block truncate text-xs text-slate-500">{{ parts(template) }}</span>
           </span>
           <Icon v-if="shown?.id === template.id" icon="mdi:check" class="h-4 w-4 shrink-0 text-theme-600" aria-hidden="true" />
         </button>
@@ -87,7 +87,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId } from "vue";
 import { Icon } from "@iconify/vue";
-import { frameLabel, reasonLabel, templateName } from "../../../composables/templates.js";
+import { reasonLabel, templateName } from "../../../composables/templates.js";
 import { useI18n } from "../../../i18n/index.js";
 
 /**
@@ -125,10 +125,6 @@ const menuId = `template-menu-${useId()}`;
 const shownName = computed(() => props.shown ? templateName(t, props.shown) : t("site.templates.defaultName"));
 const reason = computed(() => props.shown ? reasonLabel(t, props.shown.reason, props.shown, props.schema) : "");
 const shownTitle = computed(() => [t("site.templates.shown", { name: shownName.value }), reason.value].filter(Boolean).join(" · "));
-
-function parts(template) {
-  return [frameLabel(t, template.header, "header", props.components), frameLabel(t, template.footer, "footer", props.components)].join(" · ");
-}
 
 function choose(action) {
   close(true);
@@ -183,7 +179,7 @@ onBeforeUnmount(() => document.removeEventListener("pointerdown", onOutsidePoint
 </script>
 
 <style scoped>
-/* Like BuilderEntrySwitcher, its other half. */
+/* Shared styling with the entry breadcrumb. */
 .template-switcher {
   color: rgb(var(--builder-toolbar-text) / 0.8);
 }

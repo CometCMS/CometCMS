@@ -26,7 +26,11 @@
           :locale="state.activeLocale.value"
           :error="state.draft.value.errors[name]"
           :readonly="state.fieldReadonly(name)"
+          :draggable-label="!busy && !builder.translating.value"
+          :drag-hint="t('site.builder.entryFieldDragHint')"
           compact
+          @label-dragstart="startFieldDrag($event, name, config)"
+          @label-dragend="endPaletteDrag(builder)"
         >
           <TranslationInfo v-if="config.localized !== false" :value="state.record.value.entry.values?.[name]" :locale="state.activeLocale.value" :default-locale="state.defaultLocale.value" :readonly="state.fieldReadonly(name)" @reset="state.reset(name)" />
           <FieldInput
@@ -51,6 +55,9 @@ import BaseField from "../../BaseField.vue";
 import FieldInput from "../../FieldInput.vue";
 import LoadingSpinner from "../../LoadingSpinner.vue";
 import { useI18n } from "../../../i18n/index.js";
+import { useSiteBuilder } from "../../../composables/useSiteBuilder.js";
+import { fieldShortcut } from "../../../composables/smartValues.js";
+import { startPaletteDrag, endPaletteDrag } from "../../../composables/builderPaletteDrag.js";
 
 const props = defineProps({
   state: { type: Object, required: true },
@@ -59,6 +66,7 @@ const props = defineProps({
   reveal: { type: Object, default: null },
 });
 const { t } = useI18n();
+const builder = useSiteBuilder();
 const root = ref(null);
 const highlighted = ref("");
 let revealed = null;
@@ -84,5 +92,13 @@ onBeforeUnmount(() => clearTimeout(highlightTimer));
 
 function fieldConfig(name, config) {
   return name === "title" && !config.label ? { ...config, label: t("contentEdit.title") } : config;
+}
+
+function startFieldDrag(event, name, config) {
+  if (props.busy) {
+    event.preventDefault();
+    return;
+  }
+  startPaletteDrag(builder, event, () => fieldShortcut({ key: name, type: config.type ?? "text", config }, builder.make));
 }
 </script>

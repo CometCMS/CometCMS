@@ -13,8 +13,13 @@ import { chromium } from 'playwright';
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const tailwindConfig = loadConfig(join(root, 'web/tailwind.config.js'));
 const defaults = JSON.parse(execFileSync('php', ['-r', `require '${root}cms/app/Site/Shadow.php'; require '${root}cms/app/Site/Theme.php'; echo json_encode(CometCMS\\Site\\Theme::defaults());`], { encoding: 'utf8' }));
+const paddingStyles = JSON.parse(execFileSync('php', ['-r', 'require $argv[1]; comet_test_reset_storage(); echo json_encode(array_map(fn($theme) => CometCMS\\Site\\Theme::stylesheet($theme), json_decode($argv[2], true)));',
+  join(root, 'tests/php/bootstrap.php'), JSON.stringify([{}, { section_padding: 'lg', grid_padding: 'none', column_padding: 'sm' }, { base_size: 16, space: { md: 24 }, grid_padding: 'sm', column_padding: 'none' }, { base_size: 16, space: { md: 24 } }])], { encoding: 'utf8', maxBuffer: 5 * 1024 * 1024 }));
 const entry = `
 import { createApp, h, reactive } from 'vue';
+import { createPinia } from 'pinia';
+import DesignPanel from '${root}web/src/components/site/builder/SiteDesignPanel.vue';
+import { useSiteStore } from '${root}web/src/stores/site.js';
 import Motion from '${root}web/src/components/site/builder/ThemeMotionSettings.vue';
 import Shadows from '${root}web/src/components/site/builder/ThemeShadowsSettings.vue';
 import ShadowEditor from '${root}web/src/components/site/builder/ShadowEditor.vue';
@@ -22,12 +27,17 @@ import { setLocale } from '${root}web/src/i18n/index.js';
 window.setDesignLocale = setLocale;
 import '${root}web/src/style.css';
 const theme = reactive(${JSON.stringify(defaults)});
+const pinia = createPinia();
+const site = useSiteStore(pinia);
+site.data = { theme_defaults: ${JSON.stringify(defaults)}, theme_presets: [], fonts: ['system'], font_stacks: { system: 'system-ui' } };
+site.draft = { theme };
 window.designTheme = theme;
 createApp({ setup: () => () => h('main', { class: 'grid items-start gap-6 p-4', style: 'grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),380px))' }, [
   h('section', { id: 'motion', class: 'card p-4' }, [h(Motion, { motion: theme.motion })]),
   h('section', { id: 'shadows', class: 'card p-4' }, [h(Shadows, { theme, colors: [{ value: 'primary', label: 'Primary', swatch: '#2563eb' }] })]),
   h('section', { id: 'element', class: 'card p-4' }, [h(ShadowEditor, { id: 'element-shadow', modelValue: 'md', scale: theme.shadow_scale, presets: theme.shadows, options: [] })]),
-]) }).mount('#app');
+  h('section', { id: 'design', class: 'card' }, [h(DesignPanel, { showHeader: false })]),
+]) }).use(pinia).mount('#app');
 `;
 let server, browser;
 try {
@@ -55,6 +65,42 @@ try {
   page.on('pageerror', error => errors.push(error.message));
   await page.addInitScript(() => localStorage.setItem('cometcms-admin-locale', 'en'));
   await page.goto(`${origin}/admin/design-settings`);
+  const design = page.locator('#design');
+  await design.getByRole('button', { name: 'Sizes & spacing', exact: true }).click();
+  for (const kind of ['section', 'grid', 'column']) {
+    const picker = design.getByRole('combobox', { name: `Default ${kind} padding: M · ${defaults.space.md}px`, exact: true });
+    await picker.click();
+    const list = page.getByRole('listbox', { name: `Default ${kind} padding`, exact: true });
+    assert.equal(await list.getByRole('option', { name: `M ${defaults.space.md} px`, exact: true }).getAttribute('aria-selected'), 'true');
+    await list.getByRole('option', { name: { section: `L ${defaults.space.lg} px`, grid: '0 0 px', column: `S ${defaults.space.sm} px` }[kind], exact: true }).click();
+    assert.equal(await picker.count(), 0);
+  }
+  assert.deepEqual(await page.evaluate(() => [window.designTheme.section_padding, window.designTheme.grid_padding, window.designTheme.column_padding]), ['lg', 'none', 'sm']);
+  // Each smaller device can override or inherit its padding, including an explicit zero.
+  await page.evaluate(() => { window.designTheme.section_padding_tablet = ''; });
+  await design.getByRole('button', { name: 'Tablet', exact: true }).click();
+  const tabletSection = design.getByRole('combobox', { name: /^Default section padding:/ });
+  assert.equal(await tabletSection.textContent(), '=');
+  await tabletSection.press('ArrowDown');
+  await tabletSection.press('End');
+  await tabletSection.press('Enter');
+  assert.equal(await page.evaluate(() => window.designTheme.section_padding_tablet), '2xl');
+  assert.equal(await tabletSection.evaluate(el => el === document.activeElement), true);
+  await design.getByRole('button', { name: 'Mobile', exact: true }).click();
+  const mobileSection = design.getByRole('combobox', { name: /^Default section padding:/ });
+  await mobileSection.click();
+  await page.getByRole('option', { name: '0 0 px', exact: true }).click();
+  assert.equal(await page.evaluate(() => window.designTheme.section_padding_mobile), 'none');
+  await mobileSection.click();
+  await page.getByRole('option', { name: 'Same as tablet', exact: true }).click();
+  assert.equal(await page.evaluate(() => window.designTheme.section_padding_mobile), '');
+  await mobileSection.click();
+  await mobileSection.press('Escape');
+  assert.equal(await page.getByRole('listbox').count(), 0);
+  await mobileSection.click();
+  await design.getByRole('button', { name: 'Desktop', exact: true }).click();
+  assert.equal(await page.getByRole('listbox').count(), 0);
+  assert.equal(await page.evaluate(() => window.designTheme.section_padding), 'lg');
   const motion = page.locator('#motion');
   const shadows = page.locator('#shadows');
   await motion.getByRole('button', { name: /Normal/ }).waitFor();
@@ -116,6 +162,9 @@ try {
     await page.screenshot({ path: process.env.DESIGN_SCREENSHOT.replace('.png', '-dark.png'), fullPage: true, animations: 'disabled' });
   }
   await page.evaluate(() => { window.setDesignLocale('de'); document.documentElement.dataset.theme = 'dark'; });
+  await design.getByRole('combobox', { name: /^Standard-Innenabstand für Abschnitte:/ }).waitFor();
+  await design.getByRole('combobox', { name: /^Standard-Innenabstand für Raster:/ }).waitFor();
+  await design.getByRole('combobox', { name: /^Standard-Innenabstand für Spalten:/ }).waitFor();
   await page.setViewportSize({ width: 360, height: 1000 });
   await motion.getByRole('button', { name: /Schnell/ }).click();
   await motion.getByRole('spinbutton', { name: 'Dauer: Schnell' }).waitFor();
@@ -125,7 +174,50 @@ try {
   assert.equal(await shadows.getByRole('button', { name: 'L', exact: true }).evaluate(el => getComputedStyle(el).backgroundColor), 'rgb(24, 28, 38)');
   if (process.env.DESIGN_SCREENSHOT) await page.screenshot({ path: process.env.DESIGN_SCREENSHOT.replace('.png', '-de-sidebar.png'), fullPage: true, animations: 'disabled' });
   assert.deepEqual(errors, []);
-  console.log('Design settings browser checks passed: timing, replay, hover/focus, reduced motion, shadow editing/reset, shared previews, custom add/remove, narrow layout.');
+  // Verify the generated website CSS, including nested grids and explicit device overrides.
+  const rendered = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  await rendered.setContent(`<style id="theme">${paddingStyles[0]}</style>
+    <header class="c-region"><section id="region" class="c-section"></section></header>
+    <section id="section" class="c-section c-pt-xl c-t-pt-xs c-m-pt-none">
+      <div id="grid" class="c-row c-pl-none c-t-pr-lg c-m-pr-xs">
+        <div id="column" class="c-col"><div id="nested" class="c-row"><div id="nested-column" class="c-col"></div></div></div>
+        <div id="column-overrides" class="c-col c-pt-2xl c-pr-none c-t-pb-lg c-m-pb-none"></div>
+      </div>
+    </section>`);
+  const padding = (id) => rendered.locator(`#${id}`).evaluate(el => {
+    const css = getComputedStyle(el);
+    return [css.paddingTop, css.paddingRight, css.paddingBottom, css.paddingLeft];
+  });
+  assert.deepEqual(await padding('region'), ['17px', '17px', '17px', '17px']);
+  assert.deepEqual(await padding('section'), ['59.5px', '17px', '17px', '17px']);
+  assert.deepEqual(await padding('grid'), ['17px', '17px', '17px', '0px']);
+  assert.deepEqual(await padding('nested'), ['17px', '17px', '17px', '17px']);
+  assert.deepEqual(await padding('column'), ['17px', '17px', '17px', '17px']);
+  assert.deepEqual(await padding('nested-column'), ['17px', '17px', '17px', '17px']);
+  assert.deepEqual(await padding('column-overrides'), ['102px', '0px', '17px', '17px']);
+  await rendered.locator('#theme').evaluate((el, css) => { el.textContent = css; }, paddingStyles[1]);
+  assert.deepEqual(await padding('section'), ['59.5px', '34px', '34px', '34px']);
+  assert.deepEqual(await padding('grid'), ['0px', '0px', '0px', '0px']);
+  assert.deepEqual(await padding('nested'), ['0px', '0px', '0px', '0px']);
+  assert.deepEqual(await padding('column'), ['8.5px', '8.5px', '8.5px', '8.5px']);
+  assert.deepEqual(await padding('nested-column'), ['8.5px', '8.5px', '8.5px', '8.5px']);
+  assert.deepEqual(await padding('column-overrides'), ['102px', '0px', '8.5px', '8.5px']);
+  for (const [width, top, right] of [[900, '4.25px', '34px'], [600, '0px', '4.25px']]) {
+    await rendered.setViewportSize({ width, height: 800 });
+    assert.equal((await padding('section'))[0], top);
+    assert.equal((await padding('grid'))[1], right);
+    assert.equal((await padding('column-overrides'))[2], width === 900 ? '34px' : '0px');
+  }
+  await rendered.setViewportSize({ width: 1280, height: 800 });
+  await rendered.locator('#theme').evaluate((el, css) => { el.textContent = css; }, paddingStyles[2]);
+  assert.deepEqual(await padding('region'), ['24px', '24px', '24px', '24px']);
+  assert.deepEqual(await padding('nested'), ['8px', '8px', '8px', '8px']);
+  assert.deepEqual(await padding('column'), ['0px', '0px', '0px', '0px']);
+  assert.deepEqual(await padding('nested-column'), ['0px', '0px', '0px', '0px']);
+  await rendered.locator('#theme').evaluate((el, css) => { el.textContent = css; }, paddingStyles[3]);
+  assert.deepEqual(await padding('column'), ['24px', '24px', '24px', '24px']);
+  assert.deepEqual(await padding('nested-column'), ['24px', '24px', '24px', '24px']);
+  console.log('Design settings browser checks passed: timing, shadows, padding controls, global defaults, nested grids and columns, spacing scale, explicit and responsive overrides, narrow layout.');
 } finally {
   await browser?.close(); await server?.close();
 }

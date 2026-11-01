@@ -65,7 +65,7 @@ Request a size by name:
 /media/{workspace}/{filename}?size=medium
 ```
 
-`?variant=thumbnail` still works as an alias for `?size=thumbnail`. Add `format=jpeg` (or another enabled format) to choose the output format.
+Use `?size=thumbnail` for thumbnails. Add `format=jpeg` (or another enabled format) to choose the output format.
 
 On the website, images list every size up to `large` in `srcset`, with a `sizes` attribute worked out from the layout: the section's width, the column's span on each device, gallery and card columns, and the image's maximum width. The browser then loads the smallest file that is sharp on the visitor's screen. Originals larger than `large` are never sent to visitors.
 

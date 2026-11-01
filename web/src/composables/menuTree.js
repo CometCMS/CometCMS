@@ -3,7 +3,7 @@ import { newId, locate, findNode, contains, ancestors } from './layoutTree.js'
 export const DEFAULT_MENU_LIMITS = { max_depth: 5, max_siblings: 60, max_menus: 20 }
 
 export function createMenuItem() {
-  return { id: newId(), label: '', link: { type: 'home', new_tab: false }, children: [] }
+  return { id: newId(), label: '', link: { type: 'home', new_tab: false }, icon: '', children: [] }
 }
 
 export function itemCount(items) {

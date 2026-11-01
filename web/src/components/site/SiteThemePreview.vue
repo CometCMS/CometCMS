@@ -15,6 +15,7 @@ import { computed } from 'vue';
 import SitePreviewFrame from './SitePreviewFrame.vue';
 import { useSiteStore } from '../../stores/site.js';
 import { useI18n } from '../../i18n/index.js';
+import { FIXED_SHADOWS } from '../../composables/shadows.js';
 
 const site = useSiteStore();
 const { t } = useI18n();
@@ -29,7 +30,7 @@ const previewBody = computed(() => {
   const node = (kind, props = {}, style = {}, children = []) => ({ id: `theme-preview-${++id}`, kind, props, style, children });
   const heading = (level, text) => node('heading', { level, text });
   const button = (variant) => node('button', { variant, label: t(`site.theme.previewButton.${variant}`), link: { type: 'current' } });
-  const card = (color) => node('column', {}, { background: color, padding_y: 'md', padding_x: 'md', radius: 'theme', border: ['left', 'top', 'right', 'bottom'] }, [
+  const card = (color) => node('column', {}, { background: color, padding_top: 'md', padding_bottom: 'md', padding_left: 'md', padding_right: 'md', radius: 'theme', border: ['left', 'top', 'right', 'bottom'] }, [
     heading('h3', t(`site.theme.color.${color}`)),
     node('text', { html: `<p>${t('site.theme.previewCard')}</p>` }),
   ]);
@@ -42,7 +43,7 @@ const previewBody = computed(() => {
     theme: site.draft.theme,
     font_version: site.data?.font_version,
     nodes: [
-      node('section', { width: 'contained' }, { padding_y: 'lg' }, [
+      node('section', { width: 'contained' }, { padding_top: 'lg', padding_bottom: 'lg' }, [
         node('row', {}, {}, [node('column', {}, {}, [
           heading('h1', t('site.theme.previewHeading')),
           node('text', { html: `<p>${t('site.theme.previewText')}</p>` }),
@@ -52,11 +53,19 @@ const previewBody = computed(() => {
           ...['h3', 'h4', 'h5', 'h6'].map((level) => heading(level, `${level.toUpperCase()} · ${t('site.theme.headingSample')}`)),
         ])]),
       ]),
-      node('section', { width: 'narrow' }, { padding_y: 'lg' }, [
+      node('section', { width: 'narrow' }, { padding_top: 'lg', padding_bottom: 'lg' }, [
         node('row', {}, {}, [card('surface'), card('accent')]),
         ...(customColors.length ? [node('row', {}, {}, customColors.map(([key, color]) =>
-          node('column', {}, { background: key, padding_y: 'md', padding_x: 'md', radius: 'theme' }, [heading('h3', color.label)]),
+          node('column', {}, { background: key, padding_top: 'md', padding_bottom: 'md', padding_left: 'md', padding_right: 'md', radius: 'theme' }, [heading('h3', color.label)]),
         ))] : []),
+      ]),
+      node('section', { width: 'narrow' }, { padding_top: 'md', padding_bottom: 'lg' }, [
+        node('row', {}, {}, [node('column', {}, {}, [heading('h2', t('site.theme.shadows'))])]),
+        node('row', {}, { padding_top: 'md', padding_bottom: 'md' }, FIXED_SHADOWS.map((key) =>
+          node('column', { span: { mobile: 4, tablet: 4, desktop: 4 } }, { background: 'surface', padding_top: 'md', padding_bottom: 'md', padding_left: 'sm', padding_right: 'sm', radius: 'theme', shadow: key, align: 'center' }, [
+            node('text', { html: `<p>${t(`site.option.${key}`)}</p>` }),
+          ]),
+        )),
       ]),
     ],
   };

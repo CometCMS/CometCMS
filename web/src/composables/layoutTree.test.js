@@ -8,6 +8,8 @@ import {
   cloneWithNewIds,
   countNodes,
   createNode,
+  detachedCopy,
+  fillAllAreas,
   duplicateNode,
   effectiveSpan,
   findNode,
@@ -140,11 +142,25 @@ describe('layout tree', () => {
 
   it('builds column presets and resolves responsive spans', () => {
     const preset = sectionPreset(spec, [4, 8])
+    expect(preset.style).toEqual({}) // New sections inherit the global padding.
     const spans = preset.children[0].children.map((column) => column.props.span)
     expect(spans).toEqual([{ mobile: 12, tablet: 4, desktop: 0 }, { mobile: 12, tablet: 8, desktop: 0 }])
     expect(sectionPreset(spec, [4, 4, 4]).children[0].children[0].props.span).toEqual({ mobile: 12, tablet: 6, desktop: 4 })
     expect(effectiveSpan({ mobile: 12, tablet: 6, desktop: 0 }, 'desktop')).toBe(6)
     expect(effectiveSpan({ mobile: 12, tablet: 0, desktop: 4 }, 'tablet')).toBe(12)
+  })
+
+  it('drops a preset section into a column as just its row', () => {
+    const column = createNode(spec, 'column')
+    const nodes = [createNode(spec, 'section', {}, {}, [createNode(spec, 'row', {}, {}, [column])])]
+    const preset = sectionPreset(spec, [6, 6])
+    const nesting = { ...spec, max_row_depth: 1, kinds: { ...spec.kinds, column: { ...spec.kinds.column, children: [...ELEMENTS, 'row'] } } }
+    const nested = resolveDrop(nesting, nodes, preset, column.id, 'inside')
+    expect(nested).toMatchObject({ parentId: column.id, node: { kind: 'row' } })
+    expect(nested.node.children).toHaveLength(2)
+    expect(resolveDrop(spec, nodes, sectionPreset(spec, [6, 6]), null, 'after')).toMatchObject({ parentId: null, node: { kind: 'section' } })
+    // Existing sections are never unwrapped.
+    expect(resolveDrop(spec, nodes, createNode(spec, 'section'), column.id, 'inside')).toMatchObject({ parentId: null })
   })
 
   it('rearranges columns without losing content', () => {
@@ -245,12 +261,45 @@ describe('layout tree', () => {
   })
 })
 
-
-it('preserves legacy accordion component overrides after entry migration', () => {
+it('applies accordion item overrides without mutating the component', () => {
   const node = { id: 'accordion', kind: 'accordion', editable: ['items'], props: { items: [{ title: 'Base question', html: '<p>Answer</p>', open: false }] }, children: [] }
-  const legacy = withOverrides(node, { accordion: { title: 'Instance question' } })
-  expect(legacy.props.items).toEqual([{ title: 'Instance question', html: '<p>Answer</p>', open: false }])
+  const instance = withOverrides(node, { accordion: { items: [{ title: 'Instance question', html: '<p>Answer</p>', open: false }] } })
+  expect(instance.props.items).toEqual([{ title: 'Instance question', html: '<p>Answer</p>', open: false }])
   expect(node.props.items[0].title).toBe('Base question')
-  const current = withOverrides(node, { accordion: { title: 'Ignored legacy title', items: [] } })
+  const current = withOverrides(node, { accordion: { items: [] } })
   expect(current.props.items).toEqual([])
+})
+
+it('fills content areas of instances and counts the rows they sit in', () => {
+  const instance = (id, root, children = []) => ({ id, kind: 'component', props: { component: 'card', root }, style: {}, children })
+  const nodes = [
+    { id: 's1', kind: 'section', props: {}, style: {}, children: [instance('section', 'section'), instance('row', 'row')] },
+    instance('kept', 'section', [{ id: 'own', kind: 'area_content', props: { area: 'body' }, style: {}, children: [] }]),
+  ]
+  const card = { id: 'card', areas: [{ id: 'body', name: 'Body' }, { id: 'aside', name: '' }] }
+  expect(fillAllAreas(spec, nodes, [card])).toBe(true)
+  expect(nodes[0].children[0].children.map((child) => [child.id, child.props.area])).toEqual([['section-body', 'body'], ['section-aside', 'aside']])
+  expect(nodes[1].children.map((child) => child.id)).toEqual(['own', 'kept-aside'])
+  expect(fillAllAreas(spec, nodes, [card])).toBe(false)
+
+  // Area content sits in the component's own row; a row component is that row.
+  expect(rowDepth(nodes, 'section-body')).toBe(1)
+  expect(rowDepth(nodes, 'row-body')).toBe(1)
+})
+
+it('detaches an instance with its area content in place of each area', () => {
+  const root = { id: 'col', kind: 'column', props: { span: { mobile: 12, tablet: 0, desktop: 0 } }, style: {}, children: [
+    { id: 'before', kind: 'heading', props: { text: 'Shared' }, style: {}, editable: ['text'], children: [] },
+    { id: 'body', kind: 'component_area', props: {}, style: {}, children: [] },
+    { id: 'empty', kind: 'component_area', props: {}, style: {}, children: [] },
+  ] }
+  const instance = { id: 'i1', kind: 'component', name: 'Promo', props: { component: 'card', root: 'column', span: { mobile: 12, tablet: 6, desktop: 0 } }, overrides: { before: { text: 'Own' } }, children: [
+    { id: 'fill', kind: 'area_content', props: { area: 'body' }, style: {}, children: [{ id: 'mine', kind: 'text', props: {}, style: {}, children: [] }] },
+  ] }
+  const copy = detachedCopy(instance, root)
+  expect(copy).toMatchObject({ id: 'i1', kind: 'column', name: 'Promo', props: { span: { mobile: 12, tablet: 6, desktop: 0 } } })
+  expect(copy.children.map((node) => node.id === 'mine' ? 'mine' : node.kind)).toEqual(['heading', 'mine'])
+  expect(copy.children[0]).toMatchObject({ props: { text: 'Own' } })
+  expect(copy.children[0].id).not.toBe('before')
+  expect(copy.children[0].editable).toBeUndefined()
 })

@@ -4,6 +4,41 @@ declare(strict_types=1);
 
 use CometCMS\Updates\UpdateService;
 
+test('update replacement invalidates cached PHP files', function (): void {
+    $script = COMET_STORAGE . '/update-opcache.php';
+    file_put_contents($script, <<<'PHP'
+<?php
+require $argv[1] . '/tests/php/bootstrap.php';
+$source = COMET_STORAGE . '/source';
+$target = COMET_STORAGE . '/target';
+mkdir($source . '/app', 0775, true);
+mkdir($target . '/app', 0775, true);
+foreach (['index.php', 'app/version.php'] as $path) {
+    file_put_contents($source . '/' . $path, "<?php return '2.1.0';");
+    file_put_contents($target . '/' . $path, "<?php return '2.0.0';");
+    if (!opcache_compile_file($target . '/' . $path)) {
+        throw new RuntimeException('Could not cache the old PHP file.');
+    }
+}
+$replace = new ReflectionMethod(CometCMS\Updates\UpdateService::class, 'replacePackage');
+$replace->invoke(new CometCMS\Updates\UpdateService(), $source, $target, []);
+foreach (['index.php', 'app/version.php'] as $path) {
+    echo require $target . '/' . $path;
+    echo "\n";
+}
+comet_test_remove_directory(COMET_STORAGE);
+PHP);
+
+    $output = comet_test_run_php([
+        '-d', 'opcache.enable_cli=1',
+        '-d', 'opcache.validate_timestamps=0',
+        '-d', 'opcache.file_update_protection=0',
+        $script,
+        COMET_TEST_ROOT,
+    ]);
+    assert_same("2.1.0\n2.1.0\n", $output);
+});
+
 test('update downloads distinguish HTTP errors from connection failures', function (): void {
     $router = COMET_STORAGE . '/update-download-router.php';
     file_put_contents($router, <<<'PHP'

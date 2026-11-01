@@ -56,15 +56,3 @@ test('pages with a theme toggle load its hashed script in the head, previews sta
     assert_false(str_contains($preview, '<script'));
     assert_true(str_contains($preview, 'data-theme-toggle'));
 });
-
-test('entry lists saved as plain lists become single-column cards', function (): void {
-    $saved = LayoutSchema::normalizeComponent([LayoutSchema::node('column', [], [], [
-        ['kind' => 'collection', 'props' => ['type' => 'blog', 'display' => 'list', 'columns' => 3]],
-        ['kind' => 'collection', 'props' => ['type' => 'blog', 'display' => 'cards', 'columns' => 3]],
-    ])], 'column');
-    [$list, $cards] = $saved[0]['children'];
-    assert_same(1, $list['props']['columns']);
-    assert_same(3, $cards['props']['columns']);
-    assert_false(array_key_exists('display', $list['props']));
-    assert_false(array_key_exists('display', LayoutSchema::spec()['kinds']['collection']['props']));
-});

@@ -179,8 +179,8 @@ final class WorkspaceRepository
 
         $context = new WorkspaceContext($slug);
         $context->ensure();
-        if (isset($data['languages'])) {
-            (new \CometCMS\Localization\LanguageSettings($context))->save($data['languages']);
+        if (isset($data['languages']) || !$found) {
+            (new \CometCMS\Localization\LanguageSettings($context))->save($data['languages'] ?? ['locales' => ['en'], 'default_locale' => 'en']);
         }
         // The workspace label is the website title until a title is configured.
         ApiCache::fromConfig($context)->clear();

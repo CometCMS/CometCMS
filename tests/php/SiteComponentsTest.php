@@ -49,7 +49,7 @@ test('repeated navigation components give every menu its own matching toggle and
     }
 });
 
-test('component instances are placed like their root kind and never keep children', function (): void {
+test('component instances are placed like their root kind and keep only area content as children', function (): void {
     $nodes = LayoutSchema::normalize([
         comet_component_test_instance('i1', 'cabc', 'section'),
         comet_component_test_instance('i2', 'cabc', 'column'),
@@ -150,24 +150,57 @@ test('component icon API accepts icon-only patches and enforces site permissions
     assert_same(403, $status);
 });
 
-test('components that show entry fields need the content type they belong to', function (): void {
+test('components show the fields of whichever entry they are placed for', function (): void {
     $site = comet_site_test_setup();
-    $section = comet_component_test_section([['id' => 'h1', 'kind' => 'heading', 'props' => ['text' => SmartValue::reference('title')]]]);
+    $section = comet_component_test_section([
+        ['id' => 'h1', 'kind' => 'heading', 'props' => ['text' => SmartValue::reference('title')]],
+        ['id' => 't1', 'kind' => 'text', 'props' => ['html' => SmartValue::reference('intro')]],
+    ]);
 
-    assert_throws(ValidationException::class, fn() => $site->createComponent('Title', [$section]));
-    assert_throws(ValidationException::class, fn() => $site->createComponent('Title', [$section], 'unknown'));
+    // Without a type, or with an unknown one, it is simply not tied to one.
+    assert_same('', $site->createComponent('Untyped', [$section])['type']);
+    assert_same('', $site->createComponent('Unknown', [$section], 'unknown')['type']);
     $component = $site->createComponent('Title', [$section], 'blog');
-    assert_same('blog', $component['type']);
-
-    $static = $site->createComponent('Static', [comet_component_test_section([['kind' => 'heading']])], 'blog');
-    assert_same('blog', $static['type'], 'A type can be kept even before fields are used.');
+    assert_same('blog', $component['type'], 'The type stays as the one to preview with.');
 
     $site->saveLayout('blog', 'detail', [comet_component_test_instance('i1', $component['id'])]);
-    $html = comet_site_test_get('/blog/hello')['body'];
-    assert_true(str_contains($html, 'Hello &lt;script&gt;alert(1)&lt;/script&gt;'), 'References resolve against the page entry.');
+    $site->saveLayout('about', 'detail', [comet_component_test_instance('i2', $component['id'])]);
+    $blog = comet_site_test_get('/blog/hello')['body'];
+    assert_true(str_contains($blog, 'Hello &lt;script&gt;alert(1)&lt;/script&gt;'), 'References resolve against the page entry.');
+    $about = comet_site_test_get('/about')['body'];
+    assert_true(str_contains($about, 'About us') && str_contains($about, 'We build things.'), 'The same component shows another type\'s entry.');
 });
 
-test('components cannot contain themselves or components of another type', function (): void {
+test('the component builder previews with entries of every public type', function (): void {
+    $seed = <<<'PHP'
+$types = new \CometCMS\Content\ContentTypeRepository();
+$types->save(['name' => 'blog', 'fields' => ['body' => ['type' => 'markdown']]]);
+$types->save(['name' => 'about', 'fields' => ['intro' => ['type' => 'textarea']]]);
+$types->save(['name' => 'notes', 'visibility' => 'private', 'fields' => []]);
+$content = \CometCMS\Content\ContentRepository::make();
+$content->save('blog', ['title' => 'Post', 'slug' => 'post', 'status' => 'published'], ['id' => 'admin']);
+$content->save('about', ['title' => 'Team', 'slug' => 'team', 'status' => 'published'], ['id' => 'admin']);
+$content->save('notes', ['title' => 'Secret', 'status' => 'published'], ['id' => 'admin']);
+(new \CometCMS\Site\SiteRepository())->createComponent('Card', [['kind' => 'section']], 'about');
+PHP;
+    $open = static function (string $query = '') use ($seed): array {
+        [$status, $body] = comet_admin_request('admin', $seed, 'GET', '/admin/api/site/components/card' . $query,
+            '(new \CometCMS\Controllers\Admin\SiteController(new \CometCMS\Core\Http()))->component("card");');
+        assert_same(200, $status, json_encode($body));
+        return $body['data'];
+    };
+
+    $data = $open();
+    // The component's own type comes first; private types never show.
+    assert_same([['about', 'Team'], ['blog', 'Post']], array_map(static fn(array $sample): array => [$sample['type'], $sample['title']], $data['samples']));
+    assert_same('about', $data['type']['name']);
+    // Each request seeds afresh, so ask by slug; the answer names the entry by its stable ID.
+    $data = $open('?entry=post');
+    assert_same('Post', array_column($data['samples'], 'title', 'id')[$data['sample']] ?? null);
+    assert_same('blog', $data['type']['name'], 'The requested entry decides the type to preview with.');
+});
+
+test('components cannot contain themselves but hold components of any type', function (): void {
     $site = comet_site_test_setup();
     $section = static fn(array $children): array => [['kind' => 'section', 'children' => $children]];
     $row = $site->createComponent('Row', [['kind' => 'row', 'children' => [['kind' => 'column']]]]);
@@ -178,9 +211,9 @@ test('components cannot contain themselves or components of another type', funct
     assert_throws(ValidationException::class, fn() => $site->saveComponent($outer['id'], $section([comet_component_test_instance('i3', $outer['id'], 'row')])));
 
     $typed = $site->createComponent('Typed', [['kind' => 'row', 'children' => [['kind' => 'column', 'children' => [['kind' => 'heading', 'props' => ['text' => SmartValue::reference('title')]]]]]]], 'blog');
-    assert_throws(ValidationException::class, fn() => $site->saveComponent($outer['id'], $section([comet_component_test_instance('i4', $typed['id'], 'row')])), 'Untyped components cannot hold typed ones.');
-    $typedOuter = $site->createComponent('Typed outer', $section([]), 'blog');
-    $site->saveComponent($typedOuter['id'], $section([comet_component_test_instance('i5', $typed['id'], 'row')]));
+    $site->saveComponent($outer['id'], $section([comet_component_test_instance('i4', $typed['id'], 'row')]));
+    $aboutOuter = $site->createComponent('About outer', $section([]), 'about');
+    $site->saveComponent($aboutOuter['id'], $section([comet_component_test_instance('i5', $typed['id'], 'row')]));
 });
 
 test('deleting a component detaches all placements and removes its history', function (): void {
@@ -321,7 +354,7 @@ test('component previews and overrides reach nested instances, and saving clears
     $html = $renderer->layoutPreview((new ContentTypeRepository())->find('blog'), 'detail', null);
     assert_true(str_contains($html, 'Unsaved inner'));
     $preview = $renderer->componentPreview($edited, null, null);
-    assert_true(str_contains($preview, '<section class="c-section c-section-contained c-py-xl">'), 'Rows are previewed inside a section.');
+    assert_true(str_contains($preview, '<section class="c-section c-section-contained c-pt-xl c-pb-xl">'), 'Rows are previewed inside a section.');
     assert_true(str_contains($preview, 'data-node="' . $edited['nodes'][0]['id'] . '"'), 'The edited component is annotated.');
 
     $cache = ApiCache::fromConfig();

@@ -346,3 +346,24 @@ test('menu hover effects, hover colors and current page styles are fixed choices
     assert_true(str_contains($html, ' c-menu-fx-background c-menu-active-bold'));
     assert_false(str_contains($html, '--c-menu-hover'));
 });
+
+test('menu item icons are optional, validated against the bundled set and rendered inside the link', function (): void {
+    $site = comet_site_test_setup();
+    $items = [
+        comet_menu_test_item('home') + ['icon' => 'mdi:home-outline'],
+        comet_menu_test_item('group', [comet_menu_test_item('child') + ['icon' => 'mdi:star-outline']], ['type' => 'none']) + ['icon' => 'mdi:folder-outline'],
+        comet_menu_test_item('plain') + ['icon' => 'not-an-icon'],
+    ];
+    $site->saveMenus([['name' => 'main', 'label' => 'Main', 'items' => $items]]);
+    $saved = (new SiteRepository())->menu('main')['items'];
+    assert_same('mdi:home-outline', $saved[0]['icon']);
+    assert_same('mdi:folder-outline', $saved[1]['icon']);
+    assert_same('mdi:star-outline', $saved[1]['children'][0]['icon']);
+    assert_same('', $saved[2]['icon']);
+
+    $html = comet_menu_test_render(comet_site_test_context($site));
+    assert_same(3, substr_count($html, 'class="c-menu-icon"'));
+    assert_true((bool) preg_match('~<a [^>]*><svg class="c-menu-icon"[^>]*aria-hidden="true">.+?</svg>home</a>~', $html));
+    assert_true((bool) preg_match('~<summary class="c-menu-label"><span><svg class="c-menu-icon"[^>]*>.+?</svg>group</span>~', $html));
+    assert_true(str_contains($html, '>plain</a>'));
+});

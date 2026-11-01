@@ -19,6 +19,8 @@ use CometCMS\Core\Security;
 use CometCMS\Core\ValidationException;
 use CometCMS\Logging\Logger;
 use CometCMS\Media\MediaRepository;
+use CometCMS\Media\MediaUpload;
+use CometCMS\Media\UploadException;
 use CometCMS\Workspaces\WorkspaceContext;
 use CometCMS\Workspaces\WorkspaceRepository;
 
@@ -336,70 +338,13 @@ final class ApiController
     public function mediaStore(): never
     {
         $user = $this->requireToken('media.upload', ['type' => 'media', 'category' => $_POST['category'] ?? '']);
-        $uploads = $this->uploadedFiles('media');
-
-        if ($uploads === []) {
-            $message = isset($_SERVER['CONTENT_LENGTH']) && (int) $_SERVER['CONTENT_LENGTH'] > (int) ini_get('post_max_size') * 1024 * 1024
-                ? 'The upload exceeds the server\'s post_max_size limit.'
-                : 'Upload failed.';
-            $this->response->error('upload_failed', $message, 422);
+        try {
+            $items = (new MediaUpload($this->media))->upload(MediaUpload::files($_FILES['media'] ?? null),
+                (string) ($_POST['category'] ?? ''), (string) ($user['id'] ?? ''), (int) ($_SERVER['CONTENT_LENGTH'] ?? 0));
+        } catch (UploadException $error) {
+            $this->response->error($error->errorCode, $error->getMessage(), $error->status);
         }
-
-        $max = (int) comet_config('media.max_upload_bytes', 1073741824);
-        $allowed = comet_config('media.allowed_mime_types', []);
-        $items = [];
-
-        foreach ($uploads as $file) {
-            $uploadError = $file['error'] ?? UPLOAD_ERR_NO_FILE;
-            if ($uploadError !== UPLOAD_ERR_OK) {
-                $message = ($uploadError === UPLOAD_ERR_INI_SIZE || $uploadError === UPLOAD_ERR_FORM_SIZE)
-                    ? 'File exceeds the server\'s upload size limit.'
-                    : 'Upload failed.';
-                $this->response->error('upload_failed', $message, 422);
-            }
-
-            $size = (int) ($file['size'] ?? 0);
-
-            if ($size <= 0 || $size > $max) {
-                $this->response->error('file_too_large', 'File is too large. The CMS limit is ' . (string) ceil($max / 1048576) . ' MiB.', 422);
-            }
-
-            $mime = MimeDetector::detect((string) $file['tmp_name'], (string) ($file['name'] ?? ''));
-
-            if (!in_array($mime, is_array($allowed) ? $allowed : [], true)) {
-                $this->response->error('file_type_not_allowed', 'File type is not allowed.', 422);
-            }
-
-            $original = (string) ($file['name'] ?? 'upload');
-            try {
-                $ext = '.' . MimeDetector::validatedExtension($mime, $original);
-            } catch (\InvalidArgumentException $e) {
-                $this->response->error('file_type_not_allowed', $e->getMessage(), 422);
-            }
-            $base = Security::slug(pathinfo($original, PATHINFO_FILENAME)) ?: 'upload';
-            $name = $base;
-            $suffix = 2;
-
-            while (file_exists($this->media->directory() . '/' . $name . $ext)) {
-                $name = $base . '-' . $suffix;
-                $suffix++;
-            }
-
-            $target = $this->media->directory() . '/' . $name . $ext;
-
-            if (!move_uploaded_file((string) $file['tmp_name'], $target)) {
-                $this->response->error('upload_failed', 'Could not store uploaded file.', 500);
-            }
-
-            $stored = basename($target);
-            $this->media->setUploadedCategory($stored, (string) ($_POST['category'] ?? ''));
-            $this->media->setUploadedBy($stored, (string) ($user['id'] ?? ''));
-            $this->media->generateSizes($stored);
-            $items[] = $this->publicMediaItem($this->media->item($stored));
-        }
-
-        $this->cache->clear();
-        $this->http->json(['data' => $items, 'meta' => ['categories' => $this->media->categories()]], 201);
+        $this->http->json(['data' => array_map(fn(array $file): array => $this->publicMediaItem($file), $items), 'meta' => ['categories' => $this->media->categories()]], 201);
     }
 
     public function mediaCategoryStore(): never
@@ -542,8 +487,7 @@ final class ApiController
             $this->requirePrivateMediaAccess($file);
         }
 
-        // A named size; `variant=thumbnail` is the older way to ask for the smallest one.
-        $size = ($_GET['variant'] ?? null) === 'thumbnail' ? 'thumbnail' : ($_GET['size'] ?? null);
+        $size = $_GET['size'] ?? null;
         if (is_string($size) && $size !== '' && $size !== 'original') {
             $format = is_string($_GET['format'] ?? null) && $_GET['format'] !== '' ? strtolower($_GET['format']) : null;
             $format = $format === 'jpg' ? 'jpeg' : $format;
@@ -792,7 +736,7 @@ final class ApiController
             'name' => $file['name'],
             'url' => $this->absoluteUrl($this->mediaRoute('/media', (string) $file['name'])),
             'thumb_url' => ($file['thumb'] ?? null) !== null
-                ? $this->absoluteUrl($this->mediaRoute('/media', (string) $file['name'])) . '?variant=thumbnail'
+                ? $this->absoluteUrl($this->mediaRoute('/media', (string) $file['name'])) . '?size=thumbnail'
                 : $this->absoluteUrl($this->mediaRoute('/media', (string) $file['name'])),
             'size' => $file['size'],
             'mime' => $file['mime'],
@@ -848,32 +792,6 @@ final class ApiController
         $this->http->streamFile($path, $mime, $headers);
     }
 
-    private function uploadedFiles(string $field): array
-    {
-        $source = $_FILES[$field] ?? null;
-
-        if (!is_array($source)) {
-            return [];
-        }
-
-        if (!is_array($source['name'] ?? null)) {
-            return [$source];
-        }
-
-        $files = [];
-
-        foreach ($source['name'] as $index => $name) {
-            $files[] = [
-                'name' => $name,
-                'type' => $source['type'][$index] ?? '',
-                'tmp_name' => $source['tmp_name'][$index] ?? '',
-                'error' => $source['error'][$index] ?? UPLOAD_ERR_NO_FILE,
-                'size' => $source['size'][$index] ?? 0,
-            ];
-        }
-
-        return $files;
-    }
 
     private function mediaRoute(string $base, string $filename): string
     {

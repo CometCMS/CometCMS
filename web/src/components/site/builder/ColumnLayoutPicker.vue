@@ -45,6 +45,10 @@
       </button>
     </div>
 
+    <p v-if="!compact && nested" class="text-[11px] leading-snug text-slate-500">
+      {{ t("site.builder.nestedRowHint", { width: nested.width }) }}
+      <strong v-if="nested.device === 'mobile' && direction === 'side'" class="font-medium text-amber-700">{{ t("site.builder.nestedRowStacked") }}</strong>
+    </p>
     <p v-if="!compact" class="text-[11px] leading-snug text-slate-500">{{ t("site.builder.columnLayoutHint") }}</p>
   </section>
 </template>
@@ -71,6 +75,8 @@ const { t } = useI18n();
 const row = computed(() => builder.columnRowFor(props.node));
 const layout = computed(() => columnLayoutOf(row.value));
 const title = computed(() => (row.value ? builder.nodeLabel(row.value) : t("site.builder.columnLayout")));
+/** The canvas' measurement when this row sits in a column and switches by its own width. */
+const nested = computed(() => (row.value && builder.nestedRow.value?.id === row.value.id ? builder.nestedRow.value : null));
 const direction = computed(() => (layout.value.stacked ? "stacked" : "side"));
 const directions = computed(() => [
   { value: "side", label: t("site.builder.sideBySide"), icon: "mdi:view-column-outline" },

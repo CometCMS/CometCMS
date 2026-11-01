@@ -148,7 +148,7 @@
                 </li>
               </ul>
               <p v-if="loading" class="px-3 py-2 text-xs text-slate-500">{{ t("common.loading") }}</p>
-              <p v-else-if="!frameComponents(components, selectedType).length" class="px-3 py-2 text-xs text-slate-500">{{ t("site.frame.noComponents") }}</p>
+              <p v-else-if="!frameComponents(components).length" class="px-3 py-2 text-xs text-slate-500">{{ t("site.frame.noComponents") }}</p>
               <div class="mt-1 border-t border-slate-100 pt-1">
                 <router-link v-if="selected[part] !== FRAME_NONE" :to="editPath(part)" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">
                   <Icon icon="mdi:pencil-outline" class="h-4 w-4" aria-hidden="true" />{{ t("site.frame.editComponent", { name: partLabel(part) }) }}
@@ -268,10 +268,9 @@ import TemplatePreviewNodes from "./TemplatePreviewNodes.vue";
 import TemplatePreviewPlaceholder from "./TemplatePreviewPlaceholder.vue";
 import { previewCache, templatePreview } from "../../composables/templatePreview.js";
 import { api } from "../../api/index.js";
-import { selectOptions } from "../../composables/fieldBuilderUtils.js";
 import {
   DEFAULT_TEMPLATE, FRAME_DEFAULT, FRAME_NONE, MAX_CONDITIONS, MAX_TEMPLATES,
-  conditionFields, conditionLabel, conditionOps, frameComponents, frameLabel, needsValue,
+  conditionFields, conditionLabel, conditionOps, conditionValueOptions, frameComponents, frameLabel, initialConditionValue, needsValue, parseConditionValue,
   templateList, templateName, withTemplate, withTemplateMoved, withoutTemplate,
 } from "../../composables/templates.js";
 import { useSiteStore } from "../../stores/site.js";
@@ -379,7 +378,7 @@ function options(part) {
   return [
     { value: FRAME_DEFAULT, label: t(`site.frame.default.${part}`), icon: PART_ICONS[part] },
     { value: FRAME_NONE, label: t(`site.frame.none.${part}`), icon: "mdi:cancel" },
-    ...frameComponents(components.value, selectedType.value).map((component) => ({ value: component.id, label: component.name, icon: componentIcon(component) })),
+    ...frameComponents(components.value).map((component) => ({ value: component.id, label: component.name, icon: componentIcon(component) })),
   ];
 }
 
@@ -434,25 +433,10 @@ watch([selectedType, selectedVariant, entriesRetry], async ([type, variant], _pr
   }
 }, { immediate: true });
 
-/** Fixed choices for a condition's value: a select field's options, or yes/no. */
-function valueOptions(key) {
-  const type = fieldType(key);
-  if (type === "boolean") return [{ value: "true", label: t("site.templates.true") }, { value: "false", label: t("site.templates.false") }];
-  if (type === "select") return selectOptions(schema.value?.fields?.[key]?.options);
-  return null;
-}
-
-function parseValue(key, value) {
-  const type = fieldType(key);
-  if (type === "boolean") return value === "true";
-  if (["number", "range"].includes(type) && value !== "" && Number.isFinite(Number(value))) return Number(value);
-  return value;
-}
-
-function initialValue(key) {
-  if (fieldType(key) === "entry") return [];
-  return valueOptions(key)?.[0] ? parseValue(key, valueOptions(key)[0].value) : "";
-}
+const fieldConfig = (key) => ({ ...schema.value?.fields?.[key], type: fieldType(key) });
+const valueOptions = (key) => conditionValueOptions(fieldConfig(key), t);
+const parseValue = (key, value) => parseConditionValue(fieldConfig(key), value);
+const initialValue = (key) => fieldType(key) === "entry" ? [] : initialConditionValue(fieldConfig(key), t);
 
 function addCondition() {
   const field = fields.value[0];

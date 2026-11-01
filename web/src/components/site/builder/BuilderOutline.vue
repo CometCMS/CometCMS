@@ -1,5 +1,5 @@
 <template>
-  <div class="p-2">
+  <div class="builder-outline p-2">
     <ul v-if="builder.nodes.value.length" role="tree" :aria-label="t('site.builder.outline')">
       <BuilderOutlineNode
         v-for="(node, index) in builder.nodes.value"
@@ -40,3 +40,12 @@ function dropAtEnd() {
   builder.dropAt(null, "inside");
 }
 </script>
+
+<style scoped>
+.builder-outline {
+  --outline-guide-opacity: 0;
+}
+.builder-outline:hover {
+  --outline-guide-opacity: 1;
+}
+</style>

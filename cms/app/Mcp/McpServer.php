@@ -856,7 +856,7 @@ final class McpServer
             'name' => $file['name'],
             'url' => $this->mediaUrl((string) $file['name']),
             'thumb_url' => ($file['thumb'] ?? null) !== null
-                ? $this->mediaUrl((string) $file['name']) . '?variant=thumbnail'
+                ? $this->mediaUrl((string) $file['name']) . '?size=thumbnail'
                 : $this->mediaUrl((string) $file['name']),
             'size' => $file['size'],
             'mime' => $file['mime'],

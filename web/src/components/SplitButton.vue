@@ -1,7 +1,8 @@
 <template>
   <div ref="rootRef" class="relative inline-flex shrink-0" @focusout="onFocusout">
     <button
-      type="button"
+      :type="type"
+      :form="form"
       :class="[buttonClass, { 'rounded-r-none': items.length }]"
       :disabled="disabled || primaryDisabled"
       @click="emit('click', $event)"
@@ -67,6 +68,8 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, watch } fro
 import { Icon } from "@iconify/vue";
 
 const props = defineProps({
+  type: { type: String, default: 'button' },
+  form: { type: String, default: undefined },
   /** Each item has a key and label, and optionally an href, target, icon, title, disabled flag or separatorBefore flag. */
   items: { type: Array, default: () => [] },
   menuLabel: { type: String, required: true },

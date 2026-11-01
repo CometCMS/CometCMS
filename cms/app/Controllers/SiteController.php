@@ -59,8 +59,15 @@ final class SiteController
             return;
         }
 
+        $site = new SiteRepository($workspace);
+        // The first domain is the primary one: the others redirect to it, so each page has one canonical URL.
+        $primary = $site->settings()['domains'][0] ?? null;
+        if ($primary !== null && strtolower((string) preg_replace('/:\d+$/', '', $host)) !== $primary) {
+            $this->http->redirect($this->scheme() . '://' . $primary . ($_SERVER['REQUEST_URI'] ?? '/'), 301);
+        }
+
         WorkspaceContext::setActive($workspace->slug());
-        $context = SiteContext::make(new SiteRepository($workspace), rtrim($this->http->url('/'), '/'), $this->origin());
+        $context = SiteContext::make($site, rtrim($this->http->url('/'), '/'), $this->origin());
         $response = (new SiteService($context))->respondCached($path, $_GET);
         $this->send($response, $response['cache_status']);
     }
@@ -280,8 +287,11 @@ final class SiteController
             return '';
         }
 
-        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        return $this->scheme() . '://' . $host;
+    }
 
-        return $scheme . '://' . $host;
+    private function scheme(): string
+    {
+        return (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
     }
 }

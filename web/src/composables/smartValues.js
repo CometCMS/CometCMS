@@ -1,4 +1,6 @@
 // The wire format shared with Site/SmartValue.php. No expression evaluation.
+import { conditionOps } from './templates.js'
+
 export const DATE_FORMATS = ['date', 'long', 'datetime', 'time']
 const KEY = '[A-Za-z0-9_-]+'
 const PATH = `(${KEY}(?:\\.${KEY})*)`
@@ -119,6 +121,8 @@ export function referenceConfig(ref, { type, types = [], itemFields = [] }) {
 export function compatibleField(config, target) {
   if (!config || typeof config.type !== 'string') return false
   if (target === 'value') return true
+  // Element conditions (style visible_if) compare a field with a value.
+  if (target === 'condition') return conditionOps(config.type).length > 0
   if (target === 'media') return config.type === 'media' && !config.multiple
   if (target === 'media_list') return config.type === 'media'
   if (target === 'link') return ['text', 'textarea', 'slug', 'url'].includes(config.type) && !config.multiple
@@ -150,4 +154,22 @@ export function fieldShortcut(field, make, { source = 'current', heading = 'h2' 
 export function hasInvalidValues(value) {
   if (!value || typeof value !== 'object') return false
   return value.type === 'invalid' || Object.values(value).some(hasInvalidValues)
+}
+
+/**
+ * Fields of a type that combines several (see combinedType in useSiteBuilder),
+ * grouped for pickers: those every type has first, then each type's own.
+ * A plain type gives one group without a label.
+ */
+export function fieldGroups(fields, schema, sharedLabel) {
+  if (!schema?.field_types || !schema.type_labels) return [{ key: 'all', label: '', items: fields }]
+  const everywhere = (field) => (schema.field_types[field.key]?.length ?? schema.type_count) === schema.type_count
+  return [
+    { key: 'shared', label: sharedLabel, items: fields.filter(everywhere) },
+    ...schema.type_labels.map((label) => ({
+      key: `type:${label}`,
+      label,
+      items: fields.filter((field) => !everywhere(field) && schema.field_types[field.key]?.includes(label)),
+    })),
+  ]
 }

@@ -1,7 +1,7 @@
 import { withOverrides } from './layoutTree.js'
 
 const CONTAINERS = new Set(['section', 'row', 'column', 'page_content', 'tabs', 'tab'])
-const LEAVES = new Set(['heading', 'text', 'html', 'image', 'video', 'gallery', 'button', 'accordion', 'icon', 'spacer', 'divider', 'form', 'menu', 'search', 'site_title', 'language_switcher', 'theme_toggle'])
+const LEAVES = new Set(['heading', 'text', 'html', 'image', 'video', 'gallery', 'button', 'accordion', 'table', 'icon', 'spacer', 'divider', 'form', 'menu', 'search', 'site_title', 'language_switcher', 'theme_toggle'])
 
 /** A bounded, decorative wireframe of a saved layout; never renders user HTML. */
 export async function templatePreview(nodes, { loadComponent, types = [], type = '', settings = {} } = {}) {

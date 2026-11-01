@@ -74,6 +74,24 @@ final class MediaRepository
         $metadata = $this->metadata();
         $files = $this->visibleFiles($this->matchingFiles($query, $category, $type, $sort, $metadata, $visibility), $metadata, $visible);
 
+        return $this->pageFiles($files, $metadata, $limit, $offset, $usedFiles);
+    }
+
+    /** One inventory and metadata read for the admin's page, categories and statistics. */
+    public function listing(string $query = '', ?string $category = null, ?int $limit = null, int $offset = 0, string $type = 'all', string $sort = 'newest', ?string $visibility = null, ?array $usedFiles = null, ?callable $visible = null): array
+    {
+        $metadata = $this->metadata();
+        $inventory = $this->visibleFiles($this->matchingFiles('', null, 'all', '', $metadata), $metadata, $visible);
+        $files = $this->matchingFiles($query, $category, $type, $sort, $metadata, $visibility, $inventory);
+        $result = $this->pageFiles($files, $metadata, $limit, $offset, $usedFiles);
+        $result['meta']['categories'] = $metadata['categories'];
+        $result['meta']['stats'] = $this->fileStats($inventory, $metadata);
+        return $result;
+    }
+
+    private function pageFiles(array $files, array $metadata, ?int $limit, int $offset, ?array $usedFiles): array
+    {
+
         if ($usedFiles !== null) {
             $files = array_values(array_filter($files, static fn(string $file): bool => !isset($usedFiles[$file])));
         }
@@ -95,8 +113,14 @@ final class MediaRepository
     public function stats(?callable $visible = null): array
     {
         $metadata = $this->metadata();
-        $files = $this->visibleFiles($this->matchingFiles('', null, 'all', 'name', $metadata), $metadata, $visible);
+        $files = $this->visibleFiles($this->matchingFiles('', null, 'all', '', $metadata), $metadata, $visible);
+        return $this->fileStats($files, $metadata);
+    }
+
+    private function fileStats(array $files, array $metadata): array
+    {
         $categoryCounts = [];
+        $known = array_fill_keys($metadata['categories'], true);
         $uncategorized = 0;
 
         foreach ($files as $file) {
@@ -106,8 +130,8 @@ final class MediaRepository
                 $uncategorized++;
             }
 
-            foreach ($metadata['categories'] as $categoryPath) {
-                if ($this->categoryMatches($category, (string) $categoryPath)) {
+            foreach ($this->categoryPathsFor($category) as $categoryPath) {
+                if (isset($known[$categoryPath])) {
                     $categoryCounts[$categoryPath] = ($categoryCounts[$categoryPath] ?? 0) + 1;
                 }
             }
@@ -120,9 +144,9 @@ final class MediaRepository
         ];
     }
 
-    private function matchingFiles(string $query = '', ?string $category = null, string $type = 'all', string $sort = 'newest', ?array $metadata = null, ?string $visibility = null): array
+    private function matchingFiles(string $query = '', ?string $category = null, string $type = 'all', string $sort = 'newest', ?array $metadata = null, ?string $visibility = null, ?array $inventory = null): array
     {
-        $files = array_values(array_filter(
+        $files = $inventory ?? array_values(array_filter(
             scandir($this->mediaDir) ?: [],
             fn(string $file): bool => $file[0] !== '.' && is_file($this->path($file))
         ));
@@ -153,19 +177,22 @@ final class MediaRepository
             return true;
         }));
 
-        $this->sortFiles($files, $sort, $metadata);
+        if ($sort !== '') $this->sortFiles($files, $sort, $metadata);
 
         return $files;
     }
 
     private function sortFiles(array &$files, string $sort, array $metadata): void
     {
-        usort($files, function (string $a, string $b) use ($sort, $metadata): int {
+        $keys = [];
+        if ($sort !== 'name') {
+            foreach ($files as $file) $keys[$file] = $sort === 'size' ? (int) filesize($this->path($file)) : $this->uploadedTimestamp($file, $metadata);
+        }
+        usort($files, static function (string $a, string $b) use ($sort, $keys): int {
             return match ($sort) {
-                'oldest' => $this->uploadedTimestamp($a, $metadata) <=> $this->uploadedTimestamp($b, $metadata),
+                'oldest' => $keys[$a] <=> $keys[$b],
                 'name' => strcasecmp($a, $b),
-                'size' => ((int) filesize($this->path($b))) <=> ((int) filesize($this->path($a))),
-                default => $this->uploadedTimestamp($b, $metadata) <=> $this->uploadedTimestamp($a, $metadata),
+                default => $keys[$b] <=> $keys[$a],
             };
         });
     }
@@ -509,6 +536,20 @@ final class MediaRepository
         $metadata['files'][$file] ??= [];
         $metadata['files'][$file]['uploaded_by'] = $userId;
         $metadata['files'][$file]['uploaded_at'] = gmdate('c');
+        $this->writeMetadata($metadata);
+    }
+
+    public function registerUpload(string $file, string $category, string $userId): void
+    {
+        $file = basename($file);
+        $category = $this->normalizeCategory($category);
+        $metadata = $this->metadata();
+        $metadata['categories'] = $this->sortCategories([...$metadata['categories'], ...$this->categoryPathsFor($category)]);
+        $metadata['files'][$file] = array_replace($metadata['files'][$file] ?? [], [
+            'uploaded_by' => $userId, 'uploaded_at' => gmdate('c'),
+        ]);
+        if ($category !== '') $metadata['files'][$file]['category'] = $category;
+        else unset($metadata['files'][$file]['category']);
         $this->writeMetadata($metadata);
     }
 

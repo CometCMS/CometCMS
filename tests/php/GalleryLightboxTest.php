@@ -17,7 +17,7 @@ test('gallery modals are opt in and only public images become viewer triggers', 
     $media = new MediaRepository();
     $media->updateVisibility('private.svg', 'private');
     $media->updateMeta('first.svg', 'First image', 'Caption <script>unsafe</script>');
-    $gallery = LayoutSchema::node('gallery', ['media' => ['first.svg', 'readme.txt', 'private.svg', 'second.svg'], 'lightbox' => true, 'lightbox_navigation' => false, 'masonry' => true, 'captions' => true, 'link' => true]);
+    $gallery = LayoutSchema::node('gallery', ['media' => ['first.svg', 'readme.txt', 'private.svg', 'second.svg'], 'lightbox' => true, 'lightbox_navigation' => false, 'masonry' => true, 'captions' => true, 'link' => ['type' => 'current']]);
     $saved = LayoutSchema::normalizeComponent([LayoutSchema::node('column', [], [], [$gallery])], 'column')[0]['children'][0];
     assert_same(true, $saved['props']['lightbox']);
     assert_same(false, $saved['props']['lightbox_navigation']);

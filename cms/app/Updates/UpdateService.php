@@ -496,6 +496,7 @@ final class UpdateService
                 throw new \RuntimeException('Could not install update file: ' . $relative);
             }
 
+            $this->invalidatePhpCache($targetPath);
             $installed++;
         }
 
@@ -544,10 +545,20 @@ final class UpdateService
                 throw new \RuntimeException('Could not install update file: ' . $relative);
             }
 
+            $this->invalidatePhpCache($targetPath);
             $copied++;
         }
 
         return $copied;
+    }
+
+    private function invalidatePhpCache(string $path): void
+    {
+        // The next request must load the installed code even when OPcache's
+        // timestamp checks are disabled or delayed by revalidate_freq.
+        if (strtolower(pathinfo($path, PATHINFO_EXTENSION)) === 'php' && function_exists('opcache_invalidate')) {
+            opcache_invalidate($path, true);
+        }
     }
 
     private function backupInstallTargets(string $stageId, string $packageRoot): ?string

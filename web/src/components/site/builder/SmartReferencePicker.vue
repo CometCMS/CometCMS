@@ -27,16 +27,17 @@
       <button v-if="path.length" type="button" class="inline-flex items-center gap-1 text-xs text-theme-700 hover:underline" @click="path = path.slice(0, -1)"><Icon icon="mdi:arrow-left" class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />{{ path.join(' › ') }}</button>
       <label class="sr-only" :for="searchId">{{ t('select.search') }}</label>
       <input :id="searchId" v-model="search" type="search" class="form-input w-full rounded-lg border-slate-300 text-xs" :placeholder="t('select.search')" />
-      <div class="max-h-48 space-y-1 overflow-auto" role="group" :aria-label="t('site.binding.choose')">
-        <div v-for="field in shownFields" :key="field.key" class="flex gap-1">
-          <button v-if="compatibleField(field.config, target)" type="button" class="min-w-0 flex-1 rounded px-2 py-1.5 text-left text-xs hover:bg-theme-50" :aria-pressed="chosen?.path.join('.') === [...path, field.key].join('.')" :class="chosen?.path.join('.') === [...path, field.key].join('.') ? 'bg-theme-50 text-theme-700' : 'text-slate-700'" @click="choose(field)">
-            {{ field.label }} <span class="ml-1 text-[10px] text-slate-400">{{ field.config.type }}</span>
-            <span v-if="fieldTypes(field)" class="ml-1 text-[10px]" :class="fieldTypes(field).shared ? 'font-medium text-theme-700' : 'text-slate-400'">{{ fieldTypes(field).shared ? t('site.builder.sharedField') : fieldTypes(field).names }}</span>
-          </button>
-          <button v-if="canFollow(field.config)" type="button" class="flex flex-1 items-center justify-between rounded px-2 py-1.5 text-left text-xs text-slate-700 hover:bg-theme-50" :aria-label="`${t('site.binding.follow')} ${field.label}`" @click="path = [...path, field.key]; search = ''">{{ field.label }} <Icon icon="mdi:chevron-right" class="h-4 w-4" /></button>
-        </div>
-        <p v-if="!shownFields.length" class="text-xs text-slate-400">{{ t('select.noResults') }}</p>
-      </div>
+      <GroupedList class="max-h-48 overflow-auto" role="group" :aria-label="t('site.binding.choose')" :groups="groups" :item-key="(field) => field.key">
+        <template #default="{ item: field }">
+          <div class="flex gap-1">
+            <button v-if="compatibleField(field.config, target)" type="button" class="min-w-0 flex-1 rounded px-2 py-1.5 text-left text-xs hover:bg-theme-50" :aria-pressed="chosen?.path.join('.') === [...path, field.key].join('.')" :class="chosen?.path.join('.') === [...path, field.key].join('.') ? 'bg-theme-50 text-theme-700' : 'text-slate-700'" @click="choose(field)">
+              {{ field.label }} <span class="ml-1 text-[10px] text-slate-400">{{ field.config.type }}</span>
+            </button>
+            <button v-if="canFollow(field.config)" type="button" class="flex flex-1 items-center justify-between rounded px-2 py-1.5 text-left text-xs text-slate-700 hover:bg-theme-50" :aria-label="`${t('site.binding.follow')} ${field.label}`" @click="path = [...path, field.key]; search = ''">{{ field.label }} <Icon icon="mdi:chevron-right" class="h-4 w-4" /></button>
+          </div>
+        </template>
+        <template #empty><p class="text-xs text-slate-400">{{ t('select.noResults') }}</p></template>
+      </GroupedList>
     </template>
     <template v-if="chosen">
       <p class="break-words text-xs font-medium text-theme-700">{{ smartSummary(chosen) }}</p>
@@ -46,7 +47,7 @@
         </label>
         <label class="block text-xs text-slate-600">{{ t('site.binding.truncate') }}<input v-model.number="truncate" type="number" min="0" max="500" class="form-input mt-1 w-full rounded-lg border-slate-300 text-xs" /></label>
       </template>
-      <label class="block text-xs text-slate-600">{{ t('site.binding.fallback') }}<input v-model="fallback" type="text" maxlength="2000" class="form-input mt-1 w-full rounded-lg border-slate-300 text-xs" /></label>
+      <label v-if="target !== 'condition'" class="block text-xs text-slate-600">{{ t('site.binding.fallback') }}<input v-model="fallback" type="text" maxlength="2000" class="form-input mt-1 w-full rounded-lg border-slate-300 text-xs" /></label>
       <button type="button" class="btn-primary btn-sm w-full" @click="apply">{{ t('site.binding.insert') }}</button>
     </template>
   </div>
@@ -59,7 +60,8 @@ import ContentLinkPicker from '../ContentLinkPicker.vue'
 import { useSiteBuilder } from '../../../composables/useSiteBuilder.js'
 import { resolveLocalized } from '../../../composables/localizedValues.js'
 import { useI18n } from '../../../i18n/index.js'
-import { compatibleField, DATE_FORMATS, smartSummary } from '../../../composables/smartValues.js'
+import { compatibleField, DATE_FORMATS, fieldGroups, smartSummary } from '../../../composables/smartValues.js'
+import GroupedList from './GroupedList.vue'
 const props = defineProps({ node: { type: Object, required: true }, target: { type: String, default: 'text' }, initial: { type: Object, default: null } })
 const emit = defineEmits(['select', 'close'])
 const builder = useSiteBuilder()
@@ -97,13 +99,8 @@ const shownFields = computed(() => {
   const needle = search.value.toLowerCase()
   return fields.filter((field) => (compatibleField(field.config, props.target) || canFollow(field.config)) && `${field.label} ${field.key}`.toLowerCase().includes(needle))
 })
-/** In a search list's card: which searched types have the field, or that all of them do. */
-function fieldTypes(field) {
-  const schema = context.value.type
-  if (source.value !== 'current' || path.value.length || !schema?.field_types) return null
-  const names = schema.field_types[field.key]
-  return { shared: builder.sharedField(schema, field.key), names: names?.join(', ') ?? '' }
-}
+/** In a card of several types or a component: the fields every type has, then each type's own. */
+const groups = computed(() => fieldGroups(shownFields.value, source.value === 'current' && !path.value.length ? context.value.type : null, t('site.builder.sharedField')))
 function chooseEntry(value) { missingUid.value = !value.uid; entry.value = value.uid || '' }
 function resetSource() { missingUid.value = false; path.value = []; collection.value = ''; entry.value = ''; chosen.value = null; search.value = '' }
 function choose(field) {
@@ -111,7 +108,7 @@ function choose(field) {
 }
 function apply() {
   const filters = []
-  if (fallback.value) filters.push({ name: 'fallback', value: fallback.value })
+  if (fallback.value && props.target !== 'condition') filters.push({ name: 'fallback', value: fallback.value })
   if (['text', 'html'].includes(props.target)) {
     if (dateFormat.value) filters.push({ name: 'date', value: dateFormat.value })
     if (truncate.value > 0) filters.push({ name: 'truncate', value: Math.min(500, Math.max(1, Math.round(truncate.value))) })

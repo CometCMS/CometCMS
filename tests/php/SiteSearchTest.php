@@ -254,8 +254,8 @@ test('a search list card shows fields of every searched type and leaves missing 
     $site = comet_site_test_setup();
     $ctx = comet_site_test_context($site);
     $card = LayoutSchema::node('column', [], [], [
-        LayoutSchema::node('field', ['field' => 'title']),
-        LayoutSchema::node('field', ['field' => 'intro']),
+        LayoutSchema::node('field', ['source' => \CometCMS\Site\SmartValue::reference('title')]),
+        LayoutSchema::node('field', ['source' => \CometCMS\Site\SmartValue::reference('intro')]),
     ]);
     $node = LayoutSchema::normalizeComponent([LayoutSchema::node('column', [], [], [LayoutSchema::node('collection', ['list_source' => 'search', 'columns' => 1], [], [$card])])], 'column')[0]['children'][0];
 

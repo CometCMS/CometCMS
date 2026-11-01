@@ -26,44 +26,6 @@ function comet_localization_setup(): ContentRepository
 
 function comet_localization_user(): array { return ['id' => 'writer']; }
 
-test('legacy workspace choices and entry translations survive the localization upgrade', function (): void {
-    unlink(comet_test_workspace_path() . '/languages.json');
-    $typeStore = new JsonStore(comet_test_workspace_path() . '/content-types');
-    $typeStore->write(['name' => 'pages', 'locales' => ['de', 'en'], 'default_locale' => 'de', 'fields' => [
-        'intro' => ['type' => 'text'], 'sku' => ['type' => 'text', 'localized' => false],
-    ]], 'pages');
-    $languages = new LanguageSettings();
-    assert_same(['locales' => ['de', 'en'], 'default_locale' => 'de'], $languages->all());
-    assert_file_exists_at(comet_test_workspace_path() . '/languages.json');
-    $store = new JsonStore(comet_test_workspace_path() . '/content');
-    $legacy = ['id' => 'about', 'uid' => 'stable-about', 'collection' => 'pages', 'title' => 'Über uns', 'slug' => 'about',
-        'intro' => 'Deutsch', 'sku' => 'ABC', 'status' => 'published', 'published_at' => '2026-01-01T00:00:00Z',
-        'created_at' => '2025-01-01T00:00:00Z', 'updated_at' => '2026-01-01T00:00:00Z',
-        'translations' => ['de' => ['title' => 'Über uns', 'intro' => 'Deutsch'], 'en' => ['title' => 'About', 'intro' => 'English', 'sku' => 'OLD']],
-    ];
-    $store->write($legacy, 'pages', 'about');
-    $content = ContentRepository::make();
-    $entry = $content->find('pages', 'about');
-    assert_same('Über uns', $entry['title']);
-    assert_same('English', $content->resolveLocaleFields($entry, 'en')['intro']);
-    assert_same('ABC', $content->resolveLocaleFields($entry, 'en')['sku']);
-    assert_true($content->isPubliclyVisible($entry, 'en'));
-    assert_same('about', $content->resolveLocaleFields($entry, 'en')['slug']);
-    assert_same($entry['revision'], $content->find('pages', 'about')['revision']);
-    assert_same($legacy, $store->read('pages', 'about'));
-    $languages->save(['locales' => ['de'], 'default_locale' => 'de']);
-    assert_same($legacy, $store->read('pages', 'about'));
-    assert_false($content->isPubliclyVisible($entry, 'en'));
-    $languages->save(['locales' => ['de', 'en'], 'default_locale' => 'de']);
-    $saved = $content->save('pages', ['locale' => 'en', 'intro' => 'Updated', 'revision' => $entry['revision']], comet_localization_user(), 'about');
-    assert_same('stable-about', $saved['uid']);
-    assert_same('Deutsch', $content->find('pages', 'about')['intro']);
-    $raw = $store->read('pages', 'about');
-    assert_false(array_key_exists('translations', $raw));
-    assert_same('Updated', $raw['values']['intro']['values']['en']);
-    assert_same('published', $raw['publication']['en']['status']);
-});
-
 test('deactivated languages hide published content and restore it after active language edits', function (): void {
     $content = comet_localization_setup();
     $languages = new LanguageSettings();
@@ -166,25 +128,6 @@ test('inactive translations survive saving settings schemas menus builder conten
     assert_same('Bearbeitet', LocalizedValue::tree($settings['title'], 'de', 'en'));
 });
 
-test('legacy flat entries retain field values publication and identity when edited', function (): void {
-    (new ContentTypeRepository())->save(['name' => 'pages', 'fields' => ['body' => ['type' => 'text']]]);
-    $store = new JsonStore(comet_test_workspace_path() . '/content');
-    $store->write(['id' => 'about', 'collection' => 'pages', 'title' => 'About', 'slug' => 'about', 'body' => 'Original body',
-        'status' => 'published', 'created_at' => '2025-01-01T00:00:00Z', 'author_id' => 'author'], 'pages', 'about');
-    $content = ContentRepository::make();
-    $entry = $content->find('pages', 'about');
-    assert_same('Original body', $entry['body']);
-    assert_true($content->isPubliclyVisible($entry, 'en'));
-    assert_false($content->isPubliclyVisible($entry, 'de'));
-    $id = $content->stableId($entry);
-    $saved = $content->save('pages', ['body' => 'Updated body', 'revision' => $entry['revision']], comet_localization_user(), 'about');
-    assert_same($id, $content->stableId($saved));
-    assert_same('About', $saved['title']);
-    assert_same('published', $saved['status']);
-    assert_same('author', $saved['author_id']);
-    assert_same('Updated body', $store->read('pages', 'about')['values']['body']['values']['en']);
-});
-
 test('website and content types use workspace languages without storing copies', function (): void {
     $languages = new LanguageSettings();
     $languages->save(['locales' => ['en', 'de'], 'default_locale' => 'en']);
@@ -266,6 +209,23 @@ test('workspace languages support translated pages without per-resource language
     assert_true(str_contains($response['body'], 'hreflang="de"'));
     assert_true(str_contains($service->respond('/sitemap.xml', [])['body'], '/de/pages/hallo'));
     assert_true(str_contains($service->previewEntry('pages', $entry['uid'], 'de'), 'Hallo'));
+});
+
+test('language alternates of a list page keep its page number', function (): void {
+    (new LanguageSettings())->save(['locales' => ['en', 'de'], 'default_locale' => 'en']);
+    (new ContentTypeRepository())->save(['name' => 'pages']);
+    $site = new SiteRepository();
+    $site->saveSettings(['routes' => ['pages' => ['enabled' => true, 'index_enabled' => true, 'index_path' => '/pages']]]);
+    $site->saveLayout('pages', 'index', [LayoutSchema::node('section', [], [], [LayoutSchema::node('row', [], [], [LayoutSchema::node('column', [], [], [
+        LayoutSchema::node('collection', ['type' => 'pages', 'paginate' => true, 'limit' => 1]),
+    ])])])]);
+    foreach (['One', 'Two'] as $title) {
+        ContentRepository::make()->save('pages', ['title' => $title, 'status' => 'published'], comet_localization_user());
+    }
+
+    $body = (new SiteService(SiteContext::make(new SiteRepository(), '', 'https://example.test')))->respond('/pages', ['page' => 2])['body'];
+    assert_true(str_contains($body, 'hreflang="de" href="https://example.test/de/pages?page=2"'));
+    assert_true(str_contains($body, 'hreflang="x-default" href="https://example.test/pages?page=2"'));
 });
 
 test('localized values distinguish absence from intentionally empty values and track source review', function (): void {

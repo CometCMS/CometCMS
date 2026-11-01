@@ -1,6 +1,6 @@
 # Legacy handling for 2.0.0
 
-Reviewed and addressed on 2026-10-22. Version 2.0.0 starts a new storage contract: existing installations must start fresh and recreate their content/designs as needed. Pre-2.0 workspaces, revisions, trash and backups are retired; this release does not migrate them. Local storage is never wiped automatically. Backup inspection and restore require an explicit version of at least 2.0.0 and reject older or unversioned archives before extracting files. Current backups carry the release version.
+Reviewed on 2026-10-22, with the current-code cleanup below on 2026-10-27. Version 2.0.0 starts a new storage contract: existing installations must start fresh and recreate their content/designs as needed. Pre-2.0 workspaces, revisions, trash and backups are retired; this release does not migrate them. Local storage is never wiped automatically. Backup inspection and restore require an explicit version of at least 2.0.0 and reject older or unversioned archives before extracting files. Current backups carry the release version.
 
 The checklist below records a decision for every item in the previous debt inventory. Resolved entries remain here as a release audit rather than being silently deleted.
 
@@ -44,6 +44,21 @@ The checklist below records a decision for every item in the previous debt inven
 - [x] **Permission aliases:** retired; global workspace grants are deferred above.
 - [x] **Disposable caches/icons:** removed filesystem migration work; old caches/icons are not supported inputs.
 - [x] **Minimum backup version:** enforced during both inspection and restore, before extraction.
+
+## Current-code cleanup, 2026-10-27
+
+Earlier development storage shapes are unsupported too. Current writers and generated defaults use the canonical shapes directly; no conversion pass is provided for older workspaces, revisions or backups.
+
+- [x] Removed constructor-time layouts/frames migration, shared content-area migration and template-directory detection scans.
+- [x] Removed flat-entry and `translations` conversion. Entries store `values` and per-locale `publication`; workspace languages live in `languages.json`, without recovery from site settings or schemas.
+- [x] Removed hover-trigger conversion, single-entry accordion conversion and old accordion component override handling. Hover effects use `states.hover`; accordions use `items`.
+- [x] Removed saved field-gallery promotion and collection-list aliases. Current gallery defaults still support media bindings and repeater items.
+- [x] Removed synthetic content-query IDs and unreachable revision-history moves. Immutable entry UIDs and storage IDs survive edits and restores.
+- [x] Standardized padding on four edges, links on structured destinations, and field factories on `source` references. Updated defaults, previews, sticky-section CSS and tests together.
+- [x] Removed obsolete admin bookmark redirects and updated internal links. Thumbnail producers use `?size=thumbnail`; the old `variant` alias is retired. The `/media-thumbs` endpoint remains supported.
+- [x] Content reads reuse request-local snapshots and identifier maps, invalidated on JSON writes; writers refresh after acquiring their lock. Queries resolve one locale and perform one final sort.
+- [x] Admin media listings share inventory, metadata and permission filtering with their statistics. Admin and REST uploads use the same validation/storage workflow and register upload metadata once.
+- [x] Builder history and dirty checking share a cached tree serialization. Recovery writes are debounced, flushed on save/tab close, and canceled when a document is discarded.
 
 ## Keep as current behavior
 

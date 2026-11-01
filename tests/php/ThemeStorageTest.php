@@ -3,6 +3,47 @@
 declare(strict_types=1);
 
 use CometCMS\Site\SiteRepository;
+use CometCMS\Site\Theme;
+
+test('default structure padding validates, persists and follows the spacing scale', function (): void {
+    $site = comet_site_test_setup();
+    foreach ([Theme::defaults(), Theme::normalize([]), Theme::normalize(['section_padding' => 'bad', 'grid_padding' => [], 'column_padding' => '24px'])] as $theme) {
+        assert_same('md', $theme['section_padding']);
+        assert_same('md', $theme['grid_padding']);
+        assert_same('md', $theme['column_padding']);
+    }
+
+    foreach (['none', ...Theme::SPACE_TOKENS] as $token) {
+        $saved = $site->saveTheme(['section_padding' => $token, 'grid_padding' => $token, 'column_padding' => $token]);
+        assert_same($token, $saved['section_padding']);
+        assert_same($token, (new SiteRepository())->theme()['grid_padding']);
+        assert_same($token, (new SiteRepository())->theme()['column_padding']);
+        $padding = $token === 'none' ? '0px' : 'var(--space-' . $token . ')';
+        assert_true(str_contains(Theme::stylesheet($saved), '--column-padding:' . $padding . ';'));
+    }
+    $saved = $site->saveTheme(['section_padding' => 'lg', 'grid_padding' => 'none', 'column_padding' => 'sm', 'space' => ['lg' => 48]]);
+    $preset = $site->createThemePreset('Padding', $saved);
+    assert_same('lg', $preset['theme']['section_padding']);
+    assert_same('none', $preset['theme']['grid_padding']);
+    assert_same('sm', $preset['theme']['column_padding']);
+    $css = Theme::stylesheet($saved);
+    assert_true(str_contains($css, '--section-padding:var(--space-lg);--grid-padding:0px;'));
+    assert_true(str_contains($css, '--space-lg:3rem;'));
+});
+
+test('default structure padding has tablet and phone values', function (): void {
+    $site = comet_site_test_setup();
+    $theme = Theme::normalize(['section_padding_mobile' => 'bad', 'grid_padding_tablet' => 'huge']);
+    assert_same('', $theme['section_padding_mobile']);
+    assert_same('sm', $theme['grid_padding_tablet']);
+
+    $saved = $site->saveTheme(['section_padding' => 'lg', 'section_padding_tablet' => 'md', 'grid_padding_mobile' => 'none', 'column_padding_mobile' => '']);
+    assert_same('md', (new SiteRepository())->theme()['section_padding_tablet']);
+    assert_same('', $saved['column_padding_mobile']);
+    $css = Theme::stylesheet($saved);
+    assert_true(str_contains($css, '@media (max-width: 1023px){:root{--section-padding:var(--space-md);--grid-padding:var(--space-sm);--column-padding:var(--space-sm);}}'));
+    assert_true(str_contains($css, '@media (max-width: 767px){:root{--grid-padding:0px;}}'));
+});
 
 test('components get readable ids that stay when they are renamed', function (): void {
     $site = comet_site_test_setup();

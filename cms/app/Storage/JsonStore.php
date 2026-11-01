@@ -8,6 +8,14 @@ use CometCMS\Core\Security;
 
 final class JsonStore
 {
+    private static int $generation = 0;
+
+    /** Invalidate request-local read snapshots after any JSON mutation. */
+    public static function generation(): int
+    {
+        return self::$generation;
+    }
+
     public function __construct(private readonly string $root)
     {
         if (!is_dir($this->root)) {
@@ -58,6 +66,7 @@ final class JsonStore
 
         file_put_contents($tmp, $json . PHP_EOL, LOCK_EX);
         rename($tmp, $path);
+        self::$generation++;
     }
 
     /** Serialize read/modify/write operations, including optimistic revision checks. */
@@ -82,10 +91,24 @@ final class JsonStore
 
         if (is_file($path)) {
             unlink($path);
+            self::$generation++;
         }
     }
 
     public function all(string ...$segments): array
+    {
+        $items = $this->allUnsorted(...$segments);
+        self::sortByModified($items);
+        return $items;
+    }
+
+    public static function sortByModified(array &$items): void
+    {
+        usort($items, static fn (array $a, array $b): int => strcmp((string) ($b['updated_at'] ?? $b['created_at'] ?? ''), (string) ($a['updated_at'] ?? $a['created_at'] ?? '')));
+    }
+
+    /** Read records without imposing an order a query will replace. */
+    public function allUnsorted(string ...$segments): array
     {
         $directory = $this->path(...$segments);
 
@@ -102,8 +125,6 @@ final class JsonStore
                 $items[] = $decoded;
             }
         }
-
-        usort($items, static fn (array $a, array $b): int => strcmp((string) ($b['updated_at'] ?? $b['created_at'] ?? ''), (string) ($a['updated_at'] ?? $a['created_at'] ?? '')));
 
         return $items;
     }

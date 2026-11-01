@@ -20,7 +20,6 @@ use CometCMS\Workspaces\WorkspaceRepository;
  *
  *   settings.json               homepage, URL patterns, SEO defaults
  *   menus.json                  navigation menus
- *   forms/{id}.json             website forms (see FormRepository)
  *   theme/                      the design, kept apart so it can live in git:
  *     theme.json                theme settings
  *     style.css                 custom CSS, loaded after the generated theme
@@ -71,12 +70,6 @@ final class SiteRepository
         $this->store = new JsonStore($this->workspace->path('site'));
         $this->themeStore = new JsonStore($this->workspace->path('site') . '/theme');
         $this->revisions = new JsonStore($this->workspace->path('revisions') . '/site');
-        if (is_dir($this->themeStore->path('layouts')) || is_file($this->themeStore->path('frames') . '.json')) {
-            $this->migrateLayouts();
-        }
-        if ($this->sharesContentAreas()) {
-            $this->migrateContentAreas();
-        }
     }
 
     public function workspace(): WorkspaceContext
@@ -576,28 +569,32 @@ final class SiteRepository
                     || !is_string($entry['uid'] ?? null) || !in_array($entry['uid'], $condition['value'], true)) return false;
                 continue;
             }
-            $value = $entry[$condition['field']] ?? null;
-            $empty = $value === null || $value === '' || $value === [];
-            $expected = $condition['value'];
-            $same = static function (mixed $actual) use ($expected): bool {
-                if (is_bool($actual) || is_bool($expected)) return (bool) $actual === filter_var($expected, FILTER_VALIDATE_BOOLEAN);
-                if (is_numeric($actual) && is_numeric($expected)) return (float) $actual === (float) $expected;
-                return is_scalar($actual) && (string) $actual === (string) $expected;
-            };
-            $holds = match ($condition['op']) {
-                'empty' => $empty,
-                'not_empty' => !$empty,
-                'equals' => is_array($value) ? array_filter($value, $same) !== [] : $same($value),
-                'not_equals' => is_array($value) ? array_filter($value, $same) === [] : !$same($value),
-                'contains' => is_array($value)
-                    ? array_filter($value, $same) !== []
-                    : is_scalar($value) && (string) $expected !== '' && mb_stripos(strip_tags((string) $value), (string) $expected) !== false,
-                default => false,
-            };
-            if (!$holds) return false;
+            if (!self::conditionHolds($condition['op'], $entry[$condition['field']] ?? null, $condition['value'])) return false;
         }
 
         return true;
+    }
+
+    /** Whether a field value passes one comparison (shared by template and element conditions). */
+    public static function conditionHolds(string $op, mixed $value, mixed $expected): bool
+    {
+        $empty = $value === null || $value === '' || $value === [];
+        $same = static function (mixed $actual) use ($expected): bool {
+            if (is_bool($actual) || is_bool($expected)) return (bool) $actual === filter_var($expected, FILTER_VALIDATE_BOOLEAN);
+            if (is_numeric($actual) && is_numeric($expected)) return (float) $actual === (float) $expected;
+            return is_scalar($actual) && (string) $actual === (string) $expected;
+        };
+
+        return match ($op) {
+            'empty' => $empty,
+            'not_empty' => !$empty,
+            'equals' => is_array($value) ? array_filter($value, $same) !== [] : $same($value),
+            'not_equals' => is_array($value) ? array_filter($value, $same) === [] : !$same($value),
+            'contains' => is_array($value)
+                ? array_filter($value, $same) !== []
+                : is_scalar($value) && (string) $expected !== '' && mb_stripos(strip_tags((string) $value), (string) $expected) !== false,
+            default => false,
+        };
     }
 
     private function writeTemplates(string $type, string $variant, array $list): void
@@ -649,7 +646,7 @@ final class SiteRepository
             foreach (LayoutSchema::REGIONS as $region) {
                 $value = is_string($template[$region] ?? null) && $template[$region] !== '' ? $template[$region] : LayoutSchema::FRAME_DEFAULT;
                 if (!in_array($value, [LayoutSchema::FRAME_DEFAULT, LayoutSchema::FRAME_NONE], true)
-                    && (LayoutSchema::key($value) !== $value || ($strict && !self::fitsFrame($components[$value] ?? null, $type)))) {
+                    && (LayoutSchema::key($value) !== $value || ($strict && !self::fitsFrame($components[$value] ?? null)))) {
                     $fail('Choose a section component for the ' . $region . ' of “' . $name . '”.');
                     $value = LayoutSchema::FRAME_DEFAULT;
                 }
@@ -731,10 +728,10 @@ final class SiteRepository
         return in_array($fieldType, ['', 'page', 'json', 'repeater'], true) ? [] : $ops;
     }
 
-    /** A component can stand in for a header or footer: a section, shared or of this type. */
-    public static function fitsFrame(?array $component, string $type): bool
+    /** A component can stand in for any layout's header or footer when it is a section. */
+    public static function fitsFrame(?array $component): bool
     {
-        return $component !== null && $component['root'] === 'section' && in_array($component['type'], ['', $type], true);
+        return $component !== null && $component['root'] === 'section';
     }
 
     /**
@@ -909,130 +906,20 @@ final class SiteRepository
         }
     }
 
-    /**
-     * Workspaces from before templates kept one layout per page kind and its
-     * header and footer apart (layouts/{type}/{variant}.json, frames.json).
-     * Each layout becomes that page kind's default content area, keeping its
-     * history, and its header and footer go to the default template.
-     */
-    private function migrateLayouts(): void
-    {
-        $this->themeStore->synchronized(function (): void {
-            $layouts = $this->themeStore->path('layouts');
-            $revisions = $this->revisions->path('layouts');
-            foreach (is_dir($layouts) ? (glob($layouts . '/*', GLOB_ONLYDIR) ?: []) : [] as $typeDirectory) {
-                $type = basename($typeDirectory);
-                foreach (LayoutSchema::VARIANTS as $variant) {
-                    $stored = $this->themeStore->read('layouts', $type, $variant);
-                    if ($stored !== null && $this->themeStore->read('content', $type, $variant, self::DEFAULT_TEMPLATE) === null) {
-                        $this->themeStore->write($stored, 'content', $type, $variant, self::DEFAULT_TEMPLATE);
-                    }
-                }
-            }
-            foreach (is_dir($revisions) ? (glob($revisions . '/*/*', GLOB_ONLYDIR) ?: []) : [] as $variantDirectory) {
-                $type = basename(dirname($variantDirectory));
-                $target = $this->revisions->path('content', $type, basename($variantDirectory), self::DEFAULT_TEMPLATE);
-                if (!is_dir($target)) {
-                    @mkdir(dirname($target), 0775, true);
-                    rename($variantDirectory, $target);
-                }
-            }
-            // What is left, such as retired per-type cards, is no longer used.
-            self::removeDirectory($revisions);
-            self::removeDirectory($layouts);
 
-            $frames = $this->themeStore->read('frames')['frames'] ?? null;
-            foreach (is_array($frames) ? $frames : [] as $type => $variants) {
-                foreach (is_array($variants) ? $variants : [] as $variant => $regions) {
-                    $type = (string) $type;
-                    $variant = (string) $variant;
-                    if (!is_array($regions) || LayoutSchema::key($type) !== $type || !in_array($variant, LayoutSchema::VARIANTS, true)
-                        || $this->themeStore->read('templates', $type, $variant) !== null) continue;
-                    $parts = array_filter(array_intersect_key($regions, array_flip(LayoutSchema::REGIONS)), static fn(mixed $value): bool => is_string($value) && LayoutSchema::key($value) === $value);
-                    if ($parts !== []) $this->themeStore->write(['templates' => [self::defaultTemplate($parts)]], 'templates', $type, $variant);
-                }
-            }
-            $this->themeStore->delete('frames');
-        }, 'templates');
-    }
 
-    /** Stored templates from before each template owned its content area still name the one they show. */
-    private function sharesContentAreas(): bool
-    {
-        foreach (glob($this->themeStore->path('templates') . '/*/*.json') ?: [] as $file) {
-            $list = json_decode((string) file_get_contents($file), true)['templates'] ?? null;
-            foreach (is_array($list) ? $list : [] as $template) {
-                if (is_array($template) && array_key_exists('content', $template)) return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Templates used to pick their content from shared, named content areas.
-     * Now each template owns one, stored under its id: an area moves (with its
-     * history) to the first template that showed it, the others get a copy,
-     * and areas no template showed are removed.
-     */
-    private function migrateContentAreas(): void
-    {
-        $this->themeStore->synchronized(function (): void {
-            foreach (glob($this->themeStore->path('templates') . '/*/*.json') ?: [] as $file) {
-                $type = basename(dirname($file));
-                $variant = basename($file, '.json');
-                $list = $this->themeStore->read('templates', $type, $variant)['templates'] ?? null;
-                if (LayoutSchema::key($type) !== $type || !in_array($variant, LayoutSchema::VARIANTS, true) || !is_array($list)) continue;
-
-                $shows = [];
-                foreach ($list as $template) {
-                    $id = is_array($template) ? LayoutSchema::key($template['id'] ?? '') : '';
-                    if ($id === '' || isset($shows[$id])) continue;
-                    $area = is_string($template['content'] ?? null) && LayoutSchema::key($template['content']) === $template['content'] ? $template['content'] : self::DEFAULT_TEMPLATE;
-                    $shows[$id] = $area;
-                }
-                $stored = [];
-                foreach (glob($this->themeStore->path('content', $type, $variant) . '/*.json') ?: [] as $areaFile) {
-                    $stored[basename($areaFile, '.json')] = $this->themeStore->read('content', $type, $variant, basename($areaFile, '.json'));
-                }
-                $moved = [];
-                foreach ($shows as $id => $area) {
-                    if ($area === $id) continue;
-                    $content = $stored[$area] ?? null;
-                    if (($content['format_version'] ?? null) === LayoutSchema::FORMAT_VERSION) {
-                        $this->themeStore->write(['format_version' => LayoutSchema::FORMAT_VERSION, 'nodes' => $content['nodes'] ?? []], 'content', $type, $variant, $id);
-                    } else {
-                        $this->themeStore->delete('content', $type, $variant, $id);
-                    }
-                    // The first template showing an area takes its history along.
-                    $from = $this->revisions->path('content', $type, $variant, $area);
-                    $to = $this->revisions->path('content', $type, $variant, $id);
-                    if (!isset($moved[$area]) && !isset($shows[$area]) && is_dir($from) && !is_dir($to)) {
-                        @mkdir(dirname($to), 0775, true);
-                        rename($from, $to);
-                        $moved[$area] = true;
-                    }
-                }
-                foreach (array_keys($stored) as $area) {
-                    if (isset($shows[$area]) || $area === self::DEFAULT_TEMPLATE) continue;
-                    $this->themeStore->delete('content', $type, $variant, (string) $area);
-                    self::removeDirectory($this->revisions->path('content', $type, $variant, (string) $area));
-                }
-                $this->writeTemplates($type, $variant, array_map(static fn(mixed $template): mixed => is_array($template) ? array_diff_key($template, ['content' => true]) : $template, $list));
-            }
-        }, 'templates');
-    }
 
     // ─── Components ──────────────────────────────────────────────────────────
 
     /**
      * Reusable blocks: one section, column set or column with everything in
      * it. Layouts, regions and other components place them by id, so editing
-     * a component changes every page it appears on. A component that shows
-     * fields of the page's entry ("current" references) belongs to one
-     * content type and is only offered in that type's layouts.
+     * a component changes every page it appears on. Fields of the page's
+     * entry ("current" references) resolve for whichever entry is shown, so
+     * a component fits every content type; its type only picks the entries
+     * the builder previews it with first.
      *
-     * @return list<array{id: string, name: string, icon: string, root: string, type: string, created_at: string, updated_at: string}>
+     * @return list<array{id: string, name: string, icon: string, root: string, type: string, areas: list<array{id: string, name: string}>, created_at: string, updated_at: string}>
      */
     public function components(): array
     {
@@ -1333,15 +1220,10 @@ final class SiteRepository
     private function detachComponentInstances(array $nodes, array $component): array
     {
         return array_map(function (array $node) use ($component): array {
-            if (($node['kind'] ?? '') === 'component' && ($node['props']['component'] ?? '') === $component['id']) {
-                $copy = LayoutSchema::withNewIds($component['nodes'])[0];
-                $copy['id'] = $node['id'];
-                if (isset($node['name'])) {
-                    $copy['name'] = $node['name'];
-                }
-                if ($copy['kind'] === 'column') {
-                    $copy['props']['span'] = $node['props']['span'] ?? $copy['props']['span'];
-                }
+            if (($node['kind'] ?? '') === LayoutSchema::COMPONENT && ($node['props']['component'] ?? '') === $component['id']) {
+                // What the instance put into its areas may hold more instances of the component.
+                $copy = LayoutSchema::detachInstance($node, $component['nodes'][0]);
+                $copy['children'] = $this->detachComponentInstances($copy['children'], $component);
 
                 return $copy;
             }
@@ -1398,16 +1280,19 @@ final class SiteRepository
             'icon' => is_string($stored['icon'] ?? null) ? $stored['icon'] : '',
             'root' => $root,
             'type' => LayoutSchema::key($stored['type'] ?? ''),
-            'nodes' => LayoutSchema::normalizeComponent($stored['nodes'] ?? [], $root),
+            'nodes' => $nodes = LayoutSchema::normalizeComponent($stored['nodes'] ?? [], $root),
+            // Where each placement adds its own elements: [{id, name}].
+            'areas' => LayoutSchema::componentAreas($nodes),
             'created_at' => (string) ($stored['created_at'] ?? ''),
             'updated_at' => self::modifiedAt($this->themeStore->path('components', $id) . '.json'),
         ];
     }
 
     /**
-     * Check a component's tree: one node of its root kind, a content type
-     * when it shows the page entry's fields, and no component inside that
-     * contains this one again or belongs to another type.
+     * Check a component's tree: one node of its root kind, and no component
+     * inside that contains this one again. Components fit every content type:
+     * a field the shown entry lacks stays empty. $type only names the type
+     * the builder previews the component with first.
      */
     private function validateComponent(array $component, mixed $nodes, mixed $type): array
     {
@@ -1420,17 +1305,10 @@ final class SiteRepository
         if ($type !== '' && !isset($this->types()[$type])) {
             $type = '';
         }
-        if ($type === '' && LayoutSchema::usesSource($nodes, 'current')) {
-            throw new ValidationException(['type' => 'This component shows fields of the page\'s entry, so it needs the content type it belongs to.']);
-        }
 
         foreach (LayoutSchema::componentRefs($nodes) as $ref) {
             if ($ref === $component['id'] || $this->componentReaches($ref, $component['id'])) {
                 throw new ValidationException(['nodes' => 'A component cannot contain itself.']);
-            }
-            $inner = $this->component($ref);
-            if ($inner !== null && $inner['type'] !== '' && $inner['type'] !== $type) {
-                throw new ValidationException(['nodes' => 'The component "' . $inner['name'] . '" belongs to another content type.']);
             }
         }
 
@@ -1482,7 +1360,7 @@ final class SiteRepository
         ], 'components', $component['id']);
         $this->clearCache();
 
-        return [...$component, 'updated_at' => self::modifiedAt($this->themeStore->path('components', $component['id']) . '.json')];
+        return [...$component, 'areas' => LayoutSchema::componentAreas($component['nodes']), 'updated_at' => self::modifiedAt($this->themeStore->path('components', $component['id']) . '.json')];
     }
 
     private function componentSnapshot(array $component): array
@@ -1966,6 +1844,8 @@ final class SiteRepository
                 'id' => LayoutSchema::key($item['id'] ?? '') ?: LayoutSchema::newId(),
                 'label' => $this->localized($item['label'] ?? '', static fn(mixed $v): string => self::line($v, 120)),
                 'link' => $this->localized($item['link'] ?? [], LayoutSchema::normalizeLink(...)),
+                // Optional and shared by every language; unknown names are dropped.
+                'icon' => is_string($item['icon'] ?? null) && isset(Icons::catalog()[$item['icon']]) ? $item['icon'] : '',
                 'children' => $depth + 1 < self::MENU_LIMITS['max_depth'] ? $this->normalizeMenuItems($item['children'] ?? [], $depth + 1) : [],
             ];
         }

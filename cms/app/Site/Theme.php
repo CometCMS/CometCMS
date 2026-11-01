@@ -116,6 +116,16 @@ final class Theme
             'radii' => ['sm' => 4, 'md' => 8, 'lg' => 14],
             'container_width' => 1200,
             'narrow_width' => 760,
+            'section_padding' => 'md',
+            'grid_padding' => 'md',
+            'column_padding' => 'md',
+            // Tablet and phone versions; '' keeps the next larger screen's value.
+            'section_padding_tablet' => 'sm',
+            'grid_padding_tablet' => 'sm',
+            'column_padding_tablet' => 'sm',
+            'section_padding_mobile' => '',
+            'grid_padding_mobile' => '',
+            'column_padding_mobile' => '',
             'space' => ['xs' => 4, 'sm' => 8, 'md' => 16, 'lg' => 32, 'xl' => 56, '2xl' => 96],
             // Text links; an empty hover color keeps the link color. Thickness 0 is the font's own.
             'links' => ['color' => 'primary', 'hover_color' => '', 'decoration' => 'underline', 'thickness' => 0, 'offset' => 0.18],
@@ -159,6 +169,10 @@ final class Theme
             'radii' => self::radii($theme, $defaults['radii']),
             'container_width' => self::clampInt($theme['container_width'] ?? null, 720, 1920, $defaults['container_width']),
             'narrow_width' => self::clampInt($theme['narrow_width'] ?? null, 480, 1200, $defaults['narrow_width']),
+            'section_padding' => self::oneOf($theme['section_padding'] ?? null, ['none', ...self::SPACE_TOKENS], $defaults['section_padding']),
+            'grid_padding' => self::oneOf($theme['grid_padding'] ?? null, ['none', ...self::SPACE_TOKENS], $defaults['grid_padding']),
+            'column_padding' => self::oneOf($theme['column_padding'] ?? null, ['none', ...self::SPACE_TOKENS], $defaults['column_padding']),
+            ...self::devicePaddings($theme, $defaults),
             'space' => self::space($theme, $defaults['space']),
             'links' => self::links($theme, $customColors, $defaults['links']),
             'motion' => self::motion($theme['motion'] ?? [], $defaults['motion']),
@@ -197,6 +211,7 @@ final class Theme
             '--radius-box' => $theme['radius'] === 'full' ? 'var(--radius-lg)' : $radius,
             '--container' => $theme['container_width'] . 'px',
             '--narrow' => $theme['narrow_width'] . 'px',
+            ...self::paddingVariables($theme, ''),
             '--link-color' => 'var(--c-' . $theme['links']['color'] . ')',
             '--link-decoration' => $theme['links']['decoration'] === 'underline' ? 'underline' : 'none',
             '--link-hover-decoration' => $theme['links']['decoration'] === 'none' ? 'none' : 'underline',
@@ -234,6 +249,12 @@ final class Theme
             $dark['--c-on-' . $key] = self::contrastColor($color['dark_color']);
         }
         $css = ':root{' . self::declarations($root) . '}';
+        foreach (StyleVariants::DEVICES as $device => $width) {
+            $paddings = self::paddingVariables($theme, '_' . $device);
+            if ($paddings !== []) {
+                $css .= '@media (max-width: ' . $width . 'px){:root{' . self::declarations($paddings) . '}}';
+            }
+        }
 
         if ($theme['mode'] === 'dark') {
             $css .= ':root{color-scheme:dark;' . self::declarations($dark) . '}';
@@ -281,6 +302,33 @@ final class Theme
         }
 
         return $css;
+    }
+
+    /** Tablet and phone default paddings: '' or a padding token. */
+    private static function devicePaddings(array $theme, array $defaults): array
+    {
+        $paddings = [];
+        foreach (array_keys(StyleVariants::DEVICES) as $device) {
+            foreach (['section', 'grid', 'column'] as $kind) {
+                $key = $kind . '_padding_' . $device;
+                // Themes saved before these existed get the defaults, not '' (which oneOf would let through).
+                $paddings[$key] = isset($theme[$key]) ? self::oneOf($theme[$key], ['', 'none', ...self::SPACE_TOKENS], $defaults[$key]) : $defaults[$key];
+            }
+        }
+        return $paddings;
+    }
+
+    /** Default padding variables for one screen size; $suffix '' is desktop, '_tablet' or '_mobile' skips inherited ones. */
+    private static function paddingVariables(array $theme, string $suffix): array
+    {
+        $vars = [];
+        foreach (['section', 'grid', 'column'] as $kind) {
+            $token = $theme[$kind . '_padding' . $suffix];
+            if ($token !== '') {
+                $vars['--' . $kind . '-padding'] = $token === 'none' ? '0px' : 'var(--space-' . $token . ')';
+            }
+        }
+        return $vars;
     }
 
     /** @return array{font: string, size: ?int, weight: ?int, line_height: ?float, letter_spacing: ?float, transform: string} */

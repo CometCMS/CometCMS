@@ -7,10 +7,10 @@ namespace CometCMS\Controllers\Admin;
 use CometCMS\Content\ContentRepository;
 use CometCMS\Content\ContentTypeRepository;
 use CometCMS\Core\Http;
-use CometCMS\Core\MimeDetector;
-use CometCMS\Core\Security;
 use CometCMS\Core\ValidationException;
 use CometCMS\Media\MediaRepository;
+use CometCMS\Media\MediaUpload;
+use CometCMS\Media\UploadException;
 use CometCMS\Workspaces\WorkspaceContext;
 
 final class MediaController extends BaseController
@@ -37,93 +37,25 @@ final class MediaController extends BaseController
         $visibility = in_array($visibilityParam, ['public', 'private'], true) ? $visibilityParam : null;
         $usedFiles = (string) ($_GET['usage'] ?? '') === 'unused' ? $this->buildUsages() : null;
         $isLimited = array_key_exists('limit', $_GET) || array_key_exists('offset', $_GET) || $usedFiles !== null;
-
-        if (!$isLimited) {
-            $data = array_map(fn(array $file): array => $this->withMediaUrl($file), $this->media->files((string) ($_GET['q'] ?? ''), $category, $type, $sort, $visibility, $visible));
-            $this->json(['data' => $data, 'meta' => ['categories' => $this->media->categories(), 'stats' => $this->media->stats($visible)]]);
-        }
-
-        $limit = array_key_exists('limit', $_GET) ? (int) $_GET['limit'] : null;
-        $offset = (int) ($_GET['offset'] ?? 0);
-        $result = $this->media->limitedFiles((string) ($_GET['q'] ?? ''), $category, $limit, $offset, $type, $sort, $visibility, $usedFiles, $visible);
-        $data = array_map(fn(array $file): array => $this->withMediaUrl($file), $result['data']);
-
-        $this->json(['data' => $data, 'meta' => array_replace($result['meta'], [
-            'categories' => $this->media->categories(),
-            'stats' => $this->media->stats($visible),
-        ])]);
+        $result = $this->media->listing((string) ($_GET['q'] ?? ''), $category,
+            isset($_GET['limit']) ? (int) $_GET['limit'] : null, (int) ($_GET['offset'] ?? 0),
+            $type, $sort, $visibility, $usedFiles, $visible);
+        $meta = $isLimited ? $result['meta'] : array_intersect_key($result['meta'], ['categories' => true, 'stats' => true]);
+        $this->json(['data' => array_map(fn(array $file): array => $this->withMediaUrl($file), $result['data']), 'meta' => $meta]);
     }
 
     public function store(): never
     {
         $user = $this->requirePermission('media.upload', ['type' => 'media', 'category' => $_POST['category'] ?? '']);
         $this->verifyCsrf();
-        $uploads = $this->uploadedFiles('media');
-
-        if ($uploads === []) {
-            $message = isset($_SERVER['CONTENT_LENGTH']) && (int) $_SERVER['CONTENT_LENGTH'] > (int) ini_get('post_max_size') * 1024 * 1024
-                ? 'The upload exceeds the server\'s post_max_size limit.'
-                : 'Upload failed.';
-            $this->json(['error' => ['code' => 'upload_failed', 'message' => $message]], 422);
+        try {
+            $items = (new MediaUpload($this->media))->upload(MediaUpload::files($_FILES['media'] ?? null),
+                (string) ($_POST['category'] ?? ''), (string) ($user['id'] ?? ''), (int) ($_SERVER['CONTENT_LENGTH'] ?? 0),
+                fn(array $item) => $this->logger->info('media.uploaded', ['file' => $item['filename'], 'user_id' => $user['id'] ?? null]));
+        } catch (UploadException $error) {
+            $this->json(['error' => ['code' => $error->errorCode, 'message' => $error->getMessage()]], $error->status);
         }
-
-        $max = (int) comet_config('media.max_upload_bytes', 1073741824);
-        $allowed = comet_config('media.allowed_mime_types', []);
-        $items = [];
-
-        foreach ($uploads as $file) {
-            $uploadError = $file['error'] ?? UPLOAD_ERR_NO_FILE;
-            if ($uploadError !== UPLOAD_ERR_OK) {
-                $message = ($uploadError === UPLOAD_ERR_INI_SIZE || $uploadError === UPLOAD_ERR_FORM_SIZE)
-                    ? 'File exceeds the server\'s upload size limit.'
-                    : 'Upload failed.';
-                $this->json(['error' => ['code' => 'upload_failed', 'message' => $message]], 422);
-            }
-
-            $size = (int) ($file['size'] ?? 0);
-
-            if ($size <= 0 || $size > $max) {
-                $this->json(['error' => ['code' => 'file_too_large', 'message' => 'File is too large. The CMS limit is ' . (string) ceil($max / 1048576) . ' MiB.']], 422);
-            }
-
-            $mime = MimeDetector::detect((string) $file['tmp_name'], (string) ($file['name'] ?? ''));
-
-            if (!in_array($mime, is_array($allowed) ? $allowed : [], true)) {
-                $this->json(['error' => ['code' => 'file_type_not_allowed', 'message' => 'File type is not allowed.']], 422);
-            }
-
-            $original = (string) ($file['name'] ?? 'upload');
-            try {
-                $ext = '.' . MimeDetector::validatedExtension($mime, $original);
-            } catch (\InvalidArgumentException $e) {
-                $this->json(['error' => ['code' => 'file_type_not_allowed', 'message' => $e->getMessage()]], 422);
-            }
-            $base = Security::slug(pathinfo($original, PATHINFO_FILENAME)) ?: 'upload';
-            $name = $base;
-            $suffix = 2;
-            while (file_exists($this->media->directory() . '/' . $name . $ext)) {
-                $name = $base . '-' . $suffix;
-                $suffix++;
-            }
-            $target = $this->media->directory() . '/' . $name . $ext;
-
-            if (!move_uploaded_file((string) $file['tmp_name'], $target)) {
-                $this->json(['error' => ['code' => 'upload_failed', 'message' => 'Could not store uploaded file.']], 500);
-            }
-
-            $stored = basename($target);
-            $item = $this->media->setUploadedCategory($stored, (string) ($_POST['category'] ?? ''));
-            $this->media->setUploadedBy($stored, (string) ($user['id'] ?? ''));
-            $this->media->generateSizes($stored);
-            $item = $this->media->item($stored);
-            $item['mime'] = $mime;
-            $items[] = $this->withMediaUrl($item);
-            $this->logger->info('media.uploaded', ['file' => $stored, 'user_id' => $user['id'] ?? null]);
-        }
-
-        $this->cache->clear();
-
-        $this->json(['data' => $items, 'meta' => ['categories' => $this->media->categories()]], 201);
+        $this->json(['data' => array_map(fn(array $file): array => $this->withMediaUrl($file), $items), 'meta' => ['categories' => $this->media->categories()]], 201);
     }
 
     public function categoryStore(): never
@@ -557,38 +489,12 @@ final class MediaController extends BaseController
         $workspace = WorkspaceContext::active()->slug();
         $file['url'] = $this->http->url('/media/' . rawurlencode($workspace) . '/' . rawurlencode((string) $file['name']));
         $file['thumb_url'] = ($file['thumb'] ?? null) !== null
-            ? $file['url'] . '?variant=thumbnail'
+            ? $file['url'] . '?size=thumbnail'
             : $file['url'];
 
         return $file;
     }
 
-    private function uploadedFiles(string $field): array
-    {
-        $files = $_FILES[$field] ?? null;
-
-        if (!is_array($files) || !array_key_exists('name', $files)) {
-            return [];
-        }
-
-        if (!is_array($files['name'])) {
-            return [$files];
-        }
-
-        $uploads = [];
-
-        foreach (array_keys($files['name']) as $index) {
-            $uploads[] = [
-                'name' => $files['name'][$index] ?? null,
-                'type' => $files['type'][$index] ?? null,
-                'tmp_name' => $files['tmp_name'][$index] ?? null,
-                'error' => $files['error'][$index] ?? UPLOAD_ERR_NO_FILE,
-                'size' => $files['size'][$index] ?? 0,
-            ];
-        }
-
-        return $uploads;
-    }
 
     private function matchingCategory(string $name, array $categories): string
     {

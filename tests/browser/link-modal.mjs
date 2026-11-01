@@ -149,7 +149,7 @@ session_id('modal-browser-session'); session_start(); $_SESSION['user_id'] = 'mo
   writeFileSync(join(directory, 'customize.php'), `<?php
 require __DIR__ . '/app/bootstrap.php';
 $node = \\CometCMS\\Site\\LayoutSchema::node(...);
-(new \\CometCMS\\Site\\SiteRepository())->saveRegion('modal', [$node('modal', ['size' => 'sm', 'placement' => 'right', 'backdrop_close' => false], ['background' => 'surface', 'padding_y' => 'md'], [
+(new \\CometCMS\\Site\\SiteRepository())->saveRegion('modal', [$node('modal', ['size' => 'sm', 'placement' => 'right', 'backdrop_close' => false], ['background' => 'surface', 'padding_top' => 'md', 'padding_bottom' => 'md'], [
     $node('modal_title', ['level' => 'h2']),
     $node('modal_close', ['show_label' => true, 'label' => 'Done']),
     $node('site_content'),

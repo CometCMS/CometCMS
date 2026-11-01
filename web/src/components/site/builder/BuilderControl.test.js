@@ -41,7 +41,7 @@ describe('builder icon controls', () => {
     const html = await renderControl('icon', { type: 'icon', default: 'mdi:star-outline', options: SITE_ICONS }, 'mdi:heart-outline')
     expect(html).toContain('<button id="builder-icon1-props-icon"')
     expect(html).toContain('for="builder-icon1-props-icon"')
-    expect(html).toContain('mdi:heart-outline')
+    expect(html).toContain('>Heart Outline</span>')
     expect(html).not.toContain('<select')
     expect(getIcon('mdi:heart-outline')?.body).toContain('<path')
   })
@@ -146,13 +146,14 @@ describe('builder search targets', () => {
     expect(html).not.toContain('All page types')
   })
 
-  it('lists the title and text fields of the searched types and notes where a field is missing', async () => {
+  it('lists the title and text fields of the searched types under the types that have them', async () => {
     const all = await renderSearchControl('fields', 'search_fields', [])
     expect(all).toContain('All text fields')
     expect(all).toContain('Title')
     expect(all).toContain('Body')
     expect(all).toContain('Summary')
-    expect(all).toMatch(/Summary<\/span><span[^>]*>Docs</)
+    // Fields every type has come first; Summary sits under Docs, its only type.
+    expect(all).toMatch(/<h5[^>]*>\s*All types\s*<\/h5>[\s\S]*Title[\s\S]*Body[\s\S]*<h5[^>]*>\s*Docs\s*<\/h5>[\s\S]*Summary/)
     expect(all).not.toContain('cover')
     expect(all).not.toContain('>slug<')
 
@@ -160,6 +161,38 @@ describe('builder search targets', () => {
     expect(blogOnly).not.toContain('Summary')
     expect(blogOnly).not.toContain('All text fields')
     expect(blogOnly).toMatch(/checked[^>]*>\s*<span[^>]*>Body</)
+  })
+})
+
+describe('builder lists of several types', () => {
+  const types = [
+    { name: 'blog', label: 'Blog', fields: { category: { type: 'select', label: 'Category', options: { news: 'News' } }, rating: { type: 'number', label: 'Rating' } } },
+    { name: 'events', label: 'Events', fields: { category: { type: 'select', label: 'Category', options: { talk: 'Talk' } }, starts: { type: 'date', label: 'Starts' } } },
+  ]
+
+  async function renderListControl(name, def, value, props = {}) {
+    const app = createSSRApp({ setup() {
+      const builder = createSiteBuilder({ t })
+      builder.types.value = types
+      return () => h(BuilderControl, { node: { id: 'list1', kind: 'collection', props: { list_source: 'types', collections: ['blog', 'events'], ...props }, style: {} }, name, def, value })
+    } })
+    app.use(createPinia())
+    return renderToString(app)
+  }
+
+  it('offers visitor sorting by the fields of every listed type, under sticky type headings', async () => {
+    const html = await renderListControl('sort_choices', { type: 'sort_fields', default: [] }, ['starts', 'gone'])
+    expect(html).toMatch(/<h5[^>]*>\s*All types\s*<\/h5>[\s\S]*Title[\s\S]*Category[\s\S]*<h5[^>]*>\s*Blog\s*<\/h5>[\s\S]*Rating[\s\S]*<h5[^>]*>\s*Events\s*<\/h5>[\s\S]*Starts/)
+    expect(html).toMatch(/<h5[^>]*>\s*No longer available\s*<\/h5>[\s\S]*gone/)
+    expect(html).toContain('sticky')
+  })
+
+  it('groups the fields a filter can be added for, and keeps the list\'s own order to dates', async () => {
+    const filters = await renderListControl('filters', { type: 'list_filters', default: [] }, [])
+    expect(filters).toMatch(/<optgroup label="All types"[^>]*>[\s\S]*Category[\s\S]*<optgroup label="Blog"[^>]*>[\s\S]*Rating[\s\S]*<optgroup label="Events"[^>]*>[\s\S]*Starts/)
+    const order = await renderListControl('sort_field', { type: 'sort_field', default: 'published_at' }, 'published_at')
+    expect(order).not.toContain('Rating')
+    expect(order).not.toContain('Category')
   })
 })
 

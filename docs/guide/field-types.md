@@ -183,7 +183,7 @@ An ordered list of rows, each containing the subfields defined in `subfields`. E
 
 ### `page`
 
-An entry's own sections designed in the Page Builder. Add an **Entry content** element to the shared entry layout to create the field and provide default content. **Design in page builder** in the entry editor creates an entry-specific design. An empty value follows the layout default. The structure is shared across languages; visitor-facing text can be translated in the builder. See [Entry content of single entries](./website#entry-content-of-single-entries).
+An entry's own sections designed in the Page Builder. Add a **Content area** to the shared entry layout to create the field and provide default content. **Design in page builder** in the entry editor creates an entry-specific design. An empty value follows the layout default. The structure is shared across languages; visitor-facing text can be translated in the builder. See [Content areas of single entries](./website#content-areas-of-single-entries).
 
 ## Color
 

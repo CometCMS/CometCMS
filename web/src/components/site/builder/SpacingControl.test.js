@@ -31,15 +31,15 @@ describe('spacing box', () => {
     expect(html).not.toContain('site.style.')
   })
 
-  it('shows legacy paired padding, side overrides and explicit zero without modifying the node', async () => {
-    const style = { padding_y: 'lg', padding_x: 'sm', padding_left: 'none', margin_bottom: 'xl' }
+  it('shows individual padding edges and explicit zero without modifying the node', async () => {
+    const style = { padding_top: 'lg', padding_bottom: 'lg', padding_right: 'sm', padding_left: 'none', margin_bottom: 'xl' }
     const html = await render(style)
     expect(html).toContain('title="Padding top: L · 32px"')
     expect(html).toContain('title="Padding bottom: L · 32px"')
     expect(html).toContain('title="Padding right: S · 8px"')
     expect(html).toContain('title="Padding left: 0"')
     expect(html).toContain('title="Margin bottom: XL · 56px"')
-    expect(style).toEqual({ padding_y: 'lg', padding_x: 'sm', padding_left: 'none', margin_bottom: 'xl' })
+    expect(style).toEqual({ padding_top: 'lg', padding_bottom: 'lg', padding_right: 'sm', padding_left: 'none', margin_bottom: 'xl' })
   })
 
   it('links the sides by default so one control per group sets all four', async () => {

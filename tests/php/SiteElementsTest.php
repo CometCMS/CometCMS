@@ -7,12 +7,12 @@ use CometCMS\Site\LayoutSchema;
 use CometCMS\Site\NodeRenderer;
 use CometCMS\Site\SmartValue;
 
-test('gallery elements save ordered media and migrate field galleries without losing identity', function (): void {
-    $legacy = LayoutSchema::node('field', ['source' => SmartValue::reference('photos', 'item'), 'display' => 'gallery', 'columns' => 4, 'ratio' => '4:3', 'position' => 'top', 'label' => true, 'link' => true], ['radius' => 'lg']);
-    $legacy['name'] = 'Project images';
+test('gallery elements save ordered media and nested bindings without losing identity', function (): void {
+    $galleryNode = LayoutSchema::node('gallery', ['media' => SmartValue::reference('photos', 'item'), 'columns' => 4, 'ratio' => '4:3', 'position' => 'top', 'label' => true, 'link' => ['type' => 'current', 'new_tab' => false]], ['radius' => 'lg']);
+    $galleryNode['name'] = 'Project images';
     $column = LayoutSchema::node('column', [], [], [
         LayoutSchema::node('gallery', ['media' => ['second.svg', null, 'first.svg', 'second.svg'], 'columns' => 99]),
-        LayoutSchema::node('field', ['source' => SmartValue::reference('steps'), 'display' => 'items'], [], [$legacy]),
+        LayoutSchema::node('field', ['source' => SmartValue::reference('steps'), 'display' => 'items'], [], [$galleryNode]),
         LayoutSchema::node('field', ['source' => SmartValue::reference('files'), 'display' => 'files']),
     ]);
     $normalized = LayoutSchema::normalizeComponent([$column], 'column');
@@ -21,11 +21,11 @@ test('gallery elements save ordered media and migrate field galleries without lo
     assert_same(6, $children[0]['props']['columns']);
     $gallery = $children[1]['children'][0];
     assert_same('gallery', $gallery['kind']);
-    assert_same($legacy['id'], $gallery['id']);
-    assert_same($legacy['name'], $gallery['name']);
-    assert_same($legacy['style'], $gallery['style']);
-    assert_same($legacy['props']['source'], $gallery['props']['media']);
-    foreach (['columns', 'ratio', 'position', 'label', 'link'] as $key) assert_same($legacy['props'][$key], $gallery['props'][$key]);
+    assert_same($galleryNode['id'], $gallery['id']);
+    assert_same($galleryNode['name'], $gallery['name']);
+    assert_same($galleryNode['style'], $gallery['style']);
+    assert_same($galleryNode['props']['media'], $gallery['props']['media']);
+    foreach (['columns', 'ratio', 'position', 'label', 'link'] as $key) assert_same($galleryNode['props'][$key], $gallery['props'][$key]);
     assert_same('files', $children[2]['props']['display']);
     assert_same($normalized, LayoutSchema::normalizeComponent($normalized, 'column'));
     assert_same('media_list', LayoutSchema::spec()['kinds']['gallery']['props']['media']['binding']);
@@ -111,7 +111,7 @@ test('default layouts use galleries for multiple media including repeater items'
 
 test('accordion and icon elements survive layout saves and repeater templates', function (): void {
     $elements = [
-        LayoutSchema::node('accordion', ['title' => 'Question', 'html' => '<p onclick="evil()">Answer<script>evil()</script></p>', 'open' => true]),
+        LayoutSchema::node('accordion', ['items' => [['title' => 'Question', 'html' => '<p onclick="evil()">Answer<script>evil()</script></p>', 'open' => true]]]),
         LayoutSchema::node('icon', ['icon' => 'mdi:heart-outline', 'size' => 72]),
     ];
     $nodes = LayoutSchema::normalizeComponent([LayoutSchema::node('column', [], [], [
@@ -134,7 +134,7 @@ test('accordion and icon elements survive layout saves and repeater templates', 
 test('accordion renders safe native disclosure markup and supports content bindings', function (): void {
     $site = comet_site_test_setup();
     $renderer = new NodeRenderer(comet_site_test_context($site));
-    $node = LayoutSchema::node('accordion', ['title' => '<script>Question</script>', 'html' => '<p onclick="evil()">Answer</p>']);
+    $node = LayoutSchema::node('accordion', ['items' => [['title' => '<script>Question</script>', 'html' => '<p onclick="evil()">Answer</p>']]]);
     $html = $renderer->render([$node]);
     assert_true(str_contains($html, '<details class="c-accordion">'));
     assert_true(str_contains($html, '&lt;script&gt;Question&lt;/script&gt;'));
@@ -143,13 +143,58 @@ test('accordion renders safe native disclosure markup and supports content bindi
     $node['props']['items'][0]['open'] = true;
     assert_true(str_contains($renderer->render([$node]), '<details class="c-accordion" open>'));
 
-    $bound = LayoutSchema::node('accordion', [
+    $bound = LayoutSchema::node('accordion', ['items' => [[
         'title' => SmartValue::reference('title', 'site'),
         'html' => ['type' => 'template', 'parts' => ['<p>About ', SmartValue::reference('title', 'site'), '</p>']],
-    ]);
+    ]]]);
     $html = $renderer->render([$bound]);
     assert_true(str_contains($html, '>Comet Site</summary>'));
     assert_true(str_contains($html, '<p>About Comet Site</p>'));
+});
+
+test('tables keep rectangular rows of inline cells through saves and repeater templates', function (): void {
+    $table = LayoutSchema::node('table', ['rows' => [
+        ['Plan', '<strong onclick="evil()">Price</strong><script>evil()</script>'],
+        ['Basic', '<p>9 €<br>monthly</p>', 'extra'],
+        ['Pro'],
+        'not a row',
+    ], 'variant' => 'grid', 'mobile' => 'sideways']);
+    $nodes = LayoutSchema::normalizeComponent([LayoutSchema::node('column', [], [], [
+        $table,
+        LayoutSchema::node('field', ['source' => SmartValue::reference('steps')], [], [$table]),
+    ])], 'column')[0]['children'];
+
+    assert_same([['Plan', '<strong>Price</strong>', ''], ['Basic', '9 €<br>monthly', 'extra'], ['Pro', '', '']], $nodes[0]['props']['rows']);
+    assert_same('grid', $nodes[0]['props']['variant']);
+    assert_same('scroll', $nodes[0]['props']['mobile']);
+    assert_same('table', $nodes[1]['children'][0]['kind']);
+    assert_same($nodes, LayoutSchema::normalizeComponent([LayoutSchema::node('column', [], [], $nodes)], 'column')[0]['children']);
+    $spec = LayoutSchema::spec();
+    assert_true(in_array('table', $spec['elements'], true));
+    assert_true(in_array('table', $spec['item_elements'], true));
+    assert_true($spec['kinds']['table']['props']['rows']['localized']);
+
+    $wide = LayoutSchema::normalizeComponent([LayoutSchema::node('column', [], [], [LayoutSchema::node('table', ['rows' => [array_fill(0, 40, 'x')]])])], 'column');
+    assert_same(LayoutSchema::TABLE_MAX_COLUMNS, count($wide[0]['children'][0]['props']['rows'][0]));
+    assert_same('Our plans Plan Price Basic 9 € monthly extra Pro', LayoutSchema::text([['kind' => 'table', 'props' => ['caption' => 'Our plans'] + $nodes[0]['props']]], 'en', 'en'));
+});
+
+test('tables render header rows and columns captions stacked labels and cell bindings', function (): void {
+    $site = comet_site_test_setup();
+    $renderer = new NodeRenderer(comet_site_test_context($site));
+    $node = LayoutSchema::node('table', ['rows' => [['Plan', 'Price'], ['Basic', '9 €'], ['Site', SmartValue::reference('title', 'site')]], 'caption' => 'Prices <2026>', 'header_column' => true, 'striped' => true, 'mobile' => 'stack']);
+    $html = $renderer->render([$node]);
+    assert_true(str_contains($html, '<div class="c-table-wrap c-table-stack"><table class="c-table c-table-lines c-table-striped c-table-header-column">'));
+    assert_true(str_contains($html, '<caption>Prices &lt;2026&gt;</caption>'));
+    assert_true(str_contains($html, '<thead><tr><th scope="col">Plan</th><th scope="col">Price</th></tr></thead><tbody>'));
+    assert_true(str_contains($html, '<tr><th scope="row" data-label="Plan">Basic</th><td data-label="Price">9 €</td></tr>'));
+    assert_true(str_contains($html, '<td data-label="Price">Comet Site</td></tr></tbody></table>'));
+    assert_false(str_contains($html, 'data-cell'));
+
+    $plain = LayoutSchema::node('table', ['rows' => [['a', 'b']], 'header_row' => false]);
+    $html = $renderer->render([$plain]);
+    assert_true(str_contains($html, '<tbody><tr><td>a</td><td>b</td></tr></tbody>'));
+    assert_false(str_contains($html, '<thead>'));
 });
 
 test('icons render bundled SVG with theme styling and accessible optional links', function (): void {
@@ -273,21 +318,4 @@ test('accordion entries are sanitized, ordered, and isolated into disclosure gro
     assert_same(2, substr_count($html, ' open>'));
     $saved['props']['items'] = [];
     assert_false(str_contains($renderer->render([$saved]), '<details'));
-});
-
-test('legacy accordion localized values and bindings survive migration', function (): void {
-    comet_site_test_setup();
-    $title = ['type' => 'localized', 'values' => ['en' => 'Question']];
-    $binding = SmartValue::reference('title', 'site');
-    $legacy = ['id' => 'legacy-accordion', 'kind' => 'accordion', 'props' => ['title' => $title, 'html' => $binding, 'open' => true], 'editable' => ['title', 'html']];
-    $saved = LayoutSchema::normalizeComponent([LayoutSchema::node('column', [], [], [$legacy])], 'column')[0]['children'][0];
-    assert_same('Question', $saved['props']['items'][0]['title']['values']['en']);
-    assert_same($binding, $saved['props']['items'][0]['html']);
-    assert_same(true, $saved['props']['items'][0]['open']);
-    assert_false(isset($saved['props']['title']));
-    assert_same(['items'], $saved['editable']);
-    $instance = LayoutSchema::applyOverrides([$saved], ['legacy-accordion' => ['title' => 'Instance question']])[0];
-    assert_same('Instance question', $instance['props']['items'][0]['title']);
-    assert_same($binding, $instance['props']['items'][0]['html']);
-    assert_true(LayoutSchema::spec()['kinds']['accordion']['props']['items']['localized']);
 });

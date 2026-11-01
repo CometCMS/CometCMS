@@ -43,7 +43,7 @@ const SCALE = { '': '–', none: '0', xs: 'XS', sm: 'S', md: 'M', lg: 'L', xl: '
 const WEIGHTS = { normal: 400, medium: 500, semibold: 600, bold: 700 }
 
 /** Options whose values are theme spacing tokens. */
-const SPACE_KEYS = new Set(['style.padding_y', 'style.padding_x', 'style.margin_bottom', 'props.spacing'])
+const SPACE_KEYS = new Set(['style.padding_top', 'style.padding_right', 'style.padding_bottom', 'style.padding_left', 'style.margin_top', 'style.margin_right', 'style.margin_bottom', 'style.margin_left', 'props.spacing'])
 
 /** The theme value behind a token option, e.g. "16px", for tooltips. */
 function tokenHint(key, value, kind, theme) {

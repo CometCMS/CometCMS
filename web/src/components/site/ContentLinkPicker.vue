@@ -37,10 +37,6 @@
             <span class="min-w-0 break-words font-medium">{{ entryTitle(entry, locale) }}</span>
             <Icon v-if="matches(entry)" icon="mdi:check" class="h-4 w-4 shrink-0" />
           </div>
-          <div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-            <span class="break-all">{{ entry.slug }}</span>
-            <span :class="statusPillClass(effectiveStatus(entry))">{{ t(`status.${effectiveStatus(entry)}`) }}</span>
-          </div>
         </li>
       </ul>
       <p v-if="loading" class="px-3 py-2 text-xs text-slate-500" role="status">{{ t('common.loading') }}</p>

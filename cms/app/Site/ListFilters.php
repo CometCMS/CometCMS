@@ -27,7 +27,37 @@ final class ListFilters
     private const MAX_OPTIONS = 50;
     private const TEXT_TYPES = ['text', 'slug', 'textarea', 'markdown', 'html', 'email', 'url'];
     private const RANGE_TYPES = ['number', 'range', 'date', 'datetime'];
-    private const DATE_FIELDS = ['published_at', 'created_at', 'updated_at'];
+    public const DATE_FIELDS = ['published_at', 'created_at', 'updated_at'];
+
+    /**
+     * The types of a list of several as one schema: every field of any of
+     * them (the first type's settings win), with the options of a select
+     * field joined across the types that have it.
+     */
+    public static function combinedSchema(array $schemas): array
+    {
+        $fields = [];
+        foreach ($schemas as $schema) {
+            foreach (is_array($schema['fields'] ?? null) ? $schema['fields'] : [] as $key => $config) {
+                if (!is_array($config)) continue;
+                if (!isset($fields[$key])) {
+                    $fields[$key] = $config;
+                } elseif (($fields[$key]['type'] ?? '') === 'select' && ($config['type'] ?? '') === 'select') {
+                    $fields[$key]['options'] = self::optionMap($fields[$key]['options'] ?? []) + self::optionMap($config['options'] ?? []);
+                }
+            }
+        }
+
+        return ['fields' => $fields];
+    }
+
+    /** Select options keyed by value, whether stored as a list or a map. */
+    private static function optionMap(mixed $options): array
+    {
+        $options = is_array($options) ? $options : [];
+
+        return array_is_list($options) ? array_combine(array_map('strval', $options), $options) : $options;
+    }
 
     public static function script(): string
     {

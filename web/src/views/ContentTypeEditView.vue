@@ -48,159 +48,147 @@
       {{ t("site.forms.backToBuilder") }}
     </router-link>
 
-    <form id="type-form" @submit.prevent="handleSave" class="space-y-6">
+    <TabNavigation
+      v-model="activeTab"
+      :items="tabs"
+      :aria-label="t('contentTypes.title')"
+      class="mb-6"
+    />
+
+    <form id="type-form" @submit.prevent="handleSave" @invalid.capture="revealInvalidField" class="space-y-6">
       <!-- Basics -->
-      <div class="card p-6 space-y-4">
-        <h2 class="card-title">
-          {{ t("contentTypeEdit.settings") }}
-        </h2>
-
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div>
-            <label for="content-type-label" class="form-label">{{
-              t("contentTypeEdit.displayLabel")
-            }}</label>
-            <input
-              id="content-type-label"
-              v-model="form.label"
-              type="text"
-              :placeholder="t('contentTypeEdit.displayLabelPlaceholder')"
-              :autofocus="isNew"
-              class="form-input w-full rounded-lg border-slate-300 text-sm"
-            />
-          </div>
-
-          <div>
-            <label for="content-type-name" class="form-label">{{
-              t("contentTypeEdit.apiName")
-            }}</label>
-            <input
-              id="content-type-name"
-              v-model="form.name"
-              type="text"
-              required
-              :disabled="!isNew"
-              placeholder="blog-posts"
-              aria-describedby="content-type-name-help"
-              class="form-input w-full rounded-lg border-slate-300 font-mono text-sm disabled:bg-slate-50 disabled:text-slate-500"
-              @input="nameTouched = form.name !== ''"
-              @blur="fixSlugOnBlur"
-            />
-            <p id="content-type-name-help" class="mt-1 text-xs text-slate-500">
-              {{ t(isNew ? "contentTypeEdit.apiNameHelp" : "contentTypeEdit.apiNameLocked") }}
-            </p>
-          </div>
-
-          <div>
-            <label class="form-label">{{
-              t("contentTypeEdit.sidebarIcon")
-            }}</label>
-            <IconPickerGrid v-model="form.icon" :placeholder="defaultIcon" />
-          </div>
-
-          <div v-if="websiteStatus" id="frontend-page-setting" class="col-span-1 scroll-mt-24">
-            <label for="content-type-frontend" class="form-label">{{ t("site.typeCard.title") }}</label>
-            <label class="flex items-center gap-3 text-sm text-slate-700">
-              <ToggleSwitch
-                id="content-type-frontend"
-                v-model="frontendPagesEnabled"
-                :disabled="!websiteStatus.can_manage || !websiteRoute"
-                :aria-label="t('site.pages.showInFrontend')"
-                aria-describedby="content-type-frontend-help"
-              />
-              {{ t("site.pages.showInFrontend") }}
-            </label>
-            <p id="content-type-frontend-help" class="mt-1 text-xs text-slate-500">
-              {{ t("site.pages.frontendHint") }}
-            </p>
-          </div>
-          <div class="col-span-1">
-            <label for="content-type-api" class="form-label">{{ t("contentTypeEdit.apiAccess") }}</label>
-            <label class="flex items-center gap-3 text-sm text-slate-700">
-              <ToggleSwitch id="content-type-api" v-model="form.api_enabled" aria-describedby="content-type-api-help" />
-              {{ t("contentTypeEdit.exposeApi") }}
-            </label>
-            <p id="content-type-api-help" class="mt-1 text-xs text-slate-500">{{ t("contentTypeEdit.apiHint") }}</p>
-          </div>
-
-          <div class="col-span-1">
-            <label for="content-type-submissions" class="form-label">{{ t("site.forms.title") }}</label>
-            <label class="flex items-center gap-3 text-sm text-slate-700">
-              <ToggleSwitch id="content-type-submissions" v-model="form.allow_submissions"  aria-describedby="content-type-submissions-help" />
-              {{ t("contentTypeEdit.allowSubmissions") }}
-            </label>
-            <p v-if="submissionError" class="mt-1 text-xs text-red-600" role="alert">{{ submissionError }}</p>
-            <p id="content-type-submissions-help" class="mt-1 text-xs text-slate-500">{{ t("contentTypeEdit.submissionsHint") }}</p>
-          </div>
-
-          <div class="col-span-1">
-            <label for="content-type-hierarchical" class="form-label">{{ t("contentTypeEdit.hierarchy") }}</label>
-            <label class="flex items-center gap-3 text-sm text-slate-700">
-              <ToggleSwitch id="content-type-hierarchical" v-model="form.hierarchical" aria-describedby="content-type-hierarchical-help" />
-              {{ t("contentTypeEdit.hierarchical") }}
-            </label>
-            <p id="content-type-hierarchical-help" class="mt-1 text-xs text-slate-500">{{ t("contentTypeEdit.hierarchicalHint") }}</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Frontend options are relevant only when this type has pages. -->
-      <TypeWebsiteCard
-        v-if="frontendPagesEnabled"
-        v-model="websiteRoute"
-        :status="websiteStatus"
-        :name="isNew ? toSlug(form.name) : form.name"
-        :label="form.label"
-        :visibility="form.visibility"
-        :fields="customFields"
-        :errors="websiteErrors"
-        @touched="routeTouched = true"
-      />
-
-      <!-- Custom fields supply values to shared page layouts. -->
-      <div class="card p-6">
-        <div class="mb-4 flex items-center justify-between gap-3">
+      <div v-show="activeTab === 'base'" data-settings-tab="base" role="tabpanel" :aria-label="t('contentTypeEdit.tab.base')" class="space-y-6">
+        <div class="card p-6 space-y-4">
           <h2 class="card-title">
-            {{ t("contentTypeEdit.fields") }}
-            <span class="text-slate-400 font-normal ml-1">{{
-              t("contentTypeEdit.builtinFieldsHint")
-            }}</span>
+            {{ t("contentTypeEdit.settings") }}
           </h2>
 
-          <div v-if="customFields.length > 1" class="flex items-center gap-2 text-xs">
-            <button
-              type="button"
-              class="font-medium text-slate-500 transition-colors hover:text-theme-600"
-              @click="fieldBuilder?.expandAllFields()"
-            >
-              {{ t("contentTypeEdit.expandAll") }}
-            </button>
-            <span class="text-slate-300">/</span>
-            <button
-              type="button"
-              class="font-medium text-slate-500 transition-colors hover:text-theme-600"
-              @click="fieldBuilder?.collapseAllFields()"
-            >
-              {{ t("contentTypeEdit.collapseAll") }}
-            </button>
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label for="content-type-label" class="form-label">{{
+                t("contentTypeEdit.displayLabel")
+              }}</label>
+              <input
+                id="content-type-label"
+                v-model="form.label"
+                type="text"
+                :placeholder="t('contentTypeEdit.displayLabelPlaceholder')"
+                :autofocus="isNew"
+                class="form-input w-full rounded-lg border-slate-300 text-sm"
+              />
+            </div>
+
+            <div>
+              <label for="content-type-name" class="form-label">{{
+                t("contentTypeEdit.apiName")
+              }}</label>
+              <input
+                id="content-type-name"
+                v-model="form.name"
+                type="text"
+                required
+                :disabled="!isNew"
+                placeholder="blog-posts"
+                aria-describedby="content-type-name-help"
+                class="form-input w-full rounded-lg border-slate-300 font-mono text-sm disabled:bg-slate-50 disabled:text-slate-500"
+                @input="nameTouched = form.name !== ''"
+                @blur="fixSlugOnBlur"
+              />
+              <p id="content-type-name-help" class="mt-1 text-xs text-slate-500">
+                {{ t(isNew ? "contentTypeEdit.apiNameHelp" : "contentTypeEdit.apiNameLocked") }}
+              </p>
+            </div>
+
+            <div>
+              <label class="form-label">{{
+                t("contentTypeEdit.sidebarIcon")
+              }}</label>
+              <IconPickerGrid v-model="form.icon" :placeholder="defaultIcon" />
+            </div>
+
+            <div v-if="websiteStatus" id="frontend-page-setting" class="col-span-1 scroll-mt-24">
+              <label for="content-type-frontend" class="form-label">{{ t("site.typeCard.title") }}</label>
+              <label class="flex items-center gap-3 text-sm text-slate-700">
+                <ToggleSwitch
+                  id="content-type-frontend"
+                  v-model="frontendPagesEnabled"
+                  :disabled="!websiteStatus.can_manage || !websiteRoute"
+                  :aria-label="t('site.pages.showInFrontend')"
+                  aria-describedby="content-type-frontend-help"
+                />
+                {{ t("site.pages.showInFrontend") }}
+              </label>
+              <p id="content-type-frontend-help" class="mt-1 text-xs text-slate-500">
+                {{ t("site.pages.frontendHint") }}
+              </p>
+            </div>
+            <div class="col-span-1">
+              <label for="content-type-api" class="form-label">{{ t("contentTypeEdit.apiAccess") }}</label>
+              <label class="flex items-center gap-3 text-sm text-slate-700">
+                <ToggleSwitch id="content-type-api" v-model="form.api_enabled" aria-describedby="content-type-api-help" />
+                {{ t("contentTypeEdit.exposeApi") }}
+              </label>
+              <p id="content-type-api-help" class="mt-1 text-xs text-slate-500">{{ t("contentTypeEdit.apiHint") }}</p>
+            </div>
+
+            <div class="col-span-1">
+              <label for="content-type-submissions" class="form-label">{{ t("site.forms.title") }}</label>
+              <label class="flex items-center gap-3 text-sm text-slate-700">
+                <ToggleSwitch id="content-type-submissions" v-model="form.allow_submissions"  aria-describedby="content-type-submissions-help" />
+                {{ t("contentTypeEdit.allowSubmissions") }}
+              </label>
+              <p v-if="submissionError" class="mt-1 text-xs text-red-600" role="alert">{{ submissionError }}</p>
+              <p id="content-type-submissions-help" class="mt-1 text-xs text-slate-500">{{ t("contentTypeEdit.submissionsHint") }}</p>
+            </div>
+
+            <div class="col-span-1">
+              <label for="content-type-hierarchical" class="form-label">{{ t("contentTypeEdit.hierarchy") }}</label>
+              <label class="flex items-center gap-3 text-sm text-slate-700">
+                <ToggleSwitch id="content-type-hierarchical" v-model="form.hierarchical" aria-describedby="content-type-hierarchical-help" />
+                {{ t("contentTypeEdit.hierarchical") }}
+              </label>
+              <p id="content-type-hierarchical-help" class="mt-1 text-xs text-slate-500">{{ t("contentTypeEdit.hierarchicalHint") }}</p>
+            </div>
           </div>
         </div>
 
-        <p class="mb-4 text-xs text-slate-500">{{ t("contentTypeEdit.fieldsHint") }}</p>
+        <TypeSubmissionSettings
+          v-if="form.allow_submissions"
+          v-model="form.submission_settings"
+          :name="isNew ? '' : form.name"
+          :fields="customFields"
+        />
+      </div>
 
-        <!-- Content areas belong to the detail templates; they are listed and deleted, not edited, here. -->
-        <div v-if="areaFields.length" class="mb-4 rounded-lg bg-slate-50 text-xs text-slate-600 ring-1 ring-inset ring-slate-200">
-          <div class="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
+      <div v-show="activeTab === 'builder'" data-settings-tab="builder" role="tabpanel" :aria-label="t('contentTypeEdit.tab.builder')" class="space-y-6">
+        <TypeWebsiteCard
+          section="builder"
+          v-model="websiteRoute"
+          :status="websiteStatus"
+          :name="isNew ? toSlug(form.name) : form.name"
+          :label="form.label"
+          :visibility="form.visibility"
+          :fields="customFields"
+          :errors="websiteErrors"
+          @touched="routeTouched = true"
+        />
+
+        <!-- Content areas are managed in layouts, separately from custom fields. -->
+        <section v-if="areaFields.length" aria-labelledby="content-areas-title" class="card p-6">
+          <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div class="min-w-0">
-              <p class="font-medium text-slate-800">{{ t("contentTypeEdit.areasTitle") }}</p>
-              <p>{{ t("contentTypeEdit.areasHint") }}</p>
+              <h2 id="content-areas-title" class="card-title flex items-center gap-2">
+                <Icon icon="lucide:panels-top-left" class="h-4 w-4 text-slate-500" />
+                {{ t("contentTypeEdit.areasTitle") }}
+              </h2>
+              <p class="mt-2 text-xs text-slate-500">{{ t("contentTypeEdit.areasHint") }}</p>
             </div>
             <RouterLink :to="`/page-builder/builder/layout/${form.name}/detail`" class="btn-secondary btn-sm shrink-0">
               {{ t("contentTypeEdit.editAreas") }}
             </RouterLink>
           </div>
-          <ul class="divide-y divide-slate-200 border-t border-slate-200">
-            <li v-for="area in areaRows" :key="area.key" class="flex items-center justify-between gap-2 px-3 py-1.5">
+          <ul class="divide-y divide-slate-200 rounded-lg border border-slate-200 bg-slate-50 text-xs text-slate-600">
+            <li v-for="area in areaRows" :key="area.key" class="flex items-center justify-between gap-2 px-3 py-3">
               <div class="min-w-0">
                 <span class="font-medium text-slate-700">{{ areaLabel(area) }}</span>
                 <span class="ml-1.5 font-mono text-[11px] text-slate-400">{{ area.key }}</span>
@@ -221,24 +209,64 @@
               </button>
             </li>
           </ul>
-        </div>
+        </section>
+      </div>
 
-        <FieldBuilder
-          ref="fieldBuilder"
-          v-model="customFields"
-          :field-types="fieldTypes"
-          :content-types="contentTypes"
-          :field-errors="customFieldErrors"
+      <div v-show="activeTab === 'seo'" data-settings-tab="seo" role="tabpanel" :aria-label="t('contentTypeEdit.tab.seo')">
+        <TypeWebsiteCard
+          v-model="websiteRoute"
+          section="seo"
+          :status="websiteStatus"
+          :name="isNew ? toSlug(form.name) : form.name"
+          :label="form.label"
+          :visibility="form.visibility"
+          :fields="customFields"
+          :errors="websiteErrors"
         />
       </div>
 
-      <TypeSubmissionSettings
-        v-if="form.allow_submissions"
-        v-model="form.submission_settings"
-        :name="isNew ? '' : form.name"
-        :fields="customFields"
-      />
+      <div v-show="activeTab === 'fields'" data-settings-tab="fields" role="tabpanel" :aria-label="t('contentTypeEdit.tab.fields')">
+        <!-- Custom fields supply values to shared page layouts. -->
+        <div class="card p-6">
+          <div class="mb-4 flex items-center justify-between gap-3">
+            <h2 class="card-title">
+              {{ t("contentTypeEdit.fields") }}
+              <span class="text-slate-400 font-normal ml-1">{{
+                t("contentTypeEdit.builtinFieldsHint")
+              }}</span>
+            </h2>
 
+            <div v-if="customFields.length > 1" class="flex items-center gap-2 text-xs">
+              <button
+                type="button"
+                class="font-medium text-slate-500 transition-colors hover:text-theme-600"
+                @click="fieldBuilder?.expandAllFields()"
+              >
+                {{ t("contentTypeEdit.expandAll") }}
+              </button>
+              <span class="text-slate-300">/</span>
+              <button
+                type="button"
+                class="font-medium text-slate-500 transition-colors hover:text-theme-600"
+                @click="fieldBuilder?.collapseAllFields()"
+              >
+                {{ t("contentTypeEdit.collapseAll") }}
+              </button>
+            </div>
+          </div>
+
+          <p class="mb-4 text-xs text-slate-500">{{ t("contentTypeEdit.fieldsHint") }}</p>
+
+          <FieldBuilder
+            ref="fieldBuilder"
+            v-model="customFields"
+            :field-types="fieldTypes"
+            :content-types="contentTypes"
+            :field-errors="customFieldErrors"
+          />
+        </div>
+
+      </div>
 
       <div
         v-if="saveError"
@@ -314,6 +342,7 @@ import TypeSubmissionSettings from "../components/site/TypeSubmissionSettings.vu
 import TypeWebsiteCard from "../components/site/TypeWebsiteCard.vue";
 import { contentTypeEndpoint } from "../composables/apiEndpoint.js";
 import { useI18n } from "../i18n/index.js";
+import TabNavigation from "../components/TabNavigation.vue";
 import LanguageTabs from "../components/LanguageTabs.vue";
 import { provideLanguageSwitcher } from "../composables/useLanguages.js";
 import { toSlug } from "../composables/fieldBuilderUtils.js";
@@ -334,6 +363,29 @@ const backToBuilder = computed(() => {
   const back = typeof route.query.back === "string" ? route.query.back : "";
   return back.startsWith("/page-builder/builder/") ? back : "";
 });
+const activeTab = ref("base");
+const tabs = computed(() => [
+  { value: "base", label: t("contentTypeEdit.tab.base"), icon: "mdi:cog-outline" },
+  { value: "builder", label: t("contentTypeEdit.tab.builder"), icon: "lucide:panels-top-left" },
+  { value: "seo", label: t("contentTypeEdit.tab.seo"), icon: "mdi:magnify" },
+  { value: "fields", label: t("contentTypeEdit.tab.fields"), icon: "mdi:form-select" },
+]);
+
+// Keep existing links to website and submission settings working with tabs.
+watch(() => route.hash, (hash) => {
+  if (hash === "#website") activeTab.value = "builder";
+  else if (hash === "#submissions") activeTab.value = "base";
+}, { immediate: true });
+
+async function revealInvalidField(event) {
+  const panel = event.target.closest('[role="tabpanel"]');
+  if (!panel || panel.style.display !== "none") return;
+  event.preventDefault();
+  activeTab.value = panel.dataset.settingsTab;
+  await nextTick();
+  event.target.reportValidity();
+}
+
 const defaultIcon = "mdi:file-document-outline";
 
 const form = ref({
@@ -528,6 +580,9 @@ async function saveWebsiteRoute(name) {
         .filter(([key]) => key.startsWith(prefix))
         .map(([key, message]) => [key.slice(prefix.length), message]),
     );
+    activeTab.value = Object.keys(websiteErrors.value).some((key) =>
+      ["index_title", "seo_description_field", "seo_image_field", "sitemap"].includes(key)
+    ) ? "seo" : "builder";
     // Other settings can object too, e.g. a homepage that shows this type's list page.
     toast.error(t("site.typeCard.saveFailed", { message: Object.values(websiteErrors.value)[0] ?? Object.values(err.fields ?? {})[0] ?? err.message }));
     return false;
@@ -595,12 +650,14 @@ async function handleSave() {
   customFieldErrors.value = {};
 
   if (hasNameConflict()) {
+    activeTab.value = "base";
     failSave(t("contentTypeEdit.nameConflict"));
     return;
   }
 
   const validation = validateCustomFields(customFields.value);
   if (!validation.ok) {
+    activeTab.value = "fields";
     customFieldErrors.value = validation.fieldErrors;
     failSave(validation.message);
     return;
@@ -656,6 +713,7 @@ async function handleSave() {
   } catch (err) {
     const error = err.fields?.allow_submissions;
     submissionError.value = Array.isArray(error) ? error[0] : error ?? "";
+    if (submissionError.value) activeTab.value = "base";
     failSave(submissionError.value || err.message);
   } finally {
     saving.value = false;

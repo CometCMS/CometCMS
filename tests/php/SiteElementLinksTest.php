@@ -62,31 +62,6 @@ test('shared region buttons stay visible without destinations across pages and b
     }
 });
 
-test('field and gallery link toggles migrate to structured destinations throughout saved trees', function (): void {
-    $legacy = [];
-    foreach (['field', 'gallery'] as $kind) {
-        foreach ([true, false] as $enabled) {
-            $node = LayoutSchema::node($kind);
-            $node['props']['link'] = $enabled; // Actual format stored before link targets existed.
-            $legacy[] = $node;
-        }
-    }
-    $oldGallery = LayoutSchema::node('field', ['display' => 'gallery', 'source' => SmartValue::reference('photos')]);
-    $oldGallery['props']['link'] = true;
-    $legacy[] = $oldGallery;
-    $tree = LayoutSchema::normalizeComponent([LayoutSchema::node('column', [], [], $legacy)], 'column');
-    foreach ($tree[0]['children'] as $index => $node) {
-        assert_same($index % 2 === 0 ? ['type' => 'current', 'new_tab' => false] : ['type' => 'none'], $node['props']['link']);
-    }
-    assert_same('gallery', $tree[0]['children'][4]['kind']);
-    assert_same($oldGallery['id'], $tree[0]['children'][4]['id']);
-    assert_same($tree, LayoutSchema::normalizeComponent($tree, 'column'));
-    foreach (['field', 'gallery', 'heading', 'image', 'button', 'icon'] as $kind) {
-        assert_same('link', LayoutSchema::spec()['kinds'][$kind]['props']['link']['binding']);
-        assert_same('link', LayoutSchema::spec()['kinds'][$kind]['props']['link']['type']);
-    }
-});
-
 test('fields and gallery images honor page URL anchor and dynamic links with new tab settings', function (): void {
     $site = comet_site_test_setup();
     foreach (['first.svg', 'second.svg'] as $file) file_put_contents(comet_test_workspace_path() . '/media/' . $file, '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="40"></svg>');
@@ -126,9 +101,6 @@ test('fields and gallery images honor page URL anchor and dynamic links with new
             assert_same($destination['new_tab'], str_contains($html, 'target="_blank" rel="noopener noreferrer"'));
         }
     }
-    $legacy = LayoutSchema::node('field', ['source' => SmartValue::reference('title')]);
-    $legacy['props']['link'] = true;
-    assert_true(str_contains($renderer->render([$legacy], $state), 'href="/cms/blog/hello"'));
 });
 
 test('dynamic field and gallery destinations reject unsafe missing and multiple values', function (): void {

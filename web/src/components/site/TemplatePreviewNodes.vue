@@ -20,7 +20,7 @@
         </span>
       </template>
       <span v-if="['heading', 'line', 'button', 'search', 'divider', 'accordion'].includes(node.kind)" class="wireframe-bar"></span>
-      <span v-else-if="['text', 'html'].includes(node.kind)" class="wireframe-text"><span></span><span></span><span></span></span>
+      <span v-else-if="['text', 'html', 'table'].includes(node.kind)" class="wireframe-text"><span></span><span></span><span></span></span>
       <span v-else-if="['menu', 'language_switcher'].includes(node.kind)" class="wireframe-links"><span></span><span></span><span></span></span>
       <span v-else-if="['icon', 'theme_toggle'].includes(node.kind)" class="wireframe-icon"></span>
       <span v-else-if="node.kind === 'site_title'" class="wireframe-brand">

@@ -59,7 +59,7 @@ describe("mediaUtils", () => {
   it("uses the media variant endpoint for thumbnails", () => {
     expect(mediaUrl("site a", "hero image.jpg")).toBe("/media/site%20a/hero%20image.jpg");
     expect(mediaThumbUrl("site a", "hero image.jpg")).toBe(
-      "/media/site%20a/hero%20image.jpg?variant=thumbnail",
+      "/media/site%20a/hero%20image.jpg?size=thumbnail",
     );
   });
 });

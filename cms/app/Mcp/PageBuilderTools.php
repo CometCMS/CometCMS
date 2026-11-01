@@ -11,6 +11,7 @@ use CometCMS\Core\ConflictException;
 use CometCMS\Core\HtmlSanitizer;
 use CometCMS\Core\ValidationException;
 use CometCMS\Localization\LocalizedValue;
+use CometCMS\Site\ElementConditions;
 use CometCMS\Site\LayoutSchema;
 use CometCMS\Site\SiteContext;
 use CometCMS\Site\SiteRepository;
@@ -77,6 +78,9 @@ final class PageBuilderTools
     {
         return ['type' => 'object', 'properties' => $properties, 'required' => $required, 'additionalProperties' => false];
     }
+
+    /** Content areas of the components placed so far: id => [{id, name}], null when the component is missing. */
+    private array $componentAreas = [];
 
     public function __construct(private readonly WorkspaceContext $workspace, private readonly array $principal, private readonly PermissionService $permissions = new PermissionService()) {}
 
@@ -267,7 +271,7 @@ final class PageBuilderTools
     /** A page kind's templates in order and the components that can be a header or footer. */
     private function templates(SiteRepository $site, string $collection, string $variant): array
     {
-        $options = array_values(array_filter($site->components(), static fn(array $component): bool => SiteRepository::fitsFrame($component, $collection)));
+        $options = array_values(array_filter($site->components(), static fn(array $component): bool => SiteRepository::fitsFrame($component)));
 
         return [
             'collection' => $collection,
@@ -326,7 +330,7 @@ final class PageBuilderTools
         return [];
     }
 
-    /** Kinds a layout or an entry's content can hold: those reachable from the top level, and component instances. */
+    /** Kinds a layout or an entry's content can hold: those reachable from the top level, and component instances with their area content. */
     private function usableKinds(): array
     {
         $kinds = ['root' => true];
@@ -338,7 +342,7 @@ final class PageBuilderTools
             }
         }
         unset($kinds['root']);
-        return [...array_keys($kinds), LayoutSchema::COMPONENT];
+        return [...array_keys($kinds), LayoutSchema::COMPONENT, LayoutSchema::AREA_CONTENT];
     }
 
     /** $map with keys of equal values joined into one "a, b" key. */
@@ -414,7 +418,20 @@ final class PageBuilderTools
     {
         $result = $this->compact(['children' => []] + $node);
         $result['children'] = array_map($this->summary(...), $node['children'] ?? []);
+        if ($node['kind'] === LayoutSchema::COMPONENT && ($areas = $this->areasOf((string) ($node['props']['component'] ?? ''))) !== null) {
+            $filled = array_column(array_map(static fn(array $child): array => ['area' => $child['props']['area'] ?? '', 'id' => $child['id']], $node['children'] ?? []), 'id', 'area');
+            $result['content_areas'] = array_map(static fn(array $area): array => $area + ['content_id' => $filled[$area['id']] ?? null], $areas);
+        }
         return $result;
+    }
+
+    /** The content areas of component $id, or null when there is no such component. */
+    private function areasOf(string $id): ?array
+    {
+        if (!array_key_exists($id, $this->componentAreas)) {
+            $this->componentAreas[$id] = $id !== '' ? (new SiteRepository($this->workspace))->component($id)['areas'] ?? null : null;
+        }
+        return $this->componentAreas[$id];
     }
 
     private function sectionIndex(array $nodes, string $id): int
@@ -429,7 +446,7 @@ final class PageBuilderTools
             $node = $this->find([$section], $id);
             if ($node !== null) return [$node, $section['id']];
         }
-        throw new McpError('Element ID not found in this layout.', 404, ['code' => 'element_not_found', 'element_id' => $id], [], ['Read get_layout and get_section to find current node IDs. Component definition children are not part of the layout.']);
+        throw new McpError('Element ID not found in this layout.', 404, ['code' => 'element_not_found', 'element_id' => $id], [], ['Read get_layout and get_section to find current node IDs. A component\'s own elements are not part of the layout; an instance\'s children are what it shows in the component\'s content areas.']);
     }
 
     private function find(array $nodes, string $id): ?array
@@ -480,7 +497,7 @@ final class PageBuilderTools
             if (++$count > LayoutSchema::MAX_NODES) $this->invalid($nodePath, 'Layout exceeds the ' . LayoutSchema::MAX_NODES . ' node limit.');
             $this->map($node, $nodePath);
             $this->keys($node, ['id', 'kind', 'name', 'props', 'style', 'responsive', 'states', 'children'], $nodePath);
-            if (!is_string($node['kind'] ?? null) || !in_array($node['kind'], [...LayoutSchema::STRUCTURE, ...LayoutSchema::ELEMENTS, 'tab', LayoutSchema::COMPONENT, LayoutSchema::PAGE_CONTENT], true)) $this->invalid($nodePath . '.kind', 'Unknown or missing kind.');
+            if (!is_string($node['kind'] ?? null) || !in_array($node['kind'], [...LayoutSchema::STRUCTURE, ...LayoutSchema::ELEMENTS, 'tab', LayoutSchema::COMPONENT, LayoutSchema::PAGE_CONTENT, LayoutSchema::AREA_CONTENT], true)) $this->invalid($nodePath . '.kind', 'Unknown or missing kind.');
             $this->placement($node, $nodePath, $at, $areas);
             if (!array_key_exists('id', $node)) $node['id'] = LayoutSchema::newId();
             $id = $this->identifier($node['id'], $nodePath . '.id');
@@ -510,16 +527,46 @@ final class PageBuilderTools
                 }
             }
             $kind = $node['kind'];
+            if ($kind === LayoutSchema::COMPONENT) $node['children'] = $this->areaContents($node, $nodePath);
             $node['children'] = $this->prepare($node['children'] ?? [], $nodePath . '.children', $seen, $count, [
                 // A repeater's item template may not contain another one.
                 'parent' => $kind === 'field' ? ($at['item'] ? '' : 'field') : $kind,
-                // Cards, item templates and an area's default content hold no Entry content area.
-                'page_content' => $at['page_content'] && !in_array($kind, ['field', 'collection', LayoutSchema::PAGE_CONTENT], true),
-                'rows' => $kind === LayoutSchema::PAGE_CONTENT ? 0 : $at['rows'] + ($kind === 'row' ? 1 : 0),
+                // Cards, item templates, an area's default content and an instance's content areas hold no Entry content area.
+                'page_content' => $at['page_content'] && !in_array($kind, ['field', 'collection', LayoutSchema::PAGE_CONTENT, LayoutSchema::COMPONENT], true),
+                'rows' => match ($kind) {
+                    LayoutSchema::PAGE_CONTENT => 0,
+                    LayoutSchema::COMPONENT => $at['rows'] + (($node['props']['root'] ?? '') === 'column' ? 0 : 1),
+                    default => $at['rows'] + ($kind === 'row' ? 1 : 0),
+                },
                 'item' => $at['item'] || $kind === 'field',
             ], $areas, $depth + 1);
         }
         return $nodes;
+    }
+
+    /**
+     * An instance's children: one area_content node per content area of its
+     * component, holding what this placement shows there. Areas left out
+     * start empty.
+     */
+    private function areaContents(array $node, string $path): array
+    {
+        $children = $node['children'] ?? [];
+        $areas = $this->areasOf(is_string($node['props']['component'] ?? null) ? $node['props']['component'] : '');
+        if ($areas === null || !is_array($children) || !array_is_list($children)) return $children;
+        $ids = array_column($areas, 'id');
+        $list = $ids === [] ? 'The component has no content areas, so its instances have no children.' : 'Its content areas: ' . implode(', ', array_map(static fn(array $area): string => $area['id'] . ($area['name'] !== '' ? ' (' . $area['name'] . ')' : ''), $areas)) . '.';
+        $filled = [];
+        foreach ($children as $index => $child) {
+            $area = is_array($child) && ($child['kind'] ?? null) === LayoutSchema::AREA_CONTENT ? $child['props']['area'] ?? null : null;
+            if (!is_string($area) || !in_array($area, $ids, true)) $this->invalid($path . '.children.' . $index, 'An instance\'s children are area_content nodes with props.area naming one of its component\'s content areas. ' . $list);
+            if (isset($filled[$area])) $this->invalid($path . '.children.' . $index . '.props.area', 'Each content area has one area_content node per instance.');
+            $filled[$area] = true;
+        }
+        foreach ($ids as $id) {
+            if (!isset($filled[$id])) $children[] = ['kind' => LayoutSchema::AREA_CONTENT, 'props' => ['area' => $id], 'children' => []];
+        }
+        return $children;
     }
 
     /** Name the node the normalizer would drop for its placement, and how to place it instead. */
@@ -533,7 +580,11 @@ final class PageBuilderTools
             $where = $at['parent'] === 'root' ? 'at the top level' : ($at['parent'] === '' ? 'in an item template inside another item template' : 'inside a ' . $at['parent']);
             $holds = $allowed === [] ? 'It holds no children.' : 'Allowed there: ' . implode(', ', $allowed) . '.';
             $wrap = $this->wrapping($at['parent'], $placed);
-            $areaHint = $kind === LayoutSchema::PAGE_CONTENT ? ' Entry content areas exist only in detail templates, outside cards, item templates and other areas, never in an entry\'s own content.' : '';
+            $areaHint = match ($kind) {
+                LayoutSchema::PAGE_CONTENT => ' Entry content areas exist only in detail templates, outside cards, item templates and other areas, never in an entry\'s own content.',
+                LayoutSchema::AREA_CONTENT => ' area_content nodes are the children of a component instance, one per content area of its component.',
+                default => '',
+            };
             $this->invalid($path, 'A ' . $placed . ' cannot be placed ' . $where . '. ' . $holds . ($wrap !== [] ? ' Wrap it in ' . implode(' > ', $wrap) . '.' : '') . $areaHint);
         }
         if ($placed === 'row' && $at['rows'] > LayoutSchema::MAX_ROW_DEPTH) {
@@ -576,6 +627,19 @@ final class PageBuilderTools
             foreach ($value as $index => $item) if (!is_string($item)) $this->invalid($path . '.' . $index, 'Expected a string.');
             return;
         }
+        if ($type === 'table_rows') {
+            if (!is_array($value) || !array_is_list($value)) $this->invalid($path, 'Expected an array of rows, each an array of cells: [["Plan","Price"],["Basic","9 €"]].');
+            if (count($value) > LayoutSchema::TABLE_MAX_ROWS) $this->invalid($path, 'At most ' . LayoutSchema::TABLE_MAX_ROWS . ' rows.');
+            foreach ($value as $r => $row) {
+                if (!is_array($row) || !array_is_list($row)) $this->invalid($path . '.' . $r, 'Expected an array of cells.');
+                if (count($row) > LayoutSchema::TABLE_MAX_COLUMNS) $this->invalid($path . '.' . $r, 'At most ' . LayoutSchema::TABLE_MAX_COLUMNS . ' columns.');
+                if (count($row) !== count($value[0])) $this->invalid($path . '.' . $r, 'Every row needs the same number of cells as the first row (' . count($value[0]) . ').');
+                foreach ($row as $c => $cell) {
+                    if (!is_string($cell) && !SmartValue::isDynamic($cell)) $this->invalid($path . '.' . $r . '.' . $c, 'Expected a string of inline HTML or a binding.');
+                }
+            }
+            return;
+        }
         if ($type === 'list_filters') {
             if (!is_array($value) || !array_is_list($value)) $this->invalid($path, 'Expected an array of {field, label?, multiple?} objects.');
             foreach ($value as $index => $row) {
@@ -583,6 +647,19 @@ final class PageBuilderTools
                 if (!is_string($row['field'] ?? null)) $this->invalid($path . '.' . $index . '.field', 'Expected a field name.');
                 if (array_key_exists('label', $row) && !is_string($row['label'])) $this->invalid($path . '.' . $index . '.label', 'Expected a string.');
                 if (array_key_exists('multiple', $row) && !is_bool($row['multiple'])) $this->invalid($path . '.' . $index . '.multiple', 'Expected a boolean.');
+            }
+            return;
+        }
+        if ($type === 'conditions') {
+            if ($value === []) return;
+            $this->map($value, $path);
+            if (array_key_exists('match', $value) && !in_array($value['match'], ['all', 'any'], true)) $this->invalid($path . '.match', 'Use all or any.');
+            if (!is_array($value['conditions'] ?? null) || !array_is_list($value['conditions'])) $this->invalid($path . '.conditions', 'Expected an array of {field, op, value?} objects.');
+            foreach ($value['conditions'] as $index => $condition) {
+                $this->map($condition, $path . '.conditions.' . $index);
+                $this->map($condition['field'] ?? null, $path . '.conditions.' . $index . '.field');
+                if (!in_array($condition['op'] ?? null, ElementConditions::OPS, true)) $this->invalid($path . '.conditions.' . $index . '.op', 'Use one of: ' . implode(', ', ElementConditions::OPS) . '.');
+                if (isset($condition['value']) && !is_scalar($condition['value'])) $this->invalid($path . '.conditions.' . $index . '.value', 'Expected a string, number or boolean.');
             }
             return;
         }
@@ -654,6 +731,8 @@ final class PageBuilderTools
             'int' => 'Use an integer from ' . $spec['min'] . ' to ' . $spec['max'] . '.',
             'string' => 'Use plain text of at most ' . ($spec['max'] ?? 200) . ' characters, without line breaks.',
             'html' => 'Use HTML with only these tags: ' . implode(', ', array_keys(HtmlSanitizer::ALLOWED_TAGS)) . '; no style or event attributes (span/div take class).',
+            'conditions' => 'Use {match: "all"|"any", conditions: [{field: {type: "reference", source, path}, op, value}]}; references take no filters, and empty/not_empty take no value.',
+            'table_rows' => 'Use cells of inline HTML with only these tags: ' . implode(', ', LayoutSchema::TABLE_CELL_TAGS) . '; block tags are removed.',
             'raw_html' => 'Use HTML source of at most ' . $spec['max'] . ' characters. Markup and embedded style blocks are preserved.',
             default => '',
         };

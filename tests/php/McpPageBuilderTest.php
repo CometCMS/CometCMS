@@ -215,7 +215,7 @@ test('mcp builder section patches preserve siblings and support explicit childre
     $before = (new SiteRepository())->layout('pages', 'detail');
     [, $updated] = comet_test_mcp_tool($token, 'update_section', [
         'collection' => 'pages', 'variant' => 'detail', 'revision' => $layout['revision'], 'section_id' => 'hero',
-        'patch' => ['name' => 'Hero', 'props' => ['width' => 'full'], 'style' => ['padding_y' => 'xl']],
+        'patch' => ['name' => 'Hero', 'props' => ['width' => 'full'], 'style' => ['padding_top' => 'xl', 'padding_bottom' => 'xl']],
     ]);
     $saved = (new SiteRepository())->layout('pages', 'detail');
     assert_same($before[1], $saved[1]);
@@ -244,6 +244,50 @@ test('mcp builder element patches take style alone and refuse empty patches', fu
     assert_same('Welcome', $updated['data']['element']['props']['text']);
     [, $empty] = comet_test_mcp_tool($token, 'update_element', $target + ['revision' => $updated['data']['revision']]);
     assert_same('props', $empty['error']['details']['path'] ?? null, json_encode($empty));
+});
+
+test('mcp builder sets element conditions and rejects malformed ones', function (): void {
+    [$token, $layout] = comet_test_builder_setup();
+    $target = ['collection' => 'pages', 'variant' => 'detail', 'element_id' => 'heading'];
+    $field = ['type' => 'reference', 'source' => 'current', 'path' => ['title']];
+    foreach ([
+        ['match' => 'some', 'conditions' => [['field' => $field, 'op' => 'empty']]],
+        ['conditions' => [['field' => $field, 'op' => 'greater', 'value' => 1]]],
+        ['conditions' => [['field' => $field, 'op' => 'equals', 'value' => ['x']]]],
+        ['conditions' => [['field' => $field, 'op' => 'empty', 'value' => 'x']]],
+        ['conditions' => [['field' => $field + ['filters' => [['name' => 'fallback', 'value' => 'x']]], 'op' => 'equals', 'value' => 'x']]],
+    ] as $visibleIf) {
+        [, $error] = comet_test_mcp_tool($token, 'update_element', $target + ['revision' => $layout['revision'], 'style' => ['visible_if' => $visibleIf]]);
+        assert_same(422, $error['error']['status'] ?? null, json_encode([$visibleIf, $error]));
+    }
+    $visibleIf = ['match' => 'any', 'conditions' => [['field' => $field, 'op' => 'contains', 'value' => 'Welcome']]];
+    [, $updated] = comet_test_mcp_tool($token, 'update_element', $target + ['revision' => $layout['revision'], 'style' => ['visible_if' => $visibleIf]]);
+    assert_same('contains', $updated['data']['element']['style']['visible_if']['conditions'][0]['op'] ?? null, json_encode($updated));
+});
+
+test('mcp builder writes tables and explains malformed rows', function (): void {
+    [$token, $layout] = comet_test_builder_setup();
+    $target = ['collection' => 'pages', 'variant' => 'detail'];
+    $sections = static function (array $rows): array {
+        $sections = comet_test_builder_sections();
+        $sections[0]['children'][0]['children'][0]['children'][] = ['id' => 'prices', 'kind' => 'table', 'props' => ['rows' => $rows, 'header_column' => true]];
+        return $sections;
+    };
+    foreach ([
+        [[['Plan', 'Price'], ['Basic']], 'same number of cells'],
+        [['Plan', 'Price'], 'array of cells'],
+        [[['Plan', ['x']]], 'inline HTML'],
+        [[['<p>Plan</p>', 'Price']], 'inline HTML'],
+    ] as [$rows, $message]) {
+        [, $error] = comet_test_mcp_tool($token, 'set_layout', $target + ['revision' => $layout['revision'], 'sections' => $sections($rows)]);
+        assert_same(422, $error['error']['status'] ?? null, json_encode([$rows, $error]));
+        assert_true(str_contains(json_encode($error), $message), json_encode($error));
+    }
+    $rows = [['Plan', 'Price'], ['<strong>Basic</strong>', '9 €<br>monthly']];
+    [, $saved] = comet_test_mcp_tool($token, 'set_layout', $target + ['revision' => $layout['revision'], 'sections' => $sections($rows)]);
+    assert_true(isset($saved['data']['revision']), json_encode($saved));
+    [, $element] = comet_test_mcp_tool($token, 'get_element', $target + ['element_id' => 'prices']);
+    assert_same($rows, $element['data']['element']['props']['rows'] ?? null, json_encode($element));
 });
 
 test('mcp builder rejects stale revisions including intervening admin repository saves', function (): void {
@@ -335,7 +379,6 @@ test('mcp builder missing targets and revisions guide the next action', function
     }
     assert_same($layout, comet_test_builder_layout($token));
 });
-
 
 test('mcp builder preserves localized props and bindings during partial edits and resets style defaults', function (): void {
     (new \CometCMS\Localization\LanguageSettings())->save(['locales' => ['en', 'de'], 'default_locale' => 'en']);

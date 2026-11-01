@@ -10,6 +10,29 @@ function comet_media_test_file(string $name, string $body = 'file'): void
     file_put_contents(comet_test_workspace_path() . '/media/' . $name, $body);
 }
 
+test('media listing shares one permission scope across pagination and category statistics', function (): void {
+    foreach (['hero.jpg', 'guide.pdf', 'hidden.pdf', 'song.mp3'] as $file) comet_media_test_file($file);
+    $repository = new MediaRepository();
+    $repository->assignCategory('hero.jpg', 'Images / Heroes');
+    $repository->assignCategory('guide.pdf', 'Docs / Guides');
+    $repository->assignCategory('hidden.pdf', 'Docs / Private');
+    $repository->updateVisibility('hidden.pdf', 'private');
+    $checks = 0;
+    $result = $repository->listing('', 'Docs', 1, 0, 'documents', 'name', null, null,
+        static function (array $context) use (&$checks): bool {
+            $checks++;
+            return $context['file'] !== 'hidden.pdf';
+        });
+    assert_same(4, $checks, 'Each file is authorized once for the listing and stats together.');
+    assert_same(['guide.pdf'], array_column($result['data'], 'filename'));
+    assert_same(1, $result['meta']['total']);
+    assert_same(3, $result['meta']['stats']['total']);
+    assert_same(1, $result['meta']['stats']['uncategorized']);
+    assert_same(['Docs' => 1, 'Docs / Guides' => 1, 'Images' => 1, 'Images / Heroes' => 1], $result['meta']['stats']['categories']);
+    $repository->assignCategory('song.mp3', 'Music');
+    assert_same(1, $repository->listing()['meta']['stats']['categories']['Music']);
+});
+
 test('media repository manages nested categories and updates assigned files', function (): void {
     comet_media_test_file('hero.jpg');
     $repository = new MediaRepository();

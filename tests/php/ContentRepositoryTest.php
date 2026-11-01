@@ -34,6 +34,50 @@ function comet_content_test_save_posts_schema(array $overrides = []): void
     ]);
 }
 
+test('content read snapshots follow writes from other repositories and stay workspace scoped', function (): void {
+    comet_content_test_save_posts_schema();
+    $reader = ContentRepository::make();
+    $writer = ContentRepository::make();
+    $entry = $writer->save('posts', ['title' => 'First', 'status' => 'published'], comet_content_test_user());
+    assert_same('First', $reader->findByIdentifier('posts', $entry['uid'])['title']);
+    assert_same(1, $reader->query('posts', [])['meta']['total']);
+
+    $writer->save('posts', ['title' => 'Renamed', 'slug' => 'renamed'], comet_content_test_user(), $entry['id']);
+    assert_same('Renamed', $reader->findByIdentifier('posts', $entry['uid'])['title']);
+    assert_null($reader->findByIdentifier('posts', 'first'));
+    assert_same($entry['uid'], $reader->findByIdentifier('posts', 'renamed')['uid']);
+    $writer->softDelete('posts', $entry['id']);
+    assert_null($reader->findByIdentifier('posts', $entry['uid']));
+    assert_same(0, $reader->query('posts', [])['meta']['total']);
+    assert_same($entry['uid'], $reader->findByIdentifier('posts', $entry['uid'], true)['uid']);
+    $writer->restore('posts', $entry['id']);
+    assert_same(1, $reader->query('posts', [])['meta']['total']);
+
+    $other = ContentRepository::make(new \CometCMS\Workspaces\WorkspaceContext('other'));
+    assert_null($other->findByIdentifier('posts', $entry['uid']));
+    assert_same(0, $other->query('posts', [])['meta']['total']);
+});
+
+test('content writers refresh snapshots after acquiring the lock and reject stale revisions', function (): void {
+    comet_content_test_save_posts_schema();
+    $reader = ContentRepository::make();
+    $entry = $reader->save('posts', ['title' => 'Original'], comet_content_test_user());
+    $reader->query('posts', [], true);
+    $store = new \CometCMS\Storage\JsonStore(comet_test_workspace_path() . '/content');
+    $raw = $store->read('posts', $entry['id']);
+    $raw['revision'] = 'changed-elsewhere';
+    // A different PHP request does not share the in-process mutation generation.
+    file_put_contents($store->path('posts', $entry['id']) . '.json', json_encode($raw));
+    assert_throws(\CometCMS\Core\ConflictException::class, fn() => $reader->save('posts', ['title' => 'Stale', 'revision' => $entry['revision']], comet_content_test_user(), $entry['id']));
+
+    $reader->query('posts', [], true);
+    $raw['id'] = 'taken';
+    $raw['uid'] = 'external-entry';
+    $raw['values']['slug'] = \CometCMS\Localization\LocalizedValue::set(null, 'en', 'taken', 'en');
+    file_put_contents($store->path('posts', 'taken') . '.json', json_encode($raw));
+    assert_same('taken-2', $reader->save('posts', ['title' => 'Taken'], comet_content_test_user())['slug']);
+});
+
 test('content repository creates updates and records revisions', function (): void {
     comet_content_test_save_posts_schema();
     $repository = comet_content_test_repository();

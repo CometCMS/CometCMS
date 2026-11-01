@@ -338,6 +338,13 @@ async function installUpdate() {
   installing.value = true;
   try {
     const res = await api.update.install(stagedUpdate.value?.id ?? null);
+    status.value = {
+      ...status.value,
+      current_version: res.data.installed_version,
+      staged_update: null,
+      update_available: false,
+      message: t("updates.upToDate"),
+    };
     showInstallModal.value = false;
     toast.success(
       t("updates.installedToast", { version: res.data.installed_version }),

@@ -47,7 +47,15 @@
       @change="add($event)"
     >
       <option value="" disabled>{{ t("site.listFilter.add") }}</option>
-      <option v-for="field in available" :key="field.value" :value="field.value">{{ field.label }} · {{ t(`site.listFilter.kind.${field.kind}`) }}</option>
+      <!-- A list of several types: fields every type has, then each type's own. -->
+      <template v-if="availableGroups.length > 1">
+        <optgroup v-for="group in availableGroups" :key="group.key" :label="group.label">
+          <option v-for="field in group.items" :key="field.value" :value="field.value">{{ field.label }} · {{ t(`site.listFilter.kind.${field.kind}`) }}</option>
+        </optgroup>
+      </template>
+      <template v-else>
+        <option v-for="field in available" :key="field.value" :value="field.value">{{ field.label }} · {{ t(`site.listFilter.kind.${field.kind}`) }}</option>
+      </template>
     </select>
     <p v-else-if="!fields.length" class="text-xs text-slate-500">{{ t("site.listFilter.noFields") }}</p>
   </div>
@@ -58,6 +66,7 @@ import { computed } from "vue";
 import { Icon } from "@iconify/vue";
 import { useI18n } from "../../../i18n/index.js";
 import { filterFields } from "./listFilters.js";
+import { fieldGroups } from "../../../composables/smartValues.js";
 
 /** Same bound as ListFilters::MAX_FILTERS. */
 const MAX_FILTERS = 8;
@@ -81,6 +90,8 @@ const { t } = useI18n();
 const rows = computed(() => (Array.isArray(props.modelValue) ? props.modelValue : []).map((row) => ({ label: "", multiple: false, ...row })));
 const fields = computed(() => filterFields(props.type, t));
 const available = computed(() => fields.value.filter((field) => !rows.value.some((row) => row.field === field.value)));
+const availableGroups = computed(() => fieldGroups(available.value.map((field) => ({ ...field, key: field.value })), props.type, t("site.builder.sharedField"))
+  .filter((group) => group.items.length));
 
 function fieldFor(key) {
   return fields.value.find((field) => field.value === key) ?? null;

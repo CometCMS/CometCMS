@@ -2,7 +2,7 @@ import { createSSRApp } from 'vue'
 import { renderToString } from 'vue/server-renderer'
 import { describe, expect, it } from 'vitest'
 import { createSiteBuilder } from './useSiteBuilder.js'
-import { reference } from './smartValues.js'
+import { fieldGroups, reference } from './smartValues.js'
 import { findNode, resolveDrop } from './layoutTree.js'
 
 describe('builder tabs', () => {
@@ -81,30 +81,30 @@ describe('builder copy and paste', () => {
 })
 
 describe('builder spacing', () => {
-  it('splits paired padding in one undo step and resets individual edges to the default', async () => {
+  it('edits individual padding edges in one undo step and resets to the default', async () => {
     const builder = await builderFixture()
     const section = builder.nodes.value[0]
-    section.style = { padding_y: 'lg', padding_x: 'md', padding_right: 'xs', background: 'accent' }
+    section.style = { padding_top: 'lg', padding_bottom: 'lg', padding_left: 'md', padding_right: 'xs', background: 'accent' }
     builder.load(builder.nodes.value)
     builder.updateValue(section.id, 'style', 'padding_top', 'sm')
-    expect(builder.nodes.value[0].style).toEqual({ padding_top: 'sm', padding_bottom: 'lg', padding_x: 'md', padding_right: 'xs', background: 'accent' })
+    expect(builder.nodes.value[0].style).toEqual({ padding_top: 'sm', padding_bottom: 'lg', padding_left: 'md', padding_right: 'xs', background: 'accent' })
     builder.undo()
     expect(builder.nodes.value[0].style).toEqual(section.style)
     builder.redo()
     builder.updateValue(section.id, 'style', 'padding_left', '')
     expect(builder.nodes.value[0].style).toEqual({ padding_top: 'sm', padding_bottom: 'lg', padding_right: 'xs', background: 'accent' })
     builder.undo()
-    expect(builder.nodes.value[0].style.padding_x).toBe('md')
+    expect(builder.nodes.value[0].style.padding_left).toBe('md')
     builder.updateValue(section.id, 'style', 'margin_bottom', 'none')
     expect(builder.nodes.value[0].style.margin_bottom).toBe('none')
     builder.updateValue(section.id, 'style', 'margin_bottom', '')
     expect(builder.nodes.value[0].style).not.toHaveProperty('margin_bottom')
   })
 
-  it('sets linked sides in one step and drops paired padding instead of leaving it behind defaults', async () => {
+  it('sets linked sides in one undo step', async () => {
     const builder = await builderFixture()
     const section = builder.nodes.value[0]
-    section.style = { padding_y: 'lg', padding_x: 'md', background: 'accent' }
+    section.style = { padding_top: 'lg', padding_bottom: 'lg', padding_left: 'md', padding_right: 'md', background: 'accent' }
     builder.load(builder.nodes.value)
     builder.editValues(section.id, 'style', { padding_top: '', padding_right: '', padding_bottom: '', padding_left: '' })
     expect(builder.nodes.value[0].style).toEqual({ background: 'accent' })
@@ -372,20 +372,41 @@ describe('builder components', () => {
     expect(builder.insert(builder.make('text'), root.children[0].children[1].id)).toBe(true)
   })
 
-  it('keeps all components listed but only inserts compatible components outside themselves', async () => {
+  it('inserts components of any type anywhere, except into themselves', async () => {
     const { builder } = await componentFixture({})
     const shared = { id: 'shared', type: '' }
     const typed = { id: 'typed', type: 'posts' }
     builder.components.value = [shared, typed]
     expect(builder.canInsertComponent(shared)).toBe(true)
-    expect(builder.canInsertComponent(typed)).toBe(false)
-    builder.type.value = { name: 'posts' }
+    // A component's type only picks its preview entries.
+    builder.type.value = { name: 'pages' }
     expect(builder.canInsertComponent(typed)).toBe(true)
     builder.currentAvailable.value = false
-    expect(builder.canInsertComponent(typed)).toBe(false)
+    expect(builder.canInsertComponent(typed)).toBe(true)
     builder.componentId.value = 'shared'
     expect(builder.canInsertComponent(shared)).toBe(false)
     expect(builder.components.value).toHaveLength(2)
+  })
+
+  it('offers a component the fields of every page type, grouped by type', async () => {
+    const { builder } = await componentFixture({})
+    builder.settings.value = { routes: { posts: { enabled: true }, pages: { enabled: true } } }
+    builder.types.value = [
+      { name: 'posts', label: 'Posts', fields: { body: { type: 'html' }, featured: { type: 'boolean' } } },
+      { name: 'pages', label: 'Pages', fields: { body: { type: 'html' }, intro: { type: 'textarea' } } },
+      { name: 'secrets', visibility: 'private', fields: { code: { type: 'text' } } },
+    ]
+    builder.componentId.value = 'card'
+    const context = builder.entryContext(null)
+    expect(context.currentAvailable).toBe(true)
+    expect(Object.keys(context.type.fields)).toEqual(['body', 'featured', 'intro'])
+    expect(context.type.type_labels).toEqual(['Posts', 'Pages'])
+    const groups = fieldGroups(builder.typeFields(null), context.type, 'All types')
+    expect(groups.map((group) => [group.label, group.items.map((field) => field.key)])).toEqual([
+      ['All types', ['title', 'published_at', 'updated_at', 'body']],
+      ['Posts', ['featured']],
+      ['Pages', ['intro']],
+    ])
   })
 
   it('detaches deleted components throughout the draft, undo, redo and clipboard without losing pending edits', async () => {
@@ -938,24 +959,6 @@ describe('independent hover animations', () => {
     expect(node().states).toBeUndefined()
   })
 
-  it('migrates nested legacy hover effects on load and revision restore without mutating input', async () => {
-    const builder = await builderFixture()
-    const legacy = builder.make('heading', {}, { animation: 'zoom-in', animation_trigger: 'hover', animation_duration: 'fast', animation_delay: 2 })
-    const tree = [builder.make('section', {}, {}, [legacy])]
-    builder.load(tree)
-    expect(tree[0].children[0].style.animation_trigger).toBe('hover')
-    expect(builder.nodes.value[0].children[0]).toMatchObject({ style: {}, states: { hover: { style: { animation: 'zoom-in', animation_duration: 'fast', animation_delay: 2 } } } })
-    expect(builder.isDirty.value).toBe(false)
-    legacy.states = { hover: { style: { animation: 'blur' } } }
-    builder.loadRevision(tree)
-    expect(builder.nodes.value[0].children[0].states.hover.style).toEqual({ animation: 'blur' })
-    builder.undo()
-    expect(builder.nodes.value[0].children[0].states.hover.style.animation).toBe('zoom-in')
-    legacy.states.hover.style.animation = 'none'
-    builder.markSaved(tree)
-    expect(builder.nodes.value[0].children[0].states.hover.style).toEqual({ animation: 'none' })
-    expect(builder.nodes.value[0].children[0].style).toEqual({})
-  })
 })
 
 
@@ -1037,5 +1040,97 @@ describe('builder search result cards', () => {
     builder.nodes.value[0].props.collections = ['posts', 'quotes']
     expect(builder.entryContext(text.id).type.field_types).toEqual({ intro: ['Posts', 'Quotes'], author: ['Quotes'] })
     expect(builder.nodeSummary(builder.nodes.value[0])).toBe('Posts, Quotes')
+  })
+})
+
+describe('builder content areas', () => {
+  /** A row component whose column holds a shared text and the content area "Body". */
+  const stored = { id: 'card', root: 'row', nodes: [{ id: 'root', kind: 'row', props: {}, style: {}, children: [
+    { id: 'col', kind: 'column', props: { span: { mobile: 12, tablet: 0, desktop: 0 } }, style: {}, children: [
+      { id: 'shared', kind: 'text', props: { html: 'Shared' }, style: {}, editable: ['html'], children: [] },
+      { id: 'body', kind: 'component_area', props: {}, style: {}, name: 'Body', children: [] },
+    ] },
+  ] }] }
+  const summary = { id: 'card', name: 'Card', root: 'row', areas: [{ id: 'body', name: 'Body' }] }
+
+  async function areaFixture() {
+    const { builder } = await componentFixture({ load: async () => stored })
+    const kinds = builder.spec.value.kinds
+    kinds.section.children.push('component')
+    kinds.component.children = ['area_content']
+    kinds.area_content = { props: { area: { default: '' } }, children: ['text', 'row'] }
+    kinds.component_area = { props: {}, children: [] }
+    kinds.column.children.push('component_area')
+    builder.spec.value.max_row_depth = 3
+    builder.components.value = [summary]
+    return builder
+  }
+
+  it('gives instances content for each area, also after loading older saves, without making them dirty', async () => {
+    const builder = await areaFixture()
+    const instance = builder.make('component', { component: 'card', root: 'row' })
+    builder.load([builder.make('section', {}, {}, [instance])])
+    const content = builder.nodes.value[0].children[0].children[0]
+    expect(content).toMatchObject({ id: `${instance.id}-body`, kind: 'area_content', props: { area: 'body' }, children: [] })
+    expect(builder.isDirty.value).toBe(false)
+    expect(builder.nodeLabel(content)).toBe('Body')
+    expect(builder.instanceAreas(builder.nodes.value[0].children[0])).toEqual([{ area: summary.areas[0], content, removed: false }])
+
+    // Filling the same tree again gives the same ids.
+    builder.load([builder.make('section', {}, {}, [{ ...instance, children: [] }])])
+    expect(builder.nodes.value[0].children[0].children[0].id).toBe(content.id)
+  })
+
+  it('drops elements into an area but keeps the area with its instance', async () => {
+    const builder = await areaFixture()
+    builder.load([builder.make('section', {}, {}, [builder.make('component', { component: 'card', root: 'row' })])])
+    const instance = builder.nodes.value[0].children[0]
+    const content = instance.children[0]
+    expect(builder.isDropContainer(content)).toBe(true)
+    const text = builder.make('text', { html: 'Own' })
+    expect(builder.insert(text, content.id)).toBe(true)
+    expect(findNode(builder.nodes.value, content.id).children[0].id).toBe(text.id)
+
+    expect(builder.isLockedRoot(content.id)).toBe(true)
+    builder.remove(content.id)
+    builder.duplicate(content.id)
+    builder.renameNode(content.id, 'Renamed')
+    builder.drag.value = { source: 'move', id: content.id }
+    expect(builder.dropAt(builder.nodes.value[0].id, 'inside')).toBe(false)
+    expect(builder.nodes.value[0].children[0].children).toHaveLength(1)
+    expect(builder.nodes.value[0].children[0].children[0].name).toBeUndefined()
+
+    // A component's own areas never go into an instance's area content, even into a column there.
+    const row = builder.make('row', {}, {}, [builder.make('column')])
+    expect(builder.insert(row, content.id)).toBe(true)
+    expect(findNode(builder.nodes.value, content.id).children[1].id).toBe(row.id)
+    expect(builder.insert(builder.make('component_area'), row.children[0].id)).toBe(false)
+  })
+
+  it('keeps content of removed areas deletable, and detaches with area content in place', async () => {
+    const builder = await areaFixture()
+    builder.load([builder.make('section', {}, {}, [builder.make('component', { component: 'card', root: 'row' })])])
+    const instance = builder.nodes.value[0].children[0]
+    const text = builder.make('text', { html: 'Own' })
+    builder.insert(text, instance.children[0].id)
+    builder.markSaved(builder.nodes.value)
+
+    builder.components.value = [{ ...summary, areas: [] }]
+    const content = builder.nodes.value[0].children[0].children[0]
+    expect(builder.isRemovedArea(content)).toBe(true)
+    expect(builder.nodeSummary(content)).toBe('site.area.removed')
+    expect(builder.instanceAreas(builder.nodes.value[0].children[0])).toEqual([{ area: null, content, removed: true }])
+    builder.remove(content.id)
+    expect(builder.nodes.value[0].children[0].children).toEqual([])
+    builder.undo()
+
+    builder.components.value = [summary]
+    expect(await builder.detach(instance.id)).toBe(true)
+    const copy = builder.nodes.value[0].children[0]
+    expect(copy).toMatchObject({ id: instance.id, kind: 'row' })
+    expect(copy.children[0].children.map((node) => node.kind)).toEqual(['text', 'text'])
+    expect(copy.children[0].children[1].id).toBe(text.id)
+    expect(copy.children[0].children[0].id).not.toBe('shared')
+    expect(copy.children[0].children[0].editable).toBeUndefined()
   })
 })

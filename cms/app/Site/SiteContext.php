@@ -226,7 +226,7 @@ final class SiteContext
         if ($value === LayoutSchema::FRAME_NONE) {
             return null;
         }
-        if ($value !== LayoutSchema::FRAME_DEFAULT && SiteRepository::fitsFrame($this->component($value), $type)) {
+        if ($value !== LayoutSchema::FRAME_DEFAULT && SiteRepository::fitsFrame($this->component($value))) {
             $node = LayoutSchema::node(LayoutSchema::COMPONENT, ['component' => $value, 'root' => 'section']);
             $node['id'] = 'frame-' . $region;
 

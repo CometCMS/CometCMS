@@ -162,7 +162,7 @@ final class SiteService
             }
 
             if ($route['index_enabled'] && $route['index_path'] !== '' && $route['index_path'] === $path) {
-                return $this->html($renderer->indexPage($type, $page));
+                return $this->html($renderer->indexPage($type, $page), $renderer->status);
             }
         }
 
@@ -179,7 +179,7 @@ final class SiteService
             if (preg_match($regex, $path, $match)) {
                 $entry = $hierarchical ? $this->ctx->findEntryByPath($name, $match[1]) : $this->ctx->findEntry($name, $match[1]);
                 if ($entry !== null && ($hierarchical || ($entry['slug'] ?? '') === $match[1])) {
-                    return $this->html($renderer->entryPage($type, $entry, $page));
+                    return $this->html($renderer->entryPage($type, $entry, $page), $renderer->status);
                 }
             }
         }
@@ -246,10 +246,10 @@ final class SiteService
         if ($home['entry'] !== '') {
             $entry = $this->ctx->findEntry($home['type'], $home['entry']);
 
-            return $entry !== null ? $this->html($renderer->entryPage($type, $entry, $page)) : ($this->ctx->locale === $this->ctx->defaultLocale() ? $this->html($renderer->autoHome()) : $this->notFound($renderer, '/'));
+            return $entry !== null ? $this->html($renderer->entryPage($type, $entry, $page), $renderer->status) : ($this->ctx->locale === $this->ctx->defaultLocale() ? $this->html($renderer->autoHome()) : $this->notFound($renderer, '/'));
         }
 
-        return $this->ctx->hasListPage($home['type']) ? $this->html($renderer->indexPage($type, $page)) : $this->html($renderer->autoHome());
+        return $this->ctx->hasListPage($home['type']) ? $this->html($renderer->indexPage($type, $page), $renderer->status) : $this->html($renderer->autoHome());
     }
 
     /** @return array{0: string, 1: string} locale ('' for the default) and the remaining path */
@@ -267,11 +267,14 @@ final class SiteService
 
     private function robots(): string
     {
+        $rules = "User-agent: *\nAllow: /\nDisallow: " . $this->ctx->basePath . "/admin\n";
+
+        // Hidden sites stay crawlable, so search engines can read the pages' noindex and drop them.
         if (!empty($this->ctx->settings()['noindex'])) {
-            return "User-agent: *\nDisallow: /\n";
+            return $rules;
         }
 
-        return "User-agent: *\nAllow: /\nDisallow: " . $this->ctx->basePath . "/admin\n\nSitemap: " . $this->ctx->absolute($this->ctx->basePath . '/sitemap.xml') . "\n";
+        return $rules . "\nSitemap: " . $this->ctx->absolute($this->ctx->basePath . '/sitemap.xml') . "\n";
     }
 
     private function sitemap(): string
@@ -322,9 +325,9 @@ final class SiteService
         return $this->response(404, $renderer->notFound($this->ctx->path($path)), 'text/html; charset=utf-8');
     }
 
-    private function html(string $body): array
+    private function html(string $body, int $status = 200): array
     {
-        return $this->response(200, $body, 'text/html; charset=utf-8');
+        return $this->response($status, $body, 'text/html; charset=utf-8');
     }
 
     private function response(int $status, string $body, string $contentType): array

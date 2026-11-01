@@ -58,10 +58,6 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
-    path: '/api-tokens',
-    redirect: '/connect/access-tokens',
-  },
-  {
     path: '/roles',
     component: () => import('../views/RolesView.vue'),
     meta: { requiresAuth: true },
@@ -70,10 +66,6 @@ const routes = [
     path: '/backups',
     component: () => import('../views/BackupRestoreView.vue'),
     meta: { requiresAuth: true },
-  },
-  {
-    path: '/webhooks',
-    redirect: '/connect/webhooks',
   },
   {
     path: '/connect/:tab(access-tokens|api|mcp|webhooks)?',
@@ -91,31 +83,9 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
-    path: '/api-explorer',
-    redirect: '/connect/api',
-  },
-  {
-    path: '/page-builder/forms',
-    redirect: '/content-types',
-  },
-  // Site settings and SEO moved to the Website page.
-  {
-    path: '/page-builder/overview',
-    redirect: (to) => ({ path: '/website/general', query: to.query, hash: to.hash }),
-  },
-  {
-    path: '/page-builder/seo',
-    redirect: '/website/seo',
-  },
-  {
     path: '/page-builder/:tab(design|templates|menus|fonts|components)?',
     component: () => import('../views/PageBuilderView.vue'),
     meta: { requiresAuth: true },
-  },
-  // Cards are designed in the collection element now; the list page shows them.
-  {
-    path: '/page-builder/builder/layout/:name/card',
-    redirect: (to) => ({ path: `/page-builder/builder/layout/${to.params.name}/index`, query: to.query }),
   },
   {
     // Full-screen editor for a content type layout, the header/footer, a component,
@@ -129,28 +99,6 @@ const routes = [
     path: '/website/:tab(general|seo|forms|workspaces)?',
     component: () => import('../views/WebsiteView.vue'),
     meta: { requiresAuth: true },
-  },
-  // Old /website URLs (bookmarks, links in notes).
-  {
-    path: '/website/pages',
-    redirect: '/content-types',
-  },
-  {
-    // The design settings moved into the builder.
-    path: '/website/theme',
-    redirect: '/page-builder/builder/region/header?settings=design',
-  },
-  {
-    path: '/website/header-footer',
-    redirect: '/page-builder/builder/region/header',
-  },
-  {
-    path: '/website/:rest(.*)*',
-    redirect: (to) => ({ path: `/page-builder/${[].concat(to.params.rest ?? []).join('/')}`.replace(/\/$/, ''), query: to.query }),
-  },
-  {
-    path: '/workspaces',
-    redirect: '/website/workspaces',
   },
   {
     // Unknown admin URLs (typos, removed pages, stale bookmarks).

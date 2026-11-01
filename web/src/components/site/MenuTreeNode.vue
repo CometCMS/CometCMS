@@ -22,7 +22,7 @@
         <Icon icon="mdi:chevron-right" class="h-4 w-4 transition-transform" :class="{ 'rotate-90': expanded }" />
       </button>
       <span v-else class="w-6 shrink-0"></span>
-      <Icon :icon="link.type === 'none' ? 'mdi:folder-outline' : 'mdi:link'" class="h-4 w-4 shrink-0 text-slate-400" />
+      <Icon :icon="item.icon || (link.type === 'none' ? 'mdi:folder-outline' : 'mdi:link')" class="h-4 w-4 shrink-0" :class="item.icon ? 'text-slate-600' : 'text-slate-400'" />
       <div class="min-w-0 flex-1 px-1">
         <div class="flex items-center gap-2">
           <span class="truncate text-sm font-medium text-slate-800">{{ label || t('site.menus.untitled') }}</span>
@@ -64,6 +64,8 @@ import { Icon } from '@iconify/vue'
 import MenuLinkSummary from './MenuLinkSummary.vue'
 import { itemCount, menuDrop, menuMoveTarget } from '../../composables/menuTree.js'
 import { linkIssue } from '../../composables/siteLinks.js'
+// Registers the site's local icons, which items can show in their row.
+import '../../composables/siteIcons.js'
 import { resolveLocalized } from '../../composables/localizedValues.js'
 import { useI18n } from '../../i18n/index.js'
 const props = defineProps({

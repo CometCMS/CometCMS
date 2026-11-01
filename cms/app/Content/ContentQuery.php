@@ -22,9 +22,10 @@ final class ContentQuery
                 $searchFields[] = $name;
             }
         }
+        $searchFields = array_unique($searchFields);
 
         return array_values(array_filter($entries, static function (array $entry) use ($query, $searchFields): bool {
-            foreach (array_unique($searchFields) as $field) {
+            foreach ($searchFields as $field) {
                 if (str_contains(strtolower((string) self::valueAt($entry, $field)), $query)) {
                     return true;
                 }
@@ -36,11 +37,13 @@ final class ContentQuery
 
     public static function applyFilters(array $entries, array $filters): array
     {
-        foreach ($filters as $field => $condition) {
-            $entries = array_values(array_filter($entries, static fn(array $entry): bool => self::matchesFilter($entry, (string) $field, $condition)));
-        }
-
-        return $entries;
+        if ($filters === []) return $entries;
+        return array_values(array_filter($entries, static function (array $entry) use ($filters): bool {
+            foreach ($filters as $field => $condition) {
+                if (!self::matchesFilter($entry, (string) $field, $condition)) return false;
+            }
+            return true;
+        }));
     }
 
     public static function filtersFromParams(ContentTypeRepository $types, array $params, string $collection): array
@@ -83,46 +86,43 @@ final class ContentQuery
 
     public static function compareSortValues(mixed $a, mixed $b): int
     {
-        if ($a === $b) {
+        return self::compareSortKeys(self::sortKey($a), self::sortKey($b));
+    }
+
+    public static function compareSortKeys(array $a, array $b): int
+    {
+        if ($a['value'] === $b['value']) {
             return 0;
         }
 
-        if ($a === null || $a === '') {
+        if ($a['value'] === null || $a['value'] === '') {
             return -1;
         }
 
-        if ($b === null || $b === '') {
+        if ($b['value'] === null || $b['value'] === '') {
             return 1;
         }
 
-        if (is_numeric($a) && is_numeric($b)) {
-            return (float) $a <=> (float) $b;
+        if ($a['numeric'] && $b['numeric']) {
+            return (float) $a['value'] <=> (float) $b['value'];
+        }
+        if ($a['time'] !== null && $b['time'] !== null) {
+            return $a['time'] <=> $b['time'];
         }
 
-        $aTime = self::timestampValue($a);
-        $bTime = self::timestampValue($b);
+        return strcasecmp($a['text'], $b['text']);
+    }
 
-        if ($aTime !== null && $bTime !== null) {
-            return $aTime <=> $bTime;
-        }
-
-        return strcasecmp(self::filterValueToString($a), self::filterValueToString($b));
+    /** Parse date sort values once per entry rather than on every comparison. */
+    public static function sortKey(mixed $value): array
+    {
+        return ['value' => $value, 'numeric' => is_numeric($value), 'time' => self::timestampValue($value), 'text' => self::filterValueToString($value)];
     }
 
     public static function valueAt(array $entry, string $field): mixed
     {
         if ($field === 'id') {
-            $uid = trim((string) ($entry['uid'] ?? ''));
-
-            if ($uid !== '') {
-                return $uid;
-            }
-
-            return substr(hash('sha256', implode('|', [
-                (string) ($entry['collection'] ?? ''),
-                (string) ($entry['created_at'] ?? ''),
-                (string) ($entry['id'] ?? ''),
-            ])), 0, 12);
+            return trim((string) ($entry['uid'] ?? ''));
         }
 
         return $entry[$field] ?? null;

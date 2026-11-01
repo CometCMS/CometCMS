@@ -210,7 +210,7 @@ final class PreviewAdminBar
             $component = !in_array($value, [LayoutSchema::FRAME_DEFAULT, LayoutSchema::FRAME_NONE], true) ? $this->ctx->component($value) : null;
             [$label, $url] = match (true) {
                 $value === LayoutSchema::FRAME_NONE => [$text[$part === 'header' ? 'noHeader' : 'noFooter'], null],
-                $component !== null && SiteRepository::fitsFrame($component, $type) => [(string) $component['name'], $this->ctx->adminUrl('/page-builder/builder/component/' . rawurlencode($value))],
+                $component !== null && SiteRepository::fitsFrame($component) => [(string) $component['name'], $this->ctx->adminUrl('/page-builder/builder/component/' . rawurlencode($value))],
                 default => [$text[$part === 'header' ? 'siteHeader' : 'siteFooter'], $this->ctx->adminUrl('/page-builder/builder/region/' . $part)],
             };
             $rows .= $row($text[$part], $label, $url);

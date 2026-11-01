@@ -48,7 +48,7 @@ async function canvas(props = {}) {
       append(child) { this.children.push(child) },
     }),
     querySelectorAll: () => [],
-    getSelection: () => ({ toString: () => props.selection ?? '' }),
+    getSelection: () => ({ toString: () => props.selection ?? '', selectAllChildren() {}, collapseToEnd() {} }),
     querySelector: (selector) => Object.entries(parts).find(([name, value]) => selector === `.c-${name}:not([data-drop-root])` && !value.editable)?.[1] ?? null,
   }
   preview.document = doc
@@ -295,5 +295,77 @@ describe('builder smart tag double-click', () => {
   it('leaves text without tags of the previewed entry alone', async () => {
     const { editField } = await doubleClick(ref('title', 'site'))
     expect(editField).not.toHaveBeenCalled()
+  })
+})
+
+describe('builder table cell editing', () => {
+  /** A rendered table: cells that edit like the canvas expects, inside the table node. */
+  function table(rows) {
+    const node = { dataset: { node: 'table1', kind: 'table' }, setAttribute() {}, parentElement: null }
+    const element = { querySelector: (selector) => cells.flat().find((cell) => selector === `[data-cell="${cell.dataset.cell}"]`) ?? null }
+    const cells = rows.map((row, r) => row.map((html, c) => {
+      const listeners = {}
+      const cell = {
+        dataset: { cell: `${r}:${c}` }, innerHTML: html, isConnected: true, listeners,
+        addEventListener(name, listener, { signal } = {}) { listeners[name] = listener; signal?.addEventListener('abort', () => delete listeners[name]) },
+        removeAttribute() {}, focus() {}, blur() {},
+        contains: (target) => target === cell,
+        closest: (selector) => ({ '[data-cell]': cell, '[data-node]': node, table: element })[selector] ?? null,
+      }
+      return cell
+    }))
+    node.closest = (selector) => (selector === '[data-node]' ? node : null)
+    return { node, cells }
+  }
+
+  async function editing(rows) {
+    const result = await canvas()
+    result.builder.spec.value = { kinds: { table: { props: { rows: { type: 'table_rows', localized: true } } } } }
+    result.builder.nodes.value = [{ id: 'table1', kind: 'table', props: { rows }, style: {}, children: [] }]
+    const { cells } = table(rows)
+    const key = (cell, key, extra = {}) => cell.listeners.keydown?.({ key, preventDefault: vi.fn(), stopPropagation: vi.fn(), ...extra })
+    const open = (cell) => result.doc.dispatch('dblclick', { target: cell, preventDefault: vi.fn() })
+    const rowsNow = () => result.builder.valueFor(result.builder.nodes.value[0], 'props', 'rows')
+    return { ...result, cells, key, open, rowsNow }
+  }
+
+  it('types through cells with Tab and saves them all once with Enter', async () => {
+    const { cells, key, open, rowsNow, builder } = await editing([['Plan', 'Price'], ['Basic', '9']])
+    open(cells[0][1])
+    expect(builder.selectedCell.value).toEqual({ id: 'table1', row: 0, column: 1 })
+    cells[0][1].innerHTML = 'Price<br>'
+    key(cells[0][1], 'Tab')
+    // Nothing is saved while moving between cells.
+    expect(rowsNow()[0][1]).toBe('Price')
+    expect(builder.selectedCell.value).toMatchObject({ row: 1, column: 0 })
+    cells[1][0].innerHTML = '<strong>Basic</strong>'
+    key(cells[1][0], 'Tab', { shiftKey: true })
+    key(cells[0][1], 'Tab')
+    cells[1][0].innerHTML = 'Starter'
+    key(cells[1][0], 'Enter')
+    expect(rowsNow()).toEqual([['Plan', 'Price'], ['Starter', '9']])
+  })
+
+  it('undoes only the edited cell with Escape and leaves bound cells to the inspector', async () => {
+    const binding = { type: 'reference', source: 'site', path: ['title'], filters: [] }
+    const { cells, key, open, rowsNow } = await editing([['a', 'b'], [binding, 'd']])
+    open(cells[0][0])
+    cells[0][0].innerHTML = 'A'
+    key(cells[0][0], 'Tab')
+    cells[0][1].innerHTML = 'changed'
+    key(cells[0][1], 'Escape')
+    expect(cells[0][1].innerHTML).toBe('b')
+    expect(rowsNow()).toEqual([['A', 'b'], [binding, 'd']])
+    open(cells[1][0])
+    expect(cells[1][0].listeners.keydown).toBeUndefined()
+  })
+
+  it('fills the table from the edited cell when cells are pasted from a spreadsheet', async () => {
+    const { cells, open, rowsNow } = await editing([['Plan', 'Price'], ['', '']])
+    open(cells[1][0])
+    const paste = { preventDefault: vi.fn(), clipboardData: { getData: () => 'Basic\t9 €\nPro\t19 €\t<yearly>' } }
+    cells[1][0].listeners.paste(paste)
+    expect(paste.preventDefault).toHaveBeenCalled()
+    expect(rowsNow()).toEqual([['Plan', 'Price', ''], ['Basic', '9 €', ''], ['Pro', '19 €', '&lt;yearly&gt;']])
   })
 })

@@ -9,7 +9,7 @@ use CometCMS\Site\SiteRepository;
 
 function comet_modal_test_template(string $title = 'Shared modal frame', array $props = []): array
 {
-    return [LayoutSchema::node(LayoutSchema::MODAL, $props + ['size' => 'md', 'placement' => 'right'], ['background' => 'surface', 'radius' => 'lg', 'padding_y' => 'md'], [
+    return [LayoutSchema::node(LayoutSchema::MODAL, $props + ['size' => 'md', 'placement' => 'right'], ['background' => 'surface', 'radius' => 'lg', 'padding_top' => 'md', 'padding_bottom' => 'md'], [
         LayoutSchema::node('row', [], [], [LayoutSchema::node('column', [], [], [
             LayoutSchema::node('heading', ['text' => $title]),
             LayoutSchema::node('modal_title', ['level' => 'h3']),

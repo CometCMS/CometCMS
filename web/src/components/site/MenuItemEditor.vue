@@ -2,6 +2,18 @@
   <div class="space-y-5">
     <LocalizedInput :id="`menu-item-${item.id}`" ref="labelInput" v-model="item.label" :label="t('site.menus.displayText')" maxlength="120" />
     <div>
+      <label :for="`menu-item-icon-${item.id}`" class="form-label">{{ t('site.menus.icon') }}</label>
+      <div class="flex items-center gap-1.5">
+        <IconPickerGrid :id="`menu-item-icon-${item.id}`" class="min-w-0 flex-1" :model-value="item.icon || ''" :icons="SITE_ICONS"
+          :allow-custom="false" :empty-label="t('site.option.none')" @update:model-value="item.icon = $event" />
+        <button v-if="item.icon" type="button" class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+          :title="t('site.builder.removeIcon')" :aria-label="t('site.builder.removeIcon')" @click="item.icon = ''">
+          <Icon icon="mdi:close" class="h-4 w-4" />
+        </button>
+      </div>
+      <p class="mt-1 text-xs text-slate-500">{{ t('site.menus.iconHelp') }}</p>
+    </div>
+    <div>
       <h3 class="form-label">{{ t('site.menus.destination') }}</h3>
       <LocalizedInput v-model="item.link">
         <template #default="{ value, update }">
@@ -19,10 +31,13 @@
 </template>
 <script setup>
 import { ref } from 'vue'
+import { Icon } from '@iconify/vue'
+import IconPickerGrid from '../IconPickerGrid.vue'
 import LocalizedInput from '../LocalizedInput.vue'
 import MenuLinkSummary from './MenuLinkSummary.vue'
 import LinkOptions from './LinkOptions.vue'
 import MenuDestinationDialog from './MenuDestinationDialog.vue'
+import { SITE_ICONS } from '../../composables/siteIcons.js'
 import { linkIssue } from '../../composables/siteLinks.js'
 import { useI18n } from '../../i18n/index.js'
 defineProps({ item: { type: Object, required: true }, types: { type: Array, default: () => [] }, settings: { type: Object, required: true } })

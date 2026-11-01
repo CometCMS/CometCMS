@@ -24,7 +24,8 @@ use CometCMS\Localization\LanguageSettings;
  * builder reads the same schema (see spec()) to draw its inspector.
  *
  * Reusable components are stored separately (see SiteRepository); a layout
- * only holds {kind: "component", props: {component, root, span}} instances.
+ * only holds {kind: "component", props: {component, root, span}} instances,
+ * whose children are what the instance put into the component's content areas.
  */
 final class LayoutSchema
 {
@@ -62,6 +63,22 @@ final class LayoutSchema
     public const PAGE_CONTENT = 'page_content';
 
     /**
+     * A content area of a component: where each placement adds elements of
+     * its own. It sits in one of the component's columns or tabs, outside
+     * cards, item templates and the areas of components inside it, and has
+     * no content of its own. Its name labels it for editors.
+     */
+    public const COMPONENT_AREA = 'component_area';
+
+    /**
+     * What one instance put into one content area of its component
+     * (props.area: the area's node id). An instance's children are these,
+     * one per area; content for an area the component no longer has is
+     * kept but not shown.
+     */
+    public const AREA_CONTENT = 'area_content';
+
+    /**
      * The dialog of links that open in a modal, and the region document of
      * the same name that designs it. The template is one modal node: the
      * dialog panel itself, which holds elements and rows like a column.
@@ -93,6 +110,7 @@ final class LayoutSchema
         'gallery',
         'button',
         'accordion',
+        'table',
         'tabs',
         'icon',
         'spacer',
@@ -107,7 +125,7 @@ final class LayoutSchema
     ];
 
     /** Elements allowed inside a repeater field's item template. */
-    public const ITEM_ELEMENTS = ['field', 'heading', 'text', 'html', 'image', 'video', 'gallery', 'button', 'accordion', 'icon', 'spacer', 'divider'];
+    public const ITEM_ELEMENTS = ['field', 'heading', 'text', 'html', 'image', 'video', 'gallery', 'button', 'accordion', 'table', 'icon', 'spacer', 'divider'];
 
     public const SYSTEM_FIELDS = ['title', 'published_at', 'created_at', 'updated_at'];
 
@@ -135,6 +153,10 @@ final class LayoutSchema
 
     public const MAX_NODE_NAME_LENGTH = 120;
 
+    public const TABLE_MAX_ROWS = 300;
+    public const TABLE_MAX_COLUMNS = 30;
+    public const TABLE_CELL_TAGS = ['a', 'strong', 'b', 'em', 'i', 'u', 's', 'code', 'mark', 'sub', 'sup', 'br', 'span'];
+
     /** How deep rows may nest inside columns (a section's own rows count as 0). */
     public const MAX_ROW_DEPTH = 3;
 
@@ -146,7 +168,7 @@ final class LayoutSchema
 
     private const SPACE = ['none', 'xs', 'sm', 'md', 'lg', 'xl', '2xl'];
 
-    private const SPACING_KEYS = ['padding_y', 'padding_x', 'padding_top', 'padding_right', 'padding_bottom', 'padding_left', 'margin_top', 'margin_right', 'margin_bottom', 'margin_left'];
+    private const SPACING_KEYS = ['padding_top', 'padding_right', 'padding_bottom', 'padding_left', 'margin_top', 'margin_right', 'margin_bottom', 'margin_left'];
 
     private const LINK_TYPES = ['none', 'url', 'current', 'entry', 'index', 'home', 'anchor'];
 
@@ -167,7 +189,7 @@ final class LayoutSchema
 
     /** Props a tablet or mobile override may change, per kind. */
     public const RESPONSIVE_PROPS = [
-        'section' => ['vertical_align', 'divider_top_height', 'divider_bottom_height'],
+        'section' => ['vertical_align', 'divider_top_height', 'divider_top_width', 'divider_bottom_height', 'divider_bottom_width'],
         'row' => ['gap', 'align'],
         'column' => ['vertical_align', 'spacing', 'content_justify', 'content_align'],
         'button' => ['size', 'full_width'],
@@ -189,7 +211,7 @@ final class LayoutSchema
         'heading' => ['text', 'link'], 'text' => ['html'], 'html' => ['html'],
         'video' => ['media', 'poster', 'video_url', 'title'],
         'image' => ['media', 'link', 'alt', 'caption'], 'gallery' => ['media', 'link'],
-        'button' => ['label', 'link'], 'accordion' => ['items'],
+        'button' => ['label', 'link'], 'accordion' => ['items'], 'table' => ['rows', 'caption'],
         'tabs' => ['title'], 'tab' => ['title'], 'icon' => ['label', 'link'],
         'collection' => ['empty_text'], 'field' => ['prefix', 'suffix', 'true_text', 'false_text', 'link'],
         'search' => ['placeholder', 'no_results_text'],
@@ -201,8 +223,6 @@ final class LayoutSchema
     public static function styleSpec(): array
     {
         return [
-            'padding_y' => ['type' => 'enum', 'options' => ['', ...self::SPACE], 'default' => ''],
-            'padding_x' => ['type' => 'enum', 'options' => ['', 'none', 'xs', 'sm', 'md', 'lg', 'xl'], 'default' => ''],
             'margin_bottom' => ['type' => 'enum', 'options' => ['', ...self::SPACE], 'default' => ''],
             'padding_top' => ['type' => 'enum', 'options' => ['', ...self::SPACE], 'default' => ''],
             'padding_right' => ['type' => 'enum', 'options' => ['', ...self::SPACE], 'default' => ''],
@@ -255,6 +275,8 @@ final class LayoutSchema
             'z_index' => ['type' => 'enum', 'options' => ['', 'behind', '1', '2', '3', '4', '5'], 'default' => ''],
             'opacity' => ['type' => 'enum', 'options' => ['', '0', '10', '25', '50', '75', '90'], 'default' => ''],
             'hide_on' => ['type' => 'set', 'options' => ['mobile', 'tablet', 'desktop'], 'default' => []],
+            // Show only when entry fields match; see ElementConditions.
+            'visible_if' => ['type' => 'conditions', 'default' => [], 'description' => 'Show the element only when conditions on bound fields hold: {match: "all"|"any", conditions: [{field: <reference>, op: "equals"|"not_equals"|"contains"|"empty"|"not_empty", value: <scalar>}]}. A field that cannot be read counts as empty. Elements whose conditions fail are left out of the page.'],
             'class' => ['type' => 'class', 'default' => ''],
             'anchor' => ['type' => 'key', 'default' => ''],
         ];
@@ -264,13 +286,13 @@ final class LayoutSchema
     public static function styleKeys(string $kind): array
     {
         return match ($kind) {
-            'section' => [...self::SPACING_KEYS, 'background', 'background_gradient', ...self::BACKGROUND_IMAGE_KEYS, 'text_color', 'link_color', 'align', ...self::BORDER_KEYS, 'radius', 'shadow', ...self::ANIMATION_KEYS, 'z_index', 'opacity', 'class', 'anchor', 'hide_on'],
-            'row' => [...self::SPACING_KEYS, 'background', 'background_gradient', ...self::BACKGROUND_IMAGE_KEYS, 'text_color', 'link_color', 'radius', 'shadow', ...self::BORDER_KEYS, ...self::ANIMATION_KEYS, 'z_index', 'opacity', 'class', 'anchor', 'hide_on'],
-            self::COMPONENT, self::PAGE_CONTENT => [],
+            'section' => [...self::SPACING_KEYS, 'background', 'background_gradient', ...self::BACKGROUND_IMAGE_KEYS, 'text_color', 'link_color', 'align', ...self::BORDER_KEYS, 'radius', 'shadow', ...self::ANIMATION_KEYS, 'z_index', 'opacity', 'class', 'anchor', 'hide_on', 'visible_if'],
+            'row' => [...self::SPACING_KEYS, 'background', 'background_gradient', ...self::BACKGROUND_IMAGE_KEYS, 'text_color', 'link_color', 'radius', 'shadow', ...self::BORDER_KEYS, ...self::ANIMATION_KEYS, 'z_index', 'opacity', 'class', 'anchor', 'hide_on', 'visible_if'],
+            self::COMPONENT, self::PAGE_CONTENT, self::COMPONENT_AREA, self::AREA_CONTENT => [],
             self::MODAL => [...self::SPACING_KEYS, 'background', 'background_gradient', ...self::BACKGROUND_IMAGE_KEYS, 'text_color', 'link_color', 'align', ...self::BORDER_KEYS, 'radius', 'shadow', 'class'],
             self::SITE_CONTENT => [...self::SPACING_KEYS, 'background', ...self::BORDER_KEYS, 'radius', 'shadow', 'class'],
-            'column' => [...self::SPACING_KEYS, 'background', 'background_gradient', ...self::BACKGROUND_IMAGE_KEYS, 'text_color', 'link_color', 'align', 'radius', 'shadow', ...self::BORDER_KEYS, ...self::POSITION_KEYS, ...self::ANIMATION_KEYS, 'z_index', 'opacity', 'class', 'hide_on'],
-            default => [...self::SPACING_KEYS, 'background', 'background_gradient', ...self::BACKGROUND_IMAGE_KEYS, 'text_color', ...($kind === 'button' ? [] : ['link_color']), 'align', 'font_size', 'font_weight', 'font_family', ...(in_array($kind, ['text', 'heading'], true) ? ['text_gradient', 'text_shadow'] : []), 'radius', 'shadow', ...self::BORDER_KEYS, 'max_width', ...self::POSITION_KEYS, 'z_index', 'opacity', ...self::ANIMATION_KEYS, 'class', 'anchor', 'hide_on'],
+            'column' => [...self::SPACING_KEYS, 'background', 'background_gradient', ...self::BACKGROUND_IMAGE_KEYS, 'text_color', 'link_color', 'align', 'radius', 'shadow', ...self::BORDER_KEYS, ...self::POSITION_KEYS, ...self::ANIMATION_KEYS, 'z_index', 'opacity', 'class', 'hide_on', 'visible_if'],
+            default => [...self::SPACING_KEYS, 'background', 'background_gradient', ...self::BACKGROUND_IMAGE_KEYS, 'text_color', ...($kind === 'button' ? [] : ['link_color']), 'align', 'font_size', 'font_weight', 'font_family', ...(in_array($kind, ['text', 'heading'], true) ? ['text_gradient', 'text_shadow'] : []), 'radius', 'shadow', ...self::BORDER_KEYS, 'max_width', ...self::POSITION_KEYS, 'z_index', 'opacity', ...self::ANIMATION_KEYS, 'class', 'anchor', 'hide_on', 'visible_if'],
         };
     }
 
@@ -324,6 +346,9 @@ final class LayoutSchema
             ],
             self::PAGE_CONTENT => [
                 'field' => ['type' => 'page_field', 'default' => ''],
+            ],
+            self::AREA_CONTENT => [
+                'area' => ['type' => 'key', 'default' => ''],
             ],
             self::MODAL => [
                 'size' => ['type' => 'enum', 'options' => ['sm', 'md', 'lg', 'xl', 'full'], 'default' => 'lg'],
@@ -438,6 +463,18 @@ final class LayoutSchema
                 ]]],
                 'single_open' => ['type' => 'bool', 'default' => false],
             ],
+            'table' => [
+                'rows' => ['type' => 'table_rows', 'default' => [['Name', 'Value'], ['Item', 'Detail'], ['Item', 'Detail']],
+                    'description' => 'Cells by row: [["Plan","Price"],["Basic","9 €"]]. Every row has the same number of cells (up to ' . self::TABLE_MAX_COLUMNS . ' columns, ' . self::TABLE_MAX_ROWS . ' rows). A cell is inline HTML (strong, em, a, br, code …) or a binding.'],
+                'header_row' => ['type' => 'bool', 'default' => true],
+                'header_column' => ['type' => 'bool', 'default' => false],
+                'caption' => ['type' => 'string', 'max' => 300, 'default' => ''],
+                'variant' => ['type' => 'enum', 'options' => ['lines', 'grid', 'minimal'], 'default' => 'lines'],
+                'striped' => ['type' => 'bool', 'default' => false],
+                'compact' => ['type' => 'bool', 'default' => false],
+                // Small screens scroll a wide table sideways, or show each row as a card labelled by the header row.
+                'mobile' => ['type' => 'enum', 'options' => ['scroll', 'stack'], 'default' => 'scroll'],
+            ],
             'tabs' => [
                 'title' => ['type' => 'string', 'max' => 300, 'default' => 'Tabs'],
                 'initial_tab' => ['type' => 'int', 'min' => 1, 'max' => self::MAX_NODES, 'default' => 1],
@@ -539,13 +576,14 @@ final class LayoutSchema
         };
     }
 
-    /** A section's divider along one edge; flip mirrors it sideways, invert fills the other side of its line. */
+    /** A section's divider along one edge; width stretches or squashes it sideways, flip mirrors it, invert fills the other side of its line. */
     private static function dividerProps(string $edge): array
     {
         return [
             'divider_' . $edge => ['type' => 'enum', 'options' => Shapes::dividers(), 'default' => 'none', 'picker' => 'divider', 'edge' => $edge],
             'divider_' . $edge . '_color' => ['type' => 'color', 'options' => Theme::COLOR_KEYS, 'default' => 'background'],
             'divider_' . $edge . '_height' => ['type' => 'int', 'min' => 10, 'max' => 500, 'slider_max' => 300, 'unit' => 'px', 'default' => 80],
+            'divider_' . $edge . '_width' => ['type' => 'int', 'min' => 20, 'max' => 400, 'unit' => '%', 'default' => 100],
             'divider_' . $edge . '_flip' => ['type' => 'bool', 'default' => false],
             'divider_' . $edge . '_invert' => ['type' => 'bool', 'default' => false],
         ];
@@ -565,6 +603,9 @@ final class LayoutSchema
             'collection' => ['column'],
             self::PAGE_CONTENT => ['section'],
             self::MODAL => [...self::ELEMENTS, 'row'],
+            // An instance holds what it put into each content area, which holds what a column does.
+            self::COMPONENT => [self::AREA_CONTENT],
+            self::AREA_CONTENT => [...self::ELEMENTS, 'row'],
             // The top of a component's own tree holds just its root kind; the modal template's is its panel.
             'region:' . self::MODAL => [self::MODAL],
             'component:section' => ['section'],
@@ -577,13 +618,14 @@ final class LayoutSchema
     /**
      * Everything the admin builder needs to draw palettes and inspectors.
      * With $pageContent (detail layouts) the page content place is offered;
-     * $modal describes the modal template, a single panel with its own elements.
+     * $modal describes the modal template, a single panel with its own elements;
+     * $component a component's tree, which offers content areas.
      */
-    public static function spec(bool $pageContent = false, bool $modal = false): array
+    public static function spec(bool $pageContent = false, bool $modal = false, bool $component = false): array
     {
         $kinds = [];
 
-        foreach ([...self::STRUCTURE, ...self::ELEMENTS, 'tab', self::COMPONENT, self::PAGE_CONTENT, self::MODAL, ...self::MODAL_ELEMENTS] as $kind) {
+        foreach ([...self::STRUCTURE, ...self::ELEMENTS, 'tab', self::COMPONENT, self::PAGE_CONTENT, self::COMPONENT_AREA, self::AREA_CONTENT, self::MODAL, ...self::MODAL_ELEMENTS] as $kind) {
             $props = self::propSpec($kind);
             foreach (self::LOCALIZED_PROPS[$kind] ?? [] as $key) $props[$key]['localized'] = true;
             foreach (SmartValue::PROPERTIES[$kind] ?? [] as $key => $binding) {
@@ -592,7 +634,7 @@ final class LayoutSchema
             $kinds[$kind] = [
                 'props' => $props,
                 'style' => self::styleKeys($kind),
-                'children' => self::childrenFor($kind, $pageContent, $modal),
+                'children' => self::childrenFor($kind, $pageContent, $modal, $component),
                 'responsive' => ['props' => self::RESPONSIVE_PROPS[$kind] ?? [], 'style' => array_values(array_intersect(self::RESPONSIVE_STYLE, self::styleKeys($kind)))],
                 'states' => [
                     'props' => self::STATE_PROPS[$kind] ?? [],
@@ -613,7 +655,7 @@ final class LayoutSchema
             'kinds' => $kinds,
             'root' => $modal ? self::allowedChildren('region:' . self::MODAL) : self::childrenFor('root', $pageContent, false),
             'style' => $style,
-            'elements' => [...self::ELEMENTS, ...($pageContent ? [self::PAGE_CONTENT] : []), ...($modal ? self::MODAL_ELEMENTS : [])],
+            'elements' => [...self::ELEMENTS, ...($pageContent ? [self::PAGE_CONTENT] : []), ...($component ? [self::COMPONENT_AREA] : []), ...($modal ? self::MODAL_ELEMENTS : [])],
             'item_elements' => self::ITEM_ELEMENTS,
             'field_displays' => self::FIELD_DISPLAYS,
             'system_fields' => self::SYSTEM_FIELDS,
@@ -675,13 +717,15 @@ final class LayoutSchema
         return $count;
     }
 
-    /** Kinds a node may contain, with the page content place and modal elements where the document offers them. */
-    /** The kinds $parent may hold; $pageContent allows Entry content areas, $inModal the modal elements. */
-    public static function childrenFor(string $parent, bool $pageContent, bool $inModal): array
+    /** Kinds a node may contain, with the page content place, content areas and modal elements where the document offers them. */
+    public static function childrenFor(string $parent, bool $pageContent, bool $inModal, bool $areas = false): array
     {
         $children = self::allowedChildren($parent);
         if ($pageContent && in_array($parent, ['root', 'column', 'tab'], true)) {
             $children[] = self::PAGE_CONTENT;
+        }
+        if ($areas && in_array($parent, ['column', 'tab'], true)) {
+            $children[] = self::COMPONENT_AREA;
         }
         if ($inModal && in_array($parent, [self::MODAL, 'column', 'tab'], true)) {
             array_push($children, ...self::MODAL_ELEMENTS);
@@ -756,6 +800,11 @@ final class LayoutSchema
                         $parts[] = $key === 'html' ? html_entity_decode(strip_tags(str_replace(['</p>', '<br>'], ' ', $value)), ENT_QUOTES | ENT_HTML5, 'UTF-8') : $value;
                     }
                 }
+                if (($node['kind'] ?? '') === 'table' && is_array($props['rows'] ?? null)) {
+                    foreach ($props['rows'] as $row) foreach (is_array($row) ? $row : [] as $cell) {
+                        if (is_string($cell) && $cell !== '') $parts[] = html_entity_decode(strip_tags(str_replace('<br>', ' ', $cell)), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                    }
+                }
                 $visit(is_array($node['children'] ?? null) ? $node['children'] : []);
             }
         };
@@ -827,7 +876,65 @@ final class LayoutSchema
         $seen = [];
         $first = array_values(array_filter(is_array($nodes) ? $nodes : [], static fn(mixed $node): bool => is_array($node) && ($node['kind'] ?? '') === $root));
 
-        return self::normalizeNodes(array_slice($first, 0, 1), 'component:' . $root, $count, $seen, false);
+        $places = null;
+
+        return self::normalizeNodes(array_slice($first, 0, 1), 'component:' . $root, $count, $seen, false, 0, $places, areas: true);
+    }
+
+    /** The content areas of a component's tree in order: [{id, name}], name '' when it has none. */
+    public static function componentAreas(array $nodes): array
+    {
+        $areas = [];
+        foreach ($nodes as $node) {
+            if (($node['kind'] ?? '') === self::COMPONENT_AREA) {
+                $areas[] = ['id' => (string) $node['id'], 'name' => (string) ($node['name'] ?? '')];
+                continue;
+            }
+            array_push($areas, ...self::componentAreas($node['children'] ?? []));
+        }
+
+        return $areas;
+    }
+
+    /**
+     * An instance as an ordinary copy of its component's $tree: with the
+     * instance's own values, and what it put into each content area in place
+     * of the area. The copy keeps the instance's id, name and column width;
+     * the area content keeps its ids, the component's nodes get new ones.
+     */
+    public static function detachInstance(array $instance, array $tree): array
+    {
+        $fills = [];
+        foreach ($instance['children'] ?? [] as $child) {
+            if (($child['kind'] ?? '') === self::AREA_CONTENT) $fills[(string) ($child['props']['area'] ?? '')] ??= $child['children'] ?? [];
+        }
+        $copy = self::detachedNodes(self::applyOverrides([$tree], $instance['overrides'] ?? []), $fills)[0];
+        $copy['id'] = $instance['id'];
+        if (isset($instance['name'])) {
+            $copy['name'] = $instance['name'];
+        }
+        if ($copy['kind'] === 'column') {
+            $copy['props']['span'] = $instance['props']['span'] ?? $copy['props']['span'];
+        }
+
+        return $copy;
+    }
+
+    private static function detachedNodes(array $nodes, array $fills): array
+    {
+        $copies = [];
+        foreach ($nodes as $node) {
+            if (($node['kind'] ?? '') === self::COMPONENT_AREA) {
+                array_push($copies, ...($fills[$node['id']] ?? []));
+                continue;
+            }
+            $node['id'] = self::newId();
+            unset($node['editable']);
+            $node['children'] = self::detachedNodes($node['children'] ?? [], $fills);
+            $copies[] = $node;
+        }
+
+        return $copies;
     }
 
     /**
@@ -868,22 +975,6 @@ final class LayoutSchema
 
         foreach ($nodes as &$node) {
             $values = $overrides[$node['id'] ?? ''] ?? [];
-            if (($node['kind'] ?? '') === 'accordion' && in_array('items', $node['editable'] ?? [], true) && !array_key_exists('items', $values)) {
-                $legacy = array_intersect_key($values, array_flip(['title', 'html']));
-                if ($legacy !== []) {
-                    $items = $node['props']['items'] ?? [];
-                    $merge = static function (array $entries) use ($legacy): array {
-                        if ($entries !== []) $entries[0] = array_replace($entries[0], $legacy);
-                        return $entries;
-                    };
-                    if (LocalizedValue::is($items)) {
-                        $items['values'] = array_map($merge, $items['values']);
-                    } else {
-                        $items = $merge($items);
-                    }
-                    $values['items'] = $items;
-                }
-            }
             $own = array_intersect_key($values, array_flip($node['editable'] ?? []));
             if ($own !== [] && ($node['kind'] ?? '') !== self::COMPONENT) {
                 $node['props'] = self::normalizeProps((string) $node['kind'], array_replace($node['props'] ?? [], $own));
@@ -907,18 +998,10 @@ final class LayoutSchema
 
     public static function node(string $kind, array $props = [], array $style = [], array $children = []): array
     {
-        if ($kind === 'field' && isset($props['field'])) {
-            $props['source'] = SmartValue::reference((string) $props['field']);
-            unset($props['field']);
-        }
-        if ($kind === 'accordion') $props = self::migrateAccordionProps($props);
         $defaults = [];
 
         foreach (self::propSpec($kind) as $key => $spec) {
             $defaults[$key] = $spec['default'];
-            if ($key === 'link' && $spec['type'] === 'link' && is_bool($props[$key] ?? null)) {
-                $props[$key] = self::normalizeLink($props[$key]);
-            }
         }
 
         return [
@@ -981,7 +1064,7 @@ final class LayoutSchema
 
         if ($variant === 'index') {
             return [
-                self::node('section', ['width' => 'contained'], ['padding_y' => 'xl'], [
+                self::node('section', ['width' => 'contained'], ['padding_top' => 'xl', 'padding_bottom' => 'xl'], [
                     self::node('row', [], [], [
                         self::node('column', [], [], [
                             self::node('heading', ['text' => (string) ($type['label'] ?? $type['name'] ?? ''), 'level' => 'h1']),
@@ -1005,22 +1088,22 @@ final class LayoutSchema
             if ($media !== null) {
                 $top[] = self::node('row', ['gap' => 'none'], [], [
                     self::node('column', [], [], [
-                        self::node('field', ['field' => $media, 'display' => 'image', 'ratio' => '16:9', 'link' => true], ['margin_bottom' => 'none']),
+                        self::node('field', ['source' => SmartValue::reference($media), 'display' => 'image', 'ratio' => '16:9', 'link' => ['type' => 'current']], ['margin_bottom' => 'none']),
                     ]),
                 ]);
             }
 
             $body = [
-                self::node('field', ['field' => 'title', 'tag' => 'h3', 'link' => true], ['margin_bottom' => 'xs', 'font_size' => 'xl']),
-                self::node('field', ['field' => 'published_at', 'display' => 'date'], ['text_color' => 'muted', 'font_size' => 'sm', 'margin_bottom' => 'sm']),
+                self::node('field', ['source' => SmartValue::reference('title'), 'tag' => 'h3', 'link' => ['type' => 'current']], ['margin_bottom' => 'xs', 'font_size' => 'xl']),
+                self::node('field', ['source' => SmartValue::reference('published_at'), 'display' => 'date'], ['text_color' => 'muted', 'font_size' => 'sm', 'margin_bottom' => 'sm']),
             ];
 
             if ($excerpt !== null) {
-                $body[] = self::node('field', ['field' => $excerpt, 'display' => 'excerpt', 'truncate' => 28], ['margin_bottom' => 'none']);
+                $body[] = self::node('field', ['source' => SmartValue::reference($excerpt), 'display' => 'excerpt', 'truncate' => 28], ['margin_bottom' => 'none']);
             }
 
             $top[] = self::node('row', ['gap' => 'none'], [], [
-                self::node('column', [], ['padding_y' => 'md', 'padding_x' => 'md'], $body),
+                self::node('column', [], ['padding_top' => 'md', 'padding_bottom' => 'md', 'padding_left' => 'md', 'padding_right' => 'md'], $body),
             ]);
 
             return [
@@ -1029,8 +1112,8 @@ final class LayoutSchema
         }
 
         $elements = [
-            self::node('field', ['field' => 'title', 'tag' => 'h1']),
-            self::node('field', ['field' => 'published_at', 'display' => 'date', 'date_format' => 'long'], ['text_color' => 'muted', 'margin_bottom' => 'lg']),
+            self::node('field', ['source' => SmartValue::reference('title'), 'tag' => 'h1']),
+            self::node('field', ['source' => SmartValue::reference('published_at'), 'display' => 'date', 'date_format' => 'long'], ['text_color' => 'muted', 'margin_bottom' => 'lg']),
         ];
 
         foreach ($fields as $name => $config) {
@@ -1044,7 +1127,7 @@ final class LayoutSchema
                 continue;
             }
 
-            $props = ['field' => $name, 'display' => self::defaultDisplay($fieldType)];
+            $props = ['source' => SmartValue::reference($name), 'display' => self::defaultDisplay($fieldType)];
             if ($fieldType === 'media') {
                 $props += ['ratio' => '16:9'];
             }
@@ -1060,7 +1143,7 @@ final class LayoutSchema
                 foreach (is_array($config['subfields'] ?? null) ? $config['subfields'] : [] as $subfield) {
                     $key = is_array($subfield) ? (string) ($subfield['key'] ?? '') : '';
                     if ($key !== '' && ($subfield['type'] ?? '') !== 'json') {
-                        $subProps = ['field' => $key, 'display' => self::defaultDisplay((string) ($subfield['type'] ?? 'text'))];
+                        $subProps = ['source' => SmartValue::reference($key), 'display' => self::defaultDisplay((string) ($subfield['type'] ?? 'text'))];
                         // The first text subfield reads as the item's heading.
                         if ($children === [] && ($subfield['type'] ?? 'text') === 'text') {
                             $subProps['tag'] = 'h4';
@@ -1074,7 +1157,7 @@ final class LayoutSchema
         }
 
         return [
-            self::node('section', ['width' => 'narrow'], ['padding_y' => 'xl'], [
+            self::node('section', ['width' => 'narrow'], ['padding_top' => 'xl', 'padding_bottom' => 'xl'], [
                 self::node('row', [], [], [self::node('column', [], [], $elements)]),
             ]),
         ];
@@ -1138,7 +1221,7 @@ final class LayoutSchema
         }
         if ($region === self::MAINTENANCE) {
             return [
-                self::node('section', ['width' => 'narrow', 'min_height' => 'screen', 'vertical_align' => 'center'], ['padding_y' => '2xl', 'background' => 'surface', 'align' => 'center'], [
+                self::node('section', ['width' => 'narrow', 'min_height' => 'screen', 'vertical_align' => 'center'], ['padding_top' => '2xl', 'padding_bottom' => '2xl', 'background' => 'surface', 'align' => 'center'], [
                     self::node('row', [], [], [
                         self::node('column', [], ['align' => 'center'], [
                             self::node('site_title', ['show_logo' => true, 'show_name' => true], ['margin_bottom' => 'xl']),
@@ -1152,7 +1235,7 @@ final class LayoutSchema
         }
         if ($region === self::SEARCH_RESULTS) {
             return [
-                self::node('section', ['width' => 'narrow'], ['padding_y' => '2xl'], [
+                self::node('section', ['width' => 'narrow'], ['padding_top' => '2xl', 'padding_bottom' => '2xl'], [
                     self::node('row', [], [], [
                         self::node('column', [], [], [
                             self::node('heading', ['text' => 'Search results', 'level' => 'h1']),
@@ -1165,7 +1248,7 @@ final class LayoutSchema
         }
         if ($region === 'not_found') {
             return [
-                self::node('section', ['width' => 'narrow'], ['padding_y' => '2xl'], [
+                self::node('section', ['width' => 'narrow'], ['padding_top' => '2xl', 'padding_bottom' => '2xl'], [
                     self::node('row', [], [], [
                         self::node('column', [], [], [
                             self::node('heading', ['text' => 'Page not found', 'level' => 'h1']),
@@ -1179,7 +1262,7 @@ final class LayoutSchema
 
         if ($region === 'header') {
             return [
-                self::node('section', ['width' => 'contained'], ['padding_y' => 'sm', 'border' => ['bottom'], 'background' => 'background'], [
+                self::node('section', ['width' => 'contained'], ['padding_top' => 'sm', 'padding_bottom' => 'sm', 'border' => ['bottom'], 'background' => 'background'], [
                     self::node('row', ['align' => 'center', 'justify' => 'between'], [], [
                         self::node('column', ['span' => ['mobile' => 8, 'tablet' => 4, 'desktop' => 0]], [], [
                             self::node('site_title', [], ['margin_bottom' => 'none']),
@@ -1193,7 +1276,7 @@ final class LayoutSchema
         }
 
         return [
-            self::node('section', ['width' => 'contained'], ['padding_y' => 'lg', 'background' => 'surface', 'border' => ['top']], [
+            self::node('section', ['width' => 'contained'], ['padding_top' => 'lg', 'padding_bottom' => 'lg', 'background' => 'surface', 'border' => ['top']], [
                 self::node('row', ['align' => 'center'], [], [
                     self::node('column', ['span' => ['mobile' => 12, 'tablet' => 6, 'desktop' => 0]], [], [
                         self::node('text', ['html' => ['type' => 'template', 'parts' => ['<p>© ', SmartValue::reference('year', 'site'), ' ', SmartValue::reference('title', 'site'), '</p>']]], ['text_color' => 'muted', 'font_size' => 'sm', 'margin_bottom' => 'none']),
@@ -1208,8 +1291,6 @@ final class LayoutSchema
 
     public static function normalizeLink(mixed $link): array
     {
-        // Older fields and galleries stored only a "link to current entry" toggle.
-        if (is_bool($link)) $link = ['type' => $link ? 'current' : 'none'];
         $link = is_array($link) ? $link : [];
         if (($link['type'] ?? '') === 'dynamic') {
             return ['type' => 'dynamic', 'value' => SmartValue::normalize($link['value'] ?? null, 'link'), 'new_tab' => (bool) ($link['new_tab'] ?? false)];
@@ -1258,26 +1339,20 @@ final class LayoutSchema
     /**
      * $rows counts the rows around $nodes, to bound how deep rows nest in
      * columns. $places collects the page fields that already have a place
-     * (null where no page content place may go).
+     * (null where no page content place may go); $areas allows a component's
+     * content areas.
      */
-    private static function normalizeNodes(array $nodes, string $parent, int &$count, array &$seen, bool $insideItem, int $rows = 0, ?array &$places = null, bool $inModal = false, string $path = 'root'): array
+    private static function normalizeNodes(array $nodes, string $parent, int &$count, array &$seen, bool $insideItem, int $rows = 0, ?array &$places = null, bool $inModal = false, string $path = 'root', bool $areas = false): array
     {
-        $allowed = self::childrenFor($parent, $places !== null, $inModal);
+        $allowed = self::childrenFor($parent, $places !== null, $inModal, $areas);
         $normalized = [];
+        $filled = [];
 
         foreach (array_values($nodes) as $index => $node) {
             if (!is_array($node) || $count >= self::MAX_NODES) {
                 continue;
             }
 
-            // Promote saved gallery displays while preserving identity and styling.
-            if (($node['kind'] ?? '') === 'field' && ($node['props']['display'] ?? '') === 'gallery') {
-                $node = self::galleryFromField($node);
-            }
-            // Entry lists used to offer a plain list; it became cards in a single column.
-            if (($node['kind'] ?? '') === 'collection' && ($node['props']['display'] ?? '') === 'list') {
-                $node['props']['columns'] = 1;
-            }
             $kind = (string) ($node['kind'] ?? '');
             $placed = self::placementKind($node);
             if ($placed === '' || !in_array($placed, $allowed, true) || ($placed === 'row' && $rows > self::MAX_ROW_DEPTH)) {
@@ -1294,6 +1369,14 @@ final class LayoutSchema
                     $places[$field] = true;
                 }
             }
+            // An instance has one content per area of its component.
+            if ($kind === self::AREA_CONTENT) {
+                $area = self::key($node['props']['area'] ?? '');
+                if ($area === '' || isset($filled[$area])) {
+                    continue;
+                }
+                $filled[$area] = true;
+            }
 
             $count++;
             $id = self::key($node['id'] ?? '');
@@ -1309,11 +1392,17 @@ final class LayoutSchema
 
             // A repeater's item template may not contain another template.
             $childParent = $kind === 'field' ? ($insideItem ? '' : 'field') : $kind;
-            // Cards, item templates and the default content hold neither content place nor modal elements.
-            $repeated = in_array($kind, ['field', 'collection', self::PAGE_CONTENT], true);
+            // Cards, item templates, the default content and instances' area content hold neither content place, content area nor modal elements.
+            $repeated = in_array($kind, ['field', 'collection', self::PAGE_CONTENT, self::COMPONENT], true);
             $childPlaces = $repeated ? null : $places;
-            $children = in_array($kind, [...self::STRUCTURE, 'field', 'collection', 'tabs', 'tab', self::PAGE_CONTENT, self::MODAL], true) && is_array($node['children'] ?? null)
-                ? self::normalizeNodes($node['children'], $childParent, $count, $seen, $insideItem || $kind === 'field', $kind === self::PAGE_CONTENT ? 0 : $rows + ($kind === 'row' ? 1 : 0), $childPlaces, ($inModal || $kind === self::MODAL) && !$repeated, $path . ':' . $index)
+            // An instance's area content sits in the component's rows, at least one unless the component is a column.
+            $childRows = match ($kind) {
+                self::PAGE_CONTENT => 0,
+                self::COMPONENT => $rows + (($node['props']['root'] ?? '') === 'column' ? 0 : 1),
+                default => $rows + ($kind === 'row' ? 1 : 0),
+            };
+            $children = in_array($kind, [...self::STRUCTURE, 'field', 'collection', 'tabs', 'tab', self::PAGE_CONTENT, self::MODAL, self::COMPONENT, self::AREA_CONTENT], true) && is_array($node['children'] ?? null)
+                ? self::normalizeNodes($node['children'], $childParent, $count, $seen, $insideItem || $kind === 'field', $childRows, $childPlaces, ($inModal || $kind === self::MODAL) && !$repeated, $path . ':' . $index, $areas && !$repeated && $kind !== self::AREA_CONTENT)
                 : [];
             if ($childPlaces !== null) {
                 $places = $childPlaces;
@@ -1323,7 +1412,6 @@ final class LayoutSchema
                 $children = array_slice($children, 0, 1);
             }
 
-            $node = self::migrateHoverAnimation($node);
             $props = is_array($node['props'] ?? null) ? $node['props'] : [];
             $style = is_array($node['style'] ?? null) ? $node['style'] : [];
 
@@ -1348,8 +1436,7 @@ final class LayoutSchema
             }
             // Inside a component: props each placement may set (see applyOverrides()).
             $editableKeys = self::keyList($node['editable'] ?? null);
-            if ($kind === 'accordion') $editableKeys = array_values(array_unique(array_map(static fn(string $key): string => in_array($key, ['title', 'html'], true) ? 'items' : $key, $editableKeys)));
-            $editable = $kind === self::COMPONENT ? [] : array_values(array_intersect($editableKeys, array_keys(self::propSpec($kind))));
+            $editable = in_array($kind, [self::COMPONENT, self::AREA_CONTENT], true) ? [] : array_values(array_intersect($editableKeys, array_keys(self::propSpec($kind))));
             if ($editable !== []) {
                 $entry['editable'] = $editable;
             }
@@ -1365,7 +1452,6 @@ final class LayoutSchema
 
     private static function normalizeProps(string $kind, array $props): array
     {
-        if ($kind === 'accordion') $props = self::migrateAccordionProps($props);
         $normalized = [];
 
         foreach (self::propSpec($kind) as $key => $spec) {
@@ -1424,27 +1510,6 @@ final class LayoutSchema
         }
 
         return $normalized;
-    }
-
-    /** Upgrade the former single hover animation without rewriting stored layouts. */
-    public static function migrateHoverAnimation(array $node): array
-    {
-        if (($node['style']['animation_trigger'] ?? '') !== 'hover') return $node;
-        $states = is_array($node['states'] ?? null) ? $node['states'] : [];
-        $hover = is_array($states['hover'] ?? null) ? $states['hover'] : [];
-        $style = is_array($hover['style'] ?? null) ? $hover['style'] : [];
-        if (!array_key_exists('animation', $style)) {
-            $node['states'] = $states;
-            $node['states']['hover'] = $hover;
-            $node['states']['hover']['style'] = $style;
-            foreach (self::HOVER_ANIMATION_KEYS as $key) {
-                if (array_key_exists($key, $node['style'])) {
-                    $node['states']['hover']['style'][$key] ??= $node['style'][$key];
-                }
-            }
-        }
-        foreach (self::ANIMATION_KEYS as $key) unset($node['style'][$key]);
-        return $node;
     }
 
     /**
@@ -1508,6 +1573,7 @@ final class LayoutSchema
 
         return match ($spec['type']) {
             'accordion_items' => self::normalizeAccordionItems($value),
+            'table_rows' => self::normalizeTableRows($value),
             'gradient' => Gradient::normalize($value),
             'shadow' => Shadow::normalize($value, $spec['text'] ?? false),
             'color' => is_string($value) && (in_array($value, $spec['options'], true) || Theme::isCustomColorKey($value)) ? $value : $default,
@@ -1530,19 +1596,11 @@ final class LayoutSchema
             'content_types', 'search_fields' => self::keyList($value),
             'sort_fields' => array_slice(self::keyList($value), 0, ListFilters::MAX_SORTS),
             'list_filters' => ListFilters::normalize($value),
+            'conditions' => ElementConditions::normalize($value),
             default => $default,
         };
     }
 
-    /** Preserve single-entry layouts, including localized content and bindings. */
-    public static function migrateAccordionProps(array $props): array
-    {
-        if (!array_key_exists('items', $props) && array_intersect(['title', 'html', 'open'], array_keys($props))) {
-            $props['items'] = [array_intersect_key($props, array_flip(['title', 'html', 'open'])) + self::propSpec('accordion')['items']['default'][0]];
-        }
-        unset($props['title'], $props['html'], $props['open']);
-        return $props;
-    }
 
     private static function normalizeAccordionItems(mixed $value): array
     {
@@ -1561,6 +1619,32 @@ final class LayoutSchema
             $items[] = $entry;
         }
         return $items;
+    }
+
+    /**
+     * Table cells as a rectangle: rows are padded with empty cells to the
+     * widest row. A cell is inline HTML or a binding.
+     */
+    private static function normalizeTableRows(mixed $value): array
+    {
+        if (!is_array($value) || !array_is_list($value)) return [];
+        $rows = array_values(array_filter(array_slice($value, 0, self::TABLE_MAX_ROWS), static fn(mixed $row): bool => is_array($row) && array_is_list($row)));
+        $width = min(self::TABLE_MAX_COLUMNS, max(0, ...array_map('count', $rows ?: [[]])));
+        if ($width === 0) return [];
+        return array_map(static fn(array $row): array => array_map(
+            static fn(mixed $cell): mixed => SmartValue::isDynamic($cell) ? SmartValue::normalize($cell, 'html') : self::tableCell($cell),
+            array_pad(array_slice($row, 0, $width), $width, ''),
+        ), $rows);
+    }
+
+    /** Inline HTML a table cell keeps: text formatting, links and line breaks. */
+    public static function tableCell(mixed $value): string
+    {
+        if (!is_scalar($value)) return '';
+        // Paragraphs from a rich text editor become line breaks within the cell.
+        $html = preg_replace(['#</(p|div|li|h[1-6])>\s*<(p|div|li|h[1-6])(\s[^>]*)?>#i', '#<br\s*/?>#i'], ['<br>', '<br>'], mb_substr((string) $value, 0, 5000)) ?? '';
+
+        return trim(strip_tags(HtmlSanitizer::sanitize($html), self::TABLE_CELL_TAGS));
     }
 
     /** Distinct keys in their saved order, e.g. the content types a search looks through. */

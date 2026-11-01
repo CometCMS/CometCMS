@@ -114,3 +114,32 @@ describe('menu panel controls', () => {
     for (const key of ['panel', 'panel_side', 'panel_background', 'panel_text_color']) expect(vertical).not.toContain(key)
   })
 })
+
+describe('entry list inspector', () => {
+  const keys = ['list_source', 'type', 'collections', 'search_fields', 'sort_field', 'sort_order', 'filter_field', 'filter_value', 'filters', 'sort_choices']
+
+  async function listControls(props) {
+    const app = createSSRApp({ setup() {
+      const builder = createSiteBuilder({ t })
+      const spec = Object.fromEntries(keys.map((key) => [key, {}]))
+      spec.list_source = { options: ['type', 'types', 'search'] }
+      builder.spec.value = { kinds: { collection: { props: spec } } }
+      builder.load([{ id: 'element', kind: 'collection', props, style: {}, children: [] }])
+      builder.select('element')
+      return () => h(BuilderInspector, { searchPage: true })
+    } })
+    const html = await renderToString(app)
+    return [...html.matchAll(/data-control="([^"]+)"/g)].map((match) => match[1])
+  }
+
+  it('offers visitor filters and sorting for lists of several types once types are chosen', async () => {
+    expect(await listControls({ list_source: 'types', collections: ['blog', 'events'] })).toEqual(
+      ['list_source', 'collections', 'sort_field', 'sort_order', 'filters', 'sort_choices'],
+    )
+    expect(await listControls({ list_source: 'types', collections: [] })).not.toContain('filters')
+  })
+
+  it('keeps them away from search results', async () => {
+    expect(await listControls({ list_source: 'search' })).not.toContain('filters')
+  })
+})

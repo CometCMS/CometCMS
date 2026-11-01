@@ -1,63 +1,76 @@
 <template>
   <div class="builder-shell flex h-screen flex-col bg-slate-100">
     <!-- Top bar -->
-    <header class="builder-topbar relative flex h-12 shrink-0 items-center gap-2 border-b px-2">
+    <header class="builder-topbar relative flex min-h-12 shrink-0 flex-wrap items-center gap-x-2 gap-y-1 border-b px-2 py-1.5 lg:flex-nowrap">
       <router-link :to="exitTo" class="topbar-action" :title="t('site.builder.back')">
         <Icon icon="mdi:arrow-left" class="h-[18px] w-[18px]" />
         <span class="sr-only">{{ t("site.builder.back") }}</span>
       </router-link>
       <span class="topbar-divider" aria-hidden="true"></span>
 
-      <div class="min-w-32 max-w-64 pl-1">
-        <BuilderPageSwitcher :heading="heading" :target="target" :name="name" />
-        <p class="topbar-muted truncate text-[11px] leading-tight">{{ subheading }}</p>
-      </div>
-
-      <!--
-        What the canvas changes, as the two sides of one switch: the template, shared by every
-        entry that uses it, or only the entry's own page content. The template side's menu opens
-        other templates; the entry side's menu picks the entry the canvas shows, also while that
-        entry cannot be designed on its own (the side then says why).
-      -->
-      <nav v-if="templateMenu" class="topbar-variants hidden min-w-0 items-center rounded-lg p-0.5 md:flex" :aria-label="t('site.builder.variants')">
-        <BuilderTemplateMenu
-          v-bind="templateMenu"
-          :active="target === 'layout'"
-          :disabled="saving || loading"
-          @navigate="target === 'page' && goToView(templateView)"
-          @open="openTemplate"
-          @new="templateDialogOpen = true"
-        />
-        <BuilderEntrySwitcher
-          v-if="entrySide"
-          class="scope-page"
-          icon="mdi:file-document-edit-outline"
-          :label="entrySide.label"
-          :title="entrySide.title"
-          :unavailable="entrySide.unavailable"
-          :active="target === 'page'"
-          :model-value="target === 'page' ? pageEntryId : sampleId"
-          :entries="samples"
-          :disabled="saving || loading"
-          @navigate="goToView(pageView)"
-          @update:model-value="selectEntry"
-        />
+      <nav class="builder-breadcrumbs min-w-0 flex-1 pl-1" :aria-label="t('app.breadcrumbs')">
+        <ol class="flex min-w-0 items-center gap-1 sm:gap-2">
+          <li class="breadcrumb-root w-max min-w-20 max-w-xs shrink-0">
+            <BuilderPageSwitcher :heading="target === 'page' ? builder.type.value?.label ?? name : heading" :target="target" :name="name" />
+            <p
+              class="topbar-muted flex items-center gap-1 truncate text-[11px] leading-tight pl-1"
+              :class="{ 'cursor-help': scopeBar }"
+              v-tooltip="scopeBar && { title: scopeBar.title, text: scopeBar.text }"
+              :tabindex="scopeBar ? 0 : undefined"
+              :aria-label="scopeBar ? `${subheading}. ${scopeBar.text}` : undefined"
+            >
+              <Icon v-if="scopeBar" :icon="scopeBar.icon" class="h-3 w-3 shrink-0" aria-hidden="true" />
+              <span class="truncate">{{ subheading }}</span>
+            </p>
+          </li>
+          <!-- The active crumb is the editing scope; its descendants retain the preview context. -->
+          <li v-if="templateMenu" class="flex min-w-0 items-center gap-1 sm:gap-2">
+            <Icon icon="mdi:chevron-right" class="breadcrumb-separator h-4 w-4 shrink-0" aria-hidden="true" />
+            <BuilderTemplateMenu
+              v-bind="templateMenu"
+              :active="target === 'layout'"
+              :disabled="saving || loading"
+              @navigate="target === 'page' && goToView(templateView)"
+              @open="openTemplate"
+              @new="templateDialogOpen = true"
+            />
+          </li>
+          <li v-if="templateMenu && entrySide" class="flex min-w-0 items-center gap-1 sm:gap-2">
+            <Icon icon="mdi:chevron-right" class="breadcrumb-separator h-4 w-4 shrink-0" aria-hidden="true" />
+            <BuilderEntrySwitcher
+              class="scope-page"
+              icon="mdi:file-document-edit-outline"
+              :label="entryTitle"
+              :title="entrySide.title"
+              :unavailable="entrySide.unavailable"
+              :active="target === 'page'"
+              :model-value="target === 'page' ? pageEntryId : sampleId"
+              :entries="samples"
+              :template-id="target === 'layout' ? editedTemplate : liveTemplate"
+              :disabled="saving || loading"
+              @navigate="goToView(pageView)"
+              @update:model-value="selectEntry"
+            />
+          </li>
+          <!-- A component of a content type only previews an entry. -->
+          <li v-else-if="!templateMenu && showsSamples && samples.length" class="flex min-w-0 items-center gap-1 sm:gap-2">
+            <Icon icon="mdi:chevron-right" class="breadcrumb-separator h-4 w-4 shrink-0" aria-hidden="true" />
+            <BuilderEntrySwitcher
+              icon="mdi:eye-outline"
+              :title="t('site.builder.sampleEntry')"
+              :label="samples.find((entry) => entry.id === sampleId)?.title || sampleId"
+              :model-value="sampleId"
+              :entries="samples"
+              :type-labels="sampleTypeLabels"
+              :navigable="false"
+              :disabled="saving || loading"
+              @update:model-value="selectEntry"
+            />
+          </li>
+        </ol>
       </nav>
-      <!-- A component of a content type only previews an entry. -->
-      <nav v-else-if="showsSamples && samples.length" class="topbar-variants hidden min-w-0 rounded-lg p-0.5 md:flex" :aria-label="t('site.builder.sampleEntry')">
-        <BuilderEntrySwitcher
-          icon="mdi:eye-outline"
-          :title="t('site.builder.sampleEntry')"
-          :label="samples.find((entry) => entry.id === sampleId)?.title || sampleId"
-          :model-value="sampleId"
-          :entries="samples"
-          :navigable="false"
-          :disabled="saving || loading"
-          @update:model-value="selectEntry"
-        />
-      </nav>
 
-      <div class="ml-auto flex min-w-0 items-center gap-1.5">
+      <div class="builder-toolbar ml-auto flex shrink-0 items-center gap-1.5">
         <div v-if="locales.length > 1" class="topbar-group hidden md:flex">
           <!-- The language also sets the mode: other languages only translate texts. -->
           <div class="flex items-center gap-2 px-1.5">
@@ -116,19 +129,16 @@
       <div v-if="switchingSlow" class="builder-progress pointer-events-none absolute inset-x-0 bottom-0 h-0.5 overflow-hidden" role="progressbar" :aria-label="t('site.builder.switching')"></div>
     </header>
 
-    <!-- What saving changes: every entry the template shows, or this entry only. -->
-    <div v-if="scopeBar" role="note" class="scope-bar flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-1.5 text-xs" :class="`is-${scopeBar.kind}`">
-      <Icon :icon="scopeBar.icon" class="scope-accent h-4 w-4 shrink-0" aria-hidden="true" />
-      <p class="min-w-0 flex-1">
-        <strong class="scope-accent font-semibold">{{ scopeBar.title }}</strong> · {{ scopeBar.text }}
-        <span v-if="scopeBar.note" class="block opacity-80">{{ scopeBar.note }}</span>
-      </p>
+    <!-- The scope itself is the subtitle's hint; only what keeps an entry from being designed here takes a row. -->
+    <div v-if="scopeBar?.note" role="note" class="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-amber-200 bg-amber-50 px-4 py-1.5 text-xs text-amber-800">
+      <Icon icon="mdi:information-outline" class="h-4 w-4 shrink-0" aria-hidden="true" />
+      <p class="min-w-0 flex-1 basis-64">{{ scopeBar.note }}</p>
       <div class="flex items-center gap-3">
         <button
           v-for="action in scopeBar.actions"
           :key="action.key"
           type="button"
-          class="scope-action inline-flex items-center gap-1 font-medium underline-offset-2 hover:underline disabled:opacity-50"
+          class="inline-flex items-center gap-1 font-medium underline-offset-2 hover:underline disabled:opacity-50"
           :disabled="saving || switching"
           @click="action.run()"
         >
@@ -139,7 +149,10 @@
     </div>
     <div v-if="recoveredDraft || layoutConflict || recoveryFailed" role="status" class="flex items-center justify-between gap-3 border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800">
       <p>{{ t(recoveryFailed ? 'site.builder.recoveryFailed' : layoutConflict ? 'site.builder.saveConflict' : 'site.builder.draftRecovered') }}</p>
-      <button v-if="layoutConflict" type="button" class="btn-secondary btn-sm shrink-0" :disabled="saving || switching" @click="overwriteOpen = true">{{ t('site.builder.saveMyLayout') }}</button>
+      <div class="flex shrink-0 items-center gap-2">
+        <button v-if="recoveredDraft || layoutConflict" type="button" class="btn-secondary btn-sm" :disabled="saving || switching" @click="discardRecovery">{{ t('site.builder.discardRecovered') }}</button>
+        <button v-if="layoutConflict" type="button" class="btn-secondary btn-sm" :disabled="saving || switching" @click="overwriteOpen = true">{{ t('site.builder.saveMyLayout') }}</button>
+      </div>
     </div>
     <div v-for="scope in ['layout', 'theme'].filter((scope) => loadedRevisions[scope])" :key="scope" role="status" class="flex items-center justify-between gap-3 border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800">
       <p v-if="!loadedRevisions[scope].revision">{{ t('site.builder.resetPending') }}</p>
@@ -178,23 +191,18 @@
           <button
             type="button"
             class="rail-action group"
-            :class="{ 'is-active': panelWindows[panel.value]?.open, 'is-tooltip-off': clickedRailPanel === panel.value }"
+            :class="{ 'is-active': panelWindows[panel.value]?.open }"
             :aria-pressed="panelWindows[panel.value]?.open ?? false"
             :aria-label="panel.label"
+            v-tooltip="{ title: panel.label, text: t('site.builder.panelWindowHint'), placement: 'right' }"
             @pointerdown="panelLayout.startMove($event, panel.value, true)"
-            @click="clickedRailPanel = panel.value; panelLayout.toggle(panel.value)"
-            @pointerleave="clickedRailPanel = null"
+            @click="panelLayout.toggle(panel.value)"
           >
             <Icon :icon="panel.icon" class="h-5 w-5" />
             <span
               v-if="panel.dirty"
               class="pointer-events-none absolute right-1 top-1 h-2 w-2 rounded-full bg-amber-400 ring-2 ring-white"
             ></span>
-            <!-- Instant label: the rail is icon-only to leave room for the canvas. -->
-            <span class="rail-tooltip" role="tooltip" aria-hidden="true">
-              <span class="font-semibold">{{ panel.label }}</span>
-              <span class="block text-[10px] font-normal text-ink-300">{{ t('site.builder.panelWindowHint') }}</span>
-            </span>
           </button>
 
           <!-- Separator before design settings -->
@@ -416,6 +424,7 @@ import { useToastStore } from "../stores/toast.js";
 import { resolveLocalized } from "../composables/localizedValues.js";
 import { useLanguages } from "../composables/useLanguages.js";
 import { useI18n } from "../i18n/index.js";
+import { vTooltip } from "../directives/tooltip.js";
 
 const route = useRoute();
 const router = useRouter();
@@ -548,8 +557,6 @@ const panels = computed(() => [
   { value: "css", label: t("site.theme.customCss"), icon: "mdi:language-css3", dirty: cssDirty.value },
   { value: "history", label: t("site.history.title"), icon: "mdi:history" },
 ]);
-/** The rail button just clicked hides its tooltip until the pointer leaves, so it doesn't cover the panel. */
-const clickedRailPanel = ref(null);
 const visiblePanels = computed(() => panels.value.filter((panel) => panelWindows.value[panel.value].open));
 function panelLabel(value) {
   return panels.value.find((panel) => panel.value === value)?.label ?? value;
@@ -654,6 +661,8 @@ const converting = ref(false);
 /** The layout has changes that can be saved. */
 const layoutSavable = computed(() => (builder.isDirty.value || upgradeRequired.value) && !builder.hasSyntaxErrors.value);
 
+/** Type names of a component's samples, which come from every type. */
+const sampleTypeLabels = computed(() => Object.fromEntries(builder.types.value.map((type) => [type.name, resolveLocalized(type.label, locale.value, builder.settings.value?.default_locale || "en") || type.name])));
 /** The entry the preview shows: the chosen sample. */
 const previewEntry = computed(() => sampleId.value);
 /** Layouts of single entries and components of a content type preview an entry. */
@@ -677,8 +686,10 @@ const recoveryFailed = ref(false);
 const layoutConflict = ref(false);
 const overwriteOpen = ref(false);
 let recoveryActive = false;
+let recoveryTimer = null;
 
 function checkpointRecovery() {
+  clearTimeout(recoveryTimer);
   if (!recoveryActive || loading.value || switching.value || loadError.value) return;
   const layout = builder.isDirty.value || upgradeRequired.value ? {
     nodes: builder.nodes.value, baseline: layoutBaseline.value, revision: layoutRevision.value,
@@ -724,7 +735,19 @@ async function restoreRecovery(current) {
 }
 
 // Once a save is attempted, later edits also update its recovery copy.
-watch(() => [builder.nodes.value, site.draft?.theme, site.draft?.templates, entryFields.recoveryDraft.value], checkpointRecovery, { deep: true });
+watch(() => [builder.nodes.value, site.draft?.theme, site.draft?.templates, entryFields.recoveryDraft.value], () => {
+  clearTimeout(recoveryTimer);
+  if (recoveryActive) recoveryTimer = setTimeout(checkpointRecovery, 200);
+}, { deep: true });
+
+/** Drop a recovered draft and show the saved state again, without saving anything. */
+async function discardRecovery() {
+  if (saving.value || switching.value) return;
+  recovery.remove(shown.value);
+  leftView();
+  await site.load({ force: true });
+  await load(shown.value);
+}
 
 async function overwriteLayout() {
   if (saving.value || switching.value || !layoutConflict.value) return;
@@ -877,7 +900,7 @@ const entryTitle = computed(() => {
 });
 
 /**
- * The entry side of the scope switch, on detail pages with entries. When the
+ * The entry breadcrumb, on detail pages with entries. When the
  * entry cannot be designed on its own here, it stays visible and says why.
  */
 const entrySide = computed(() => {
@@ -887,7 +910,7 @@ const entrySide = computed(() => {
   const unavailable = pageView.value ? ""
     : live && live !== editedTemplate.value ? t("site.scope.entryOtherTemplate", { title: entryTitle.value, template: named(live) })
     : t("site.scope.entryNoArea", { template: named(editedTemplate.value) });
-  return { label: t("site.scope.entry", { title: entryTitle.value }), title: t("site.view.pageHint", { title: entryTitle.value }), unavailable };
+  return { title: t("site.view.pageHint", { title: entryTitle.value }), unavailable };
 });
 const currentView = computed(() => (target.value === "page" ? "page" : variant.value));
 /** The shared template around the entry: without a template asked for, the builder opens the entry's. */
@@ -918,18 +941,18 @@ const heading = computed(() => {
 const subheading = computed(() => {
   if (target.value === "component") {
     const kind = t("site.component.instanceOf", { kind: builder.kindLabel(component.value?.root ?? "section") });
-    const type = builder.type.value ? ` · ${builder.type.value.label ?? builder.type.value.name}` : "";
-    return `${kind}${type} · ${t("site.component.usedIn", { count: usages.value.length })}`;
+    // Components fit every type; the entry switcher beside it shows which one the preview uses.
+    return `${kind} · ${t("site.component.usedIn", { count: usages.value.length })}`;
   }
   if (target.value === "page") {
     const fields = builder.pageFields();
+    // The crumbs already name the type, layout and entry: the subtitle says what saving changes.
     const area = fields.length > 1 ? ` · ${fields.find((field) => field.key === pageField.value)?.label ?? pageField.value}` : "";
-    return `${builder.type.value?.label ?? name.value}${area} · ${t(pageCustomized.value ? "site.page.own" : "site.page.default")}`;
+    return `${t("site.scope.entryContent")}${area}`;
   }
+  if (target.value === "layout" && variant.value === "detail") return t("site.scope.sharedLayout");
   if (target.value === "region") return t(editingModal.value ? "site.builder.modalSubtitle" : name.value === "not_found" ? "site.builder.notFoundSubtitle" : name.value === "maintenance" ? "site.builder.maintenanceSubtitle" : name.value === "search_results" ? "site.builder.searchResultsSubtitle" : "site.builder.regionSubtitle");
-  return showsTemplates.value && frameLayout.value
-    ? `${t(`site.variant.${variant.value}`)} · ${templateName(t, templateById(site.draft?.templates, frameLayout.value.type, frameLayout.value.variant, editedTemplate.value))}`
-    : t(`site.variant.${variant.value}`);
+  return t(`site.variant.${variant.value}`);
 });
 
 const saveLabel = computed(() => {
@@ -945,7 +968,7 @@ const scopeBar = computed(() => {
     return {
       kind: "page",
       icon: "mdi:file-document-edit-outline",
-      title: t("site.scope.entry", { title: pageTitle.value || pageEntry.value }),
+      title: t("site.scope.entryContent"),
       text: t(own ? "site.scope.pageOwn" : "site.scope.pageDefault"),
       actions: [
         { key: "template", icon: "mdi:arrow-left", label: t("site.scope.toTemplate"), run: () => goToView(templateView.value) },
@@ -960,7 +983,7 @@ const scopeBar = computed(() => {
   return {
     kind: "template",
     icon: "mdi:page-layout-header-footer",
-    title: t("site.templates.shown", { name: templateName(t, templateById(site.draft?.templates, name.value, variant.value, editedTemplate.value)) }),
+    title: t("site.scope.sharedLayout"),
     text: t(builder.placedPageFields().length ? "site.scope.templateWithPages" : "site.scope.templateText", { type: builder.type.value?.label ?? name.value }),
     note: entrySide.value?.unavailable ?? "",
     actions: pageView.value
@@ -1017,7 +1040,7 @@ const previewBody = computed(() => {
     entries: entryFields.previewEntries(),
   };
   if (target.value === "component") {
-    return { target: "component", component: name.value, nodes: builder.nodes.value, entry: sampleId.value, locale: locale.value, ...theme };
+    return { target: "component", component: name.value, nodes: builder.nodes.value, entry: sampleId.value, entry_type: builder.type.value?.name ?? "", locale: locale.value, ...theme };
   }
   if (target.value === "page") {
     return { target: "entry_page", type: name.value, entry: pageEntry.value, field: pageField.value, nodes: builder.nodes.value, locale: locale.value, ...theme };
@@ -1088,7 +1111,7 @@ async function createTemplate(newName) {
 /** Template controls only show once the page kind has more than its default template. */
 const showsTemplates = computed(() => !!frameLayout.value && usesTemplates(site.draft?.templates, frameLayout.value.type, frameLayout.value.variant));
 
-/** The template side of the top bar's scope switch, for layouts and entry pages. */
+/** The layout breadcrumb's menu, for layouts and entry pages. */
 const templateMenu = computed(() => {
   const layout = frameLayout.value;
   if (!layout) return null;
@@ -1111,7 +1134,7 @@ const selectedFrame = computed(() => {
   if (!layout || !template || !FRAME_REGIONS.includes(selectedTemplatePart.value)) return null;
   return {
     value: template[selectedTemplatePart.value],
-    components: frameComponents(builder.components.value, layout.type),
+    components: frameComponents(builder.components.value),
     scope: templateName(t, template),
   };
 });
@@ -1201,7 +1224,8 @@ async function load(next = requested) {
       builder.rootKind.value = data.component.root;
       // A component's tree is its one root node.
       builder.spec.value = { ...data.spec, root: [data.component.root] };
-      builder.currentAvailable.value = !!data.type;
+      // Components fit every type, so the entry's fields are always on offer.
+      builder.currentAvailable.value = true;
     } else {
       builder.spec.value = data.spec;
       builder.currentAvailable.value = ["layout", "page"].includes(target) && variant !== "index";
@@ -1447,6 +1471,9 @@ function selectEntry(entry) {
   if (target.value !== "page") {
     if (entry === sampleId.value) return;
     if (showsTemplates.value && target.value === "layout") followEntry = entry;
+    // A component previews entries of every type; the entry's own type comes with it.
+    const sampleType = samples.value.find((sample) => sample.id === entry)?.type;
+    if (target.value === "component" && sampleType) builder.type.value = builder.types.value.find((type) => type.name === sampleType) ?? builder.type.value;
     sampleId.value = entry;
     // The link names the entry shown, so later builder links and reloads keep it.
     router.replace({ query: { ...route.query, entry } });
@@ -1509,6 +1536,7 @@ function switchView(view) {
  * open panels, the device and the language carry over.
  */
 function leftView() {
+  clearTimeout(recoveryTimer);
   recoveryActive = false;
   recoveredDraft.value = recoveryFailed.value = layoutConflict.value = overwriteOpen.value = false;
   builder.select(null);
@@ -1613,6 +1641,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  clearTimeout(recoveryTimer);
   clearTimeout(switchingTimer);
   window.removeEventListener("keydown", onKeydown);
   window.removeEventListener("beforeunload", checkpointRecovery);
@@ -1643,51 +1672,75 @@ onBeforeUnmount(() => {
 .topbar-muted {
   color: rgb(var(--builder-toolbar-text) / 0.8);
 }
-.topbar-variants,
 .builder-topbar :deep(.topbar-devices) {
   background: rgb(0 0 0 / 0.12);
 }
-.topbar-variants .topbar-view,
 .builder-topbar :deep(.topbar-devices button) {
   background: transparent;
   color: rgb(var(--builder-toolbar-text) / 0.8);
 }
-.topbar-variants .topbar-view:hover,
 .builder-topbar :deep(.topbar-devices button:hover) {
   background: var(--builder-toolbar-hover);
   color: rgb(var(--builder-toolbar-text));
 }
-.topbar-variants .topbar-view[aria-pressed="true"],
 .builder-topbar :deep(.topbar-devices button[aria-pressed="true"]) {
   background: var(--builder-toolbar-selected);
   color: var(--builder-toolbar-selected-text);
   box-shadow: 0 1px 2px rgb(0 0 0 / 0.1);
 }
 /* The entry's own content keeps the teal of its area on the canvas. */
-.topbar-variants .scope-page.is-active {
+.builder-breadcrumbs :deep(.scope-page.is-active) {
   color: #17657a;
 }
-.scope-bar {
-  --scope-accent: rgb(var(--color-theme-700));
-  background: rgb(var(--color-slate-50));
-  border-bottom: 1px solid rgb(var(--color-slate-200));
-  box-shadow: inset 3px 0 0 var(--scope-accent);
-  color: rgb(var(--color-slate-700));
+.breadcrumb-separator {
+  color: rgb(var(--builder-toolbar-text) / 0.45);
 }
-.scope-bar.is-page {
-  --scope-accent: #17657a;
-  background: rgb(33 127 152 / 0.08);
+@media (min-width: 640px) {
+  .builder-breadcrumbs :deep(.scope-page .builder-switcher-menu) {
+    left: auto;
+    right: 0;
+  }
 }
-:root[data-theme="dark"] .scope-bar {
-  --scope-accent: rgb(var(--color-theme-300));
+@media (max-width: 1023px) {
+  .builder-breadcrumbs {
+    flex-basis: calc(100% - 5rem);
+  }
+  .builder-toolbar {
+    justify-content: flex-end;
+    width: 100%;
+  }
 }
-:root[data-theme="dark"] .scope-bar.is-page {
-  --scope-accent: #6cc3d8;
-  background: rgb(33 127 152 / 0.16);
-}
-.scope-accent,
-.scope-action {
-  color: var(--scope-accent);
+@media (max-width: 639px) {
+  .breadcrumb-root {
+    max-width: 25vw;
+  }
+  .builder-breadcrumbs :deep(:is(.template-primary, .entry-primary)) {
+    gap: 0.25rem;
+    padding-inline: 0.375rem;
+  }
+  .builder-toolbar {
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+  .builder-toolbar .topbar-divider {
+    display: none;
+  }
+  .builder-toolbar :deep(.topbar-devices button) {
+    padding: 0.25rem;
+  }
+  .builder-toolbar :deep(.btn) {
+    padding-inline: 0.5rem;
+    font-size: 0.75rem;
+  }
+  /* Anchor menus to the header so every breadcrumb's menu fits the viewport. */
+  .builder-breadcrumbs :deep(:is(.page-switcher, .template-switcher, .entry-switcher)) {
+    position: static;
+  }
+  .builder-breadcrumbs :deep(.builder-switcher-menu) {
+    left: 0.5rem;
+    width: calc(100% - 1rem);
+    max-width: 20rem;
+  }
 }
 .builder-topbar :deep(.topbar-languages [data-tab-value]) {
   background: transparent;
@@ -1800,38 +1853,5 @@ onBeforeUnmount(() => {
   width: 3px;
   border-radius: 0 3px 3px 0;
   background: rgb(var(--color-theme-600));
-}
-.rail-tooltip {
-  pointer-events: none;
-  position: absolute;
-  left: calc(100% + 0.625rem);
-  top: 50%;
-  z-index: 10;
-  width: max-content;
-  max-width: 14rem;
-  transform: translate(-4px, -50%);
-  border-radius: 0.5rem;
-  background: rgb(15 23 42);
-  padding: 0.375rem 0.625rem;
-  text-align: left;
-  font-size: 0.75rem;
-  line-height: 1.1rem;
-  color: #fff;
-  box-shadow: 0 8px 24px rgb(15 23 42 / 0.2);
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 120ms, transform 120ms, visibility 120ms;
-}
-.rail-action:hover .rail-tooltip,
-.rail-action:focus-visible .rail-tooltip {
-  opacity: 1;
-  visibility: visible;
-  transform: translate(0, -50%);
-  transition-delay: 500ms;
-}
-.rail-action.is-tooltip-off .rail-tooltip {
-  opacity: 0;
-  visibility: hidden;
-  transition-delay: 0ms;
 }
 </style>

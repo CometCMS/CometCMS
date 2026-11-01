@@ -128,3 +128,52 @@ test('filtered pages load the hashed filter module and cache each choice separat
     assert_false(str_contains($news['body'], 'Hello &lt;script'));
     assert_true(str_contains($service->respondCached('/blog', [])['body'], 'Hello &lt;script'));
 });
+
+test('lists of several types filter by the fields of all of them and sort across types', function (): void {
+    $ctx = comet_site_test_context(comet_list_filters_site());
+    $node = LayoutSchema::node('collection', [
+        'list_source' => 'types',
+        'collections' => ['blog', 'about'],
+        'filters' => [['field' => 'category'], ['field' => 'title', 'label' => 'Find']],
+        'sort_choices' => ['title'],
+        'columns' => 1,
+    ], [], [LayoutSchema::node('column', [], [], [LayoutSchema::node('heading', ['text' => \CometCMS\Site\SmartValue::reference('title')])])]);
+    $node['id'] = 'list1';
+    $render = static function (array $params, array $props = []) use ($ctx, $node): string {
+        $ctx->listParams = ListFilters::fromQuery(['list1' => $params]);
+        $node['props'] = $props + $node['props'];
+        return (new NodeRenderer($ctx))->render([$node], ['path' => '/']);
+    };
+
+    $all = $render([]);
+    assert_true(str_contains($all, 'class="c-list-filters"'), 'The bar shows for several types too.');
+    assert_true(str_contains($all, '<span>Tips &amp; tricks</span>'));
+    foreach (['About us', 'News of the week', 'Hello'] as $title) assert_true(str_contains($all, $title), $title);
+
+    // Only blog has a category, so about drops out of a category filter.
+    $news = $render(['category' => 'news']);
+    assert_true(str_contains($news, 'News of the week'));
+    assert_false(str_contains($news, 'About us') || str_contains($news, 'Hello &lt;script'));
+
+    // Fields every type has search all of them.
+    $about = $render(['title' => 'about']);
+    assert_true(str_contains($about, 'About us'));
+    assert_false(str_contains($about, 'News of the week'));
+
+    $az = $render(['sort' => 'title']);
+    assert_true(strpos($az, 'About us') < strpos($az, 'Hello &lt;script') && strpos($az, 'Hello &lt;script') < strpos($az, 'News of the week'));
+    $za = $render(['sort' => '-title']);
+    assert_true(strpos($za, 'News of the week') < strpos($za, 'About us'));
+
+    $paged = $render(['sort' => 'title'], ['paginate' => true, 'limit' => 1]);
+    assert_true(str_contains($paged, '/?c%5Blist1%5D%5Bsort%5D=title&amp;page=2'), 'Page links keep the choices.');
+});
+
+test('combined schemas join select options across types', function (): void {
+    $schema = ListFilters::combinedSchema([
+        ['fields' => ['kind' => ['type' => 'select', 'options' => ['a' => 'A']], 'body' => ['type' => 'html', 'label' => 'Body']]],
+        ['fields' => ['kind' => ['type' => 'select', 'options' => ['b', 'a']], 'body' => ['type' => 'text', 'label' => 'Other']]],
+    ]);
+    assert_same(['a' => 'A', 'b' => 'b'], $schema['fields']['kind']['options']);
+    assert_same('html', $schema['fields']['body']['type'], 'The first type sets a field up.');
+});

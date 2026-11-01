@@ -64,6 +64,8 @@ code, pre { font-family: ui-monospace, "Cascadia Code", Menlo, Consolas, monospa
 
 /* ── Sections & containers ────────────────────────────────────────────── */
 .c-section { position: relative; background-size: cover; background-position: center; }
+/* Local defaults on each box prevent a parent's padding variables from leaking into nested grids. */
+.c-section { --c-pt: var(--section-padding, var(--space-md)); --c-pr: var(--section-padding, var(--space-md)); --c-pb: var(--section-padding, var(--space-md)); --c-pl: var(--section-padding, var(--space-md)); padding: var(--c-pt) var(--c-pr) var(--c-pb) var(--c-pl); }
 .c-container { width: 100%; margin: 0 auto; padding-left: var(--gutter); padding-right: var(--gutter); }
 .c-container-contained { max-width: calc(var(--container) + 2 * var(--gutter)); }
 .c-container-narrow { max-width: calc(var(--narrow) + 2 * var(--gutter)); }
@@ -71,6 +73,11 @@ code, pre { font-family: ui-monospace, "Cascadia Code", Menlo, Consolas, monospa
 /* An entry's page content takes no room of its own, so sticky sections stay sticky; the builder needs its box. */
 .c-page-content { display: contents; }
 .c-builder .c-page-content { display: block; }
+/* Builder only: a component's content area. Websites show its elements straight in the column around it. */
+.c-area { display: block; }
+.c-flow-row > .c-area { display: flex; flex: 1 1 auto; flex-wrap: wrap; gap: var(--flow); justify-content: inherit; align-items: inherit; }
+.c-flow-row > .c-area > :where(.c-el) { margin-bottom: 0; }
+.c-flow-row > .c-area > .c-placeholder { flex: 1; }
 /* Page content in a column: its sections fill the column instead of the page. */
 .c-page-content-embedded > .c-section > .c-container { max-width: none; padding-left: 0; padding-right: 0; }
 /*
@@ -85,8 +92,9 @@ code, pre { font-family: ui-monospace, "Cascadia Code", Menlo, Consolas, monospa
 .c-shape-top { top: -1px; }
 .c-shape-bottom { bottom: -1px; }
 .c-shape svg { display: block; width: 100%; height: 100%; }
-@media (max-width: 1023px) { .c-shape { height: calc(var(--c-t-shape-h, var(--c-shape-h)) * 1px); } }
-@media (max-width: 767px) { .c-shape { height: calc(var(--c-m-shape-h, var(--c-t-shape-h, var(--c-shape-h))) * 1px); } }
+.c-shape-tiled { background: currentColor; -webkit-mask: var(--c-shape-mask) center / calc(var(--c-shape-w, 100) * 1%) 100% repeat-x; mask: var(--c-shape-mask) center / calc(var(--c-shape-w, 100) * 1%) 100% repeat-x; }
+@media (max-width: 1023px) { .c-shape { height: calc(var(--c-t-shape-h, var(--c-shape-h)) * 1px); } .c-shape-tiled { -webkit-mask-size: calc(var(--c-t-shape-w, var(--c-shape-w, 100)) * 1%) 100%; mask-size: calc(var(--c-t-shape-w, var(--c-shape-w, 100)) * 1%) 100%; } }
+@media (max-width: 767px) { .c-shape { height: calc(var(--c-m-shape-h, var(--c-t-shape-h, var(--c-shape-h))) * 1px); } .c-shape-tiled { -webkit-mask-size: calc(var(--c-m-shape-w, var(--c-t-shape-w, var(--c-shape-w, 100))) * 1%) 100%; mask-size: calc(var(--c-m-shape-w, var(--c-t-shape-w, var(--c-shape-w, 100))) * 1%) 100%; } }
 .c-min-h-quarter { min-height: 25vh; }
 .c-min-h-half { min-height: 50vh; }
 .c-min-h-three-quarter { min-height: 75vh; }
@@ -127,8 +135,8 @@ html:has(.c-sticky, .c-overlap) { container-type: scroll-state; }
   }
   /* Margin makes up for the padding, so the page does not shift (and jump back to the top) while scrolling. */
   .c-site .c-section.c-scroll-compact {
-    padding-top: min(var(--c-pt, var(--c-py, 0px)), var(--space-xs)) !important; padding-bottom: min(var(--c-pb, var(--c-py, 0px)), var(--space-xs)) !important;
-    margin-bottom: calc(var(--c-mb, 0px) + max(0px, var(--c-pt, var(--c-py, 0px)) - var(--space-xs)) + max(0px, var(--c-pb, var(--c-py, 0px)) - var(--space-xs)));
+    padding-top: min(var(--c-pt, 0px), var(--space-xs)) !important; padding-bottom: min(var(--c-pb, 0px), var(--space-xs)) !important;
+    margin-bottom: calc(var(--c-mb, 0px) + max(0px, var(--c-pt, 0px) - var(--space-xs)) + max(0px, var(--c-pb, 0px) - var(--space-xs)));
   }
   .c-scroll-compact .c-logo { max-height: 2.1em; }
 }
@@ -193,8 +201,6 @@ html:has(.c-sticky, .c-overlap) { container-type: scroll-state; }
 .c-overlay-dark { color: #fff; }
 .c-overlay-light::before { background: rgb(255 255 255 / 0.65); }
 .c-overlay-light { color: #0f172a; }
-/* Low specificity, so a tablet or mobile padding still wins. */
-.c-region :where(.c-section:not(.c-py-none):not([class*="c-py-"])) { --c-py: var(--space-sm); padding-top: var(--c-pt, var(--space-sm)); padding-bottom: var(--c-pb, var(--space-sm)); }
 
 /* Background images (sections, columns and elements) and focal points */
 .c-bg-size-cover { background-size: cover; }
@@ -211,6 +217,7 @@ html:has(.c-sticky, .c-overlap) { container-type: scroll-state; }
 
 /* ── Grid ─────────────────────────────────────────────────────────────── */
 .c-row { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); }
+.c-row { --c-pt: var(--grid-padding, var(--space-md)); --c-pr: var(--grid-padding, var(--space-md)); --c-pb: var(--grid-padding, var(--space-md)); --c-pl: var(--grid-padding, var(--space-md)); padding: var(--c-pt) var(--c-pr) var(--c-pb) var(--c-pl); }
 /* --c-gap-x repeats the column gap so distributed rows can size their columns. */
 .c-gap-none, .c-gallery.c-gap-none { gap: 0; --c-gap-x: 0px; }
 .c-gap-xs, .c-gallery.c-gap-xs { gap: var(--space-xs); --c-gap-x: var(--space-xs); }
@@ -218,6 +225,10 @@ html:has(.c-sticky, .c-overlap) { container-type: scroll-state; }
 .c-gap-md, .c-gallery.c-gap-md { gap: var(--space-md) calc(var(--space-md) * 1.5); --c-gap-x: calc(var(--space-md) * 1.5); }
 .c-gap-lg, .c-gallery.c-gap-lg { gap: var(--space-lg); --c-gap-x: var(--space-lg); }
 .c-gap-xl, .c-gallery.c-gap-xl { gap: var(--space-xl); --c-gap-x: var(--space-xl); }
+/* Eleven gutters must fit even when every column spans the whole row.
+   Keep a track's share available and use the same gap for distributed rows.
+   Outrank gap utilities, including the generated device overrides. */
+.c-row[class] { --c-row-gap-x: min(var(--c-gap-x, 0px), calc(100% / 12)); column-gap: var(--c-row-gap-x); }
 .c-items-stretch { align-items: stretch; }
 .c-items-start { align-items: start; }
 .c-items-center { align-items: center; }
@@ -226,12 +237,13 @@ html:has(.c-sticky, .c-overlap) { container-type: scroll-state; }
    as flex lines whose columns keep the width of their span in the grid. */
 .c-row:is(.c-justify-center, .c-justify-end, .c-justify-between) { display: flex; flex-wrap: wrap; }
 .c-row:is(.c-justify-center, .c-justify-end, .c-justify-between) > .c-col {
-  flex: 0 0 calc((100% - 11 * var(--c-gap-x, 0px)) / 12 * var(--c-span, 12) + (var(--c-span, 12) - 1) * var(--c-gap-x, 0px));
+  flex: 0 0 calc((100% + var(--c-row-gap-x)) * var(--c-span, 12) / 12 - var(--c-row-gap-x));
 }
 .c-justify-center { justify-content: center; }
 .c-justify-end { justify-content: flex-end; }
 .c-justify-between { justify-content: space-between; }
 .c-row > .c-col { min-width: 0; }
+.c-col { --c-pt: var(--column-padding, var(--space-md)); --c-pr: var(--column-padding, var(--space-md)); --c-pb: var(--column-padding, var(--space-md)); --c-pl: var(--column-padding, var(--space-md)); padding: var(--c-pt) var(--c-pr) var(--c-pb) var(--c-pl); }
 .c-self-start { align-self: start; }
 .c-self-center { align-self: center; }
 .c-self-end { align-self: end; }
@@ -276,16 +288,16 @@ html:has(.c-sticky, .c-overlap) { container-type: scroll-state; }
   .c-d-col-7 { grid-column: span 7; --c-span: 7; } .c-d-col-8 { grid-column: span 8; --c-span: 8; } .c-d-col-9 { grid-column: span 9; --c-span: 9; }
   .c-d-col-10 { grid-column: span 10; --c-span: 10; } .c-d-col-11 { grid-column: span 11; --c-span: 11; } .c-d-col-12 { grid-column: span 12; --c-span: 12; }
 }
-/* Rows inside a column: their columns switch by the row's own width. */
+/* Rows inside a column: their columns switch by the row's own width, at lower widths than the screen (see spanDeviceOf() in BuilderCanvas.vue). */
 .c-row-nested { container-type: inline-size; }
 .c-flow-row > .c-row-nested { flex: 1 1 100%; }
-@container (min-width: 768px) {
+@container (min-width: 480px) {
   .c-ct-col-1 { grid-column: span 1; --c-span: 1; } .c-ct-col-2 { grid-column: span 2; --c-span: 2; } .c-ct-col-3 { grid-column: span 3; --c-span: 3; }
   .c-ct-col-4 { grid-column: span 4; --c-span: 4; } .c-ct-col-5 { grid-column: span 5; --c-span: 5; } .c-ct-col-6 { grid-column: span 6; --c-span: 6; }
   .c-ct-col-7 { grid-column: span 7; --c-span: 7; } .c-ct-col-8 { grid-column: span 8; --c-span: 8; } .c-ct-col-9 { grid-column: span 9; --c-span: 9; }
   .c-ct-col-10 { grid-column: span 10; --c-span: 10; } .c-ct-col-11 { grid-column: span 11; --c-span: 11; } .c-ct-col-12 { grid-column: span 12; --c-span: 12; }
 }
-@container (min-width: 1024px) {
+@container (min-width: 640px) {
   .c-cd-col-1 { grid-column: span 1; --c-span: 1; } .c-cd-col-2 { grid-column: span 2; --c-span: 2; } .c-cd-col-3 { grid-column: span 3; --c-span: 3; }
   .c-cd-col-4 { grid-column: span 4; --c-span: 4; } .c-cd-col-5 { grid-column: span 5; --c-span: 5; } .c-cd-col-6 { grid-column: span 6; --c-span: 6; }
   .c-cd-col-7 { grid-column: span 7; --c-span: 7; } .c-cd-col-8 { grid-column: span 8; --c-span: 8; } .c-cd-col-9 { grid-column: span 9; --c-span: 9; }
@@ -350,6 +362,28 @@ html:has(.c-sticky, .c-overlap) { container-type: scroll-state; }
 @media print {
   .c-tabs > .c-tabs-list { display: none; }
   .c-tabs .c-tabs-panel[hidden], .c-tabs[data-tabs-ready] > .c-tabs-panel > .c-tabs-fallback-title { display: block; }
+}
+/* Tables: a scroll box keeps wide tables from widening the page. */
+.c-table-wrap { max-width: 100%; overflow-x: auto; }
+.c-table { width: 100%; border-collapse: collapse; font-size: inherit; }
+.c-table caption { caption-side: bottom; padding-top: var(--space-xs); font-size: var(--fs-sm); color: var(--c-muted); text-align: start; }
+.c-table :is(th, td) { padding: var(--space-sm) var(--space-md); text-align: start; vertical-align: top; }
+.c-table thead th { font-weight: 600; }
+.c-table-header-column tbody th { font-weight: 600; }
+.c-table-lines :is(thead th, tbody tr:not(:last-child) > *) { border-bottom: 1px solid var(--c-border); }
+.c-table-lines thead th { border-bottom-width: 2px; }
+.c-table-grid :is(th, td) { border: 1px solid var(--c-border); }
+.c-table-grid thead th { background: var(--c-surface); }
+.c-table-minimal thead th { color: var(--c-muted); font-size: var(--fs-sm); text-transform: uppercase; letter-spacing: 0.04em; }
+.c-table-striped tbody tr:nth-child(odd) > * { background: color-mix(in srgb, var(--c-surface) 70%, transparent); }
+.c-table-compact :is(th, td) { padding: var(--space-xs) var(--space-sm); }
+@media (max-width: 767px) {
+  .c-table-stack { overflow-x: visible; }
+  .c-table-stack .c-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .c-table-stack .c-table :is(tbody, tr, th, td) { display: block; }
+  .c-table-stack .c-table tbody tr { padding: var(--space-xs) 0; border-bottom: 1px solid var(--c-border); }
+  .c-table-stack .c-table tbody tr > * { border: 0; background: none; padding: var(--space-xs) var(--space-sm); }
+  .c-table-stack .c-table [data-label]::before { content: attr(data-label); display: block; font-size: var(--fs-sm); font-weight: 600; color: var(--c-muted); }
 }
 .c-empty { color: var(--c-muted); }
 .c-spacer-xs { height: var(--space-xs); } .c-spacer-sm { height: var(--space-sm); } .c-spacer-md { height: var(--space-md); }
@@ -671,6 +705,8 @@ html:has(.c-lightbox[open], .c-modal:modal) { overflow: hidden; }
 /* A row is an item's label; an item with a submenu adds its toggle at the row's end. */
 .c-menu-label { display: flex; align-items: center; border-radius: calc(var(--radius) * 0.75); }
 .c-menu a, .c-menu-label > span:not(.c-menu-chevron) { display: block; flex: 1 1 auto; min-width: 0; padding: 0.4em 0.75em; color: inherit; text-decoration: none; border-radius: inherit; overflow-wrap: anywhere; }
+/* An item's optional icon leads its label in the label's color. */
+.c-menu-icon { width: 1.15em; height: 1.15em; margin-inline-end: 0.45em; vertical-align: -0.2em; }
 /* The current and hovered links take the menu's text color, else the section's highlight color (see .c-bg-*). */
 /* A hover color of the menu's own comes first; "li" outranks an element's link color (.c-lc-*). */
 .c-menu li a:hover, .c-menu summary.c-menu-label:hover, .c-menu li a[aria-current="page"] { color: var(--c-menu-hover, var(--c-menu-color, var(--c-menu-accent, var(--c-primary)))); }
@@ -863,21 +899,6 @@ html:has(.c-menu-fullscreen > .c-menu-toggle:checked, .c-menu-drawer > .c-menu-t
 .c-item { min-width: 0; }
 
 /* ── Style tokens ─────────────────────────────────────────────────────── */
-.c-py-none { --c-py: 0px; padding-top: 0; padding-bottom: 0; }
-/* --c-py lets a compact sticky section know how much padding it gives up. */
-.c-py-xs { --c-py: var(--space-xs); padding-top: var(--space-xs); padding-bottom: var(--space-xs); }
-.c-py-sm { --c-py: var(--space-sm); padding-top: var(--space-sm); padding-bottom: var(--space-sm); }
-.c-py-md { --c-py: var(--space-md); padding-top: var(--space-md); padding-bottom: var(--space-md); }
-.c-py-lg { --c-py: var(--space-lg); padding-top: var(--space-lg); padding-bottom: var(--space-lg); }
-.c-py-xl { --c-py: var(--space-xl); padding-top: var(--space-xl); padding-bottom: var(--space-xl); }
-.c-py-2xl { --c-py: var(--space-2xl); padding-top: var(--space-2xl); padding-bottom: var(--space-2xl); }
-.c-px-none { padding-left: 0; padding-right: 0; }
-.c-px-xs { padding-left: var(--space-xs); padding-right: var(--space-xs); }
-.c-px-sm { padding-left: var(--space-sm); padding-right: var(--space-sm); }
-.c-px-md { padding-left: var(--space-md); padding-right: var(--space-md); }
-.c-px-lg { padding-left: var(--space-lg); padding-right: var(--space-lg); }
-.c-px-xl { padding-left: var(--space-xl); padding-right: var(--space-xl); }
-/* Individual edges override legacy paired padding. */
 .c-pt-none { --c-pt: 0px; padding-top: var(--c-pt); }
 .c-pt-xs { --c-pt: var(--space-xs); padding-top: var(--c-pt); }
 .c-pt-sm { --c-pt: var(--space-sm); padding-top: var(--c-pt); }

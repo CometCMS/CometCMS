@@ -24,6 +24,8 @@
 
     <AccordionItemsControl v-else-if="def.type === 'accordion_items'" :id="inputId" :node="node" :model-value="value" @update:model-value="emitValue" />
 
+    <TableControl v-else-if="def.type === 'table_rows'" :id="inputId" :node="node" :model-value="value" @update:model-value="emitValue" />
+
     <FontPicker v-else-if="def.type === 'font'" :id="inputId" :model-value="value || ''" allow-empty roles @update:model-value="emitValue" />
 
     <div v-else-if="def.type === 'icon'" class="flex items-center gap-1.5">
@@ -304,19 +306,22 @@
       </button>
     </div>
 
+    <ConditionsControl v-else-if="def.type === 'conditions'" :id="inputId" :label="label" :node="node" :model-value="value" @update:model-value="emitValue" />
+
     <ListFiltersControl v-else-if="def.type === 'list_filters'" :id="inputId" :label="label" :model-value="listValue" :type="collectionType" @update:model-value="emitValue" />
 
     <!-- Content types and fields a search looks through; none checked means all of them. -->
-    <div v-else-if="isKeyList" :id="inputId" class="max-h-48 space-y-0.5 overflow-y-auto rounded-lg border border-slate-200 p-1" role="group" :aria-label="label">
-      <label
-        v-for="option in keyListOptions"
-        :key="option.value"
-        class="flex min-w-0 cursor-pointer items-center gap-2 rounded-md px-2 py-1 text-xs text-slate-700 hover:bg-slate-50"
-      >
-        <input type="checkbox" class="form-checkbox h-3.5 w-3.5 shrink-0 rounded border-slate-300 text-theme-600" :checked="listValue.includes(option.value)" @change="toggleKey(option.value)" />
-        <span class="min-w-0 flex-1 truncate" :class="{ 'text-slate-400 line-through': option.missing }">{{ option.label }}</span>
-        <span v-if="option.meta" class="max-w-[45%] shrink-0 truncate text-[10px] text-slate-400" :title="option.meta">{{ option.meta }}</span>
-      </label>
+    <!-- Fields of several types sit under sticky type headings. -->
+    <div v-else-if="isKeyList" :id="inputId" class="max-h-48 overflow-y-auto rounded-lg border border-slate-200 p-1" role="group" :aria-label="label">
+      <GroupedList :groups="keyListGroups" :item-key="(option) => option.value" list-class="space-y-0.5">
+        <template #default="{ item: option }">
+          <label class="flex min-w-0 cursor-pointer items-center gap-2 rounded-md px-2 py-1 text-xs text-slate-700 hover:bg-slate-50">
+            <input type="checkbox" class="form-checkbox h-3.5 w-3.5 shrink-0 rounded border-slate-300 text-theme-600" :checked="listValue.includes(option.value)" @change="toggleKey(option.value)" />
+            <span class="min-w-0 flex-1 truncate" :class="{ 'text-slate-400 line-through': option.missing }">{{ option.label }}</span>
+            <span v-if="option.meta" class="max-w-[45%] shrink-0 truncate text-[10px] text-slate-400" :title="option.meta">{{ option.meta }}</span>
+          </label>
+        </template>
+      </GroupedList>
       <p v-if="!keyListOptions.length" class="px-2 py-1 text-xs text-slate-500">{{ t(def.type === 'content_types' ? 'site.search.noPageTypes' : def.type === 'sort_fields' ? 'site.builder.chooseType' : 'site.search.noFields') }}</p>
     </div>
 
@@ -339,9 +344,13 @@
 <script setup>
 import { computed } from "vue";
 import AccordionItemsControl from "./AccordionItemsControl.vue";
+import TableControl from "./TableControl.vue";
 import SmartValueEditor from "./SmartValueEditor.vue";
 import ListFiltersControl from "./ListFiltersControl.vue";
+import ConditionsControl from "./ConditionsControl.vue";
+import GroupedList from "./GroupedList.vue";
 import { sortFields } from "./listFilters.js";
+import { fieldGroups } from "../../../composables/smartValues.js";
 import BuilderTranslationStatus from "./BuilderTranslationStatus.vue";
 import BuilderOverrideStatus from "./BuilderOverrideStatus.vue";
 import { Icon } from "@iconify/vue";
@@ -409,6 +418,7 @@ const isHoverAnimation = computed(() => props.group === "style" && props.name ==
 const label = computed(() => {
   if (props.def.type === "raw_html") return t("site.prop.htmlSource");
   if (props.node.kind === "accordion" && props.name === "items") return t("site.accordion.entries");
+  if (props.def.type === "table_rows") return t("site.table.cells");
   if (isHoverAnimation.value) return t("site.style.hover_effect");
   if (props.name === "span" && builder.isStacked(props.node)) return t("site.prop.spanStacked");
   if (props.name === "text_color" && props.node.kind === "divider") return t("site.style.divider_color");
@@ -427,6 +437,7 @@ const hint = computed(() => {
   if (props.def.type === "raw_html") return t("site.builder.htmlHint");
   if (props.node.kind === "video" && ["media", "poster", "video_url", "autoplay", "controls", "start_time", "fullscreen"].includes(props.name)) return t(`site.video.${props.name}Hint`);
   if (props.name === "class") return t("site.builder.classHint");
+  if (props.node.kind === "table" && props.name === "mobile" && value.value === "stack" && props.node.props?.header_row === false) return t("site.table.stackHint");
   if (props.node.kind === "theme_toggle" && props.name === "label" && !value.value) return t("site.themeToggle.labelHint");
   if (props.node.kind === "modal_close" && props.name === "label" && !value.value) return t("site.modalClose.labelHint");
   if (props.name === "background_blur") return t("site.builder.backgroundBlurHint");
@@ -529,8 +540,12 @@ const enumValue = computed(() =>
   props.def.type === "display" && !value.value ? (enumOptions.value[0]?.value ?? "") : value.value,
 );
 
-// Lists of several types or of search hits have no single type whose fields they could sort or filter by.
-const collectionType = computed(() => (props.node.props?.list_source ?? "type") === "type" ? builder.types.value.find((type) => type.name === props.node.props?.type) ?? null : null);
+// A list of several types filters and sorts by the fields of all of them; search hits by none.
+const collectionType = computed(() => {
+  const source = props.node.props?.list_source ?? "type";
+  if (source === "types") return builder.combinedType(builder.types.value.filter((type) => (props.node.props?.collections ?? []).includes(type.name)), t("site.builder.mixedType"));
+  return source === "type" ? builder.types.value.find((type) => type.name === props.node.props?.type) ?? null : null;
+});
 
 function fieldsOfCollection(filter = () => true) {
   const fields = Object.entries(collectionType.value?.fields ?? {})
@@ -577,7 +592,8 @@ const selectOptions = computed(() => {
         { value: "published_at", label: t("site.systemField.published_at") },
         { value: "updated_at", label: t("site.systemField.updated_at") },
         { value: "created_at", label: t("site.systemField.created_at") },
-        ...fieldsOfCollection((config) => SORTABLE_TYPES.includes(config.type)),
+        // Only dates mean the same in every type of a list of several.
+        ...(props.node.props?.list_source === "types" ? [] : fieldsOfCollection((config) => SORTABLE_TYPES.includes(config.type))),
       ];
     case "page_field":
       return [
@@ -608,18 +624,12 @@ const keyListOptions = computed(() => {
     const listed = props.node.kind === "collection" && props.node.props?.list_source === "types" ? builder.types.value.filter((type) => type.visibility !== "private") : pageTypes;
     options = listed.map((type) => ({ value: type.name, label: type.label || type.name }));
   } else {
-    const chosen = props.node.props?.collections ?? [];
-    const searched = chosen.length ? pageTypes.filter((type) => chosen.includes(type.name)) : pageTypes;
-    const fields = new Map([["title", { value: "title", label: t("site.systemField.title"), types: searched.map((type) => type.label || type.name) }]]);
-    for (const type of searched) {
-      for (const [key, config] of Object.entries(type.fields ?? {})) {
-        if (key === "slug" || !SEARCHABLE_TYPES.includes(config?.type)) continue;
-        if (!fields.has(key)) fields.set(key, { value: key, label: config.label || key, types: [] });
-        fields.get(key).types.push(type.label || type.name);
-      }
-    }
-    // Which types have a field only matters when it is not all of them.
-    options = [...fields.values()].map(({ types, ...option }) => ({ ...option, meta: searched.length > 1 && types.length < searched.length ? types.join(", ") : "" }));
+    options = [
+      { value: "title", label: t("site.systemField.title") },
+      ...Object.entries(searchedType.value?.fields ?? {})
+        .filter(([key, config]) => key !== "slug" && SEARCHABLE_TYPES.includes(config?.type))
+        .map(([key, config]) => ({ value: key, label: config.label || key })),
+    ];
   }
   // Keep choices that no longer apply visible, so they can be unchecked.
   const known = new Set(options.map((option) => option.value));
@@ -630,6 +640,23 @@ const keyListOptions = computed(() => {
     missing: true,
   }));
   return [...options, ...missing];
+});
+
+/** The types a search list looks through (all with pages when none are chosen), as one. */
+const searchedType = computed(() => {
+  const chosen = props.node.props?.collections ?? [];
+  const pageTypes = builder.pageTypes.value;
+  return builder.combinedType(chosen.length ? pageTypes.filter((type) => chosen.includes(type.name)) : pageTypes, t("site.builder.searchResultsType"));
+});
+
+/** Fields every listed type has, then each type's own; choices that no longer apply last. */
+const keyListGroups = computed(() => {
+  const schema = props.def.type === "sort_fields" ? collectionType.value : props.def.type === "search_fields" ? searchedType.value : null;
+  const options = keyListOptions.value.filter((option) => !option.missing).map((option) => ({ ...option, key: option.value }));
+  return [
+    ...fieldGroups(options, schema, t("site.builder.sharedField")),
+    { key: "missing", label: t("site.builder.unavailableChoices"), items: keyListOptions.value.filter((option) => option.missing) },
+  ];
 });
 
 function toggleKey(key) {

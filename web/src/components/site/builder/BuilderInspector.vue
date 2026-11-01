@@ -73,7 +73,7 @@
         </div>
         <p class="min-h-[1rem] truncate text-xs text-slate-500">{{ builder.nodeSummary(node) }}</p>
       </div>
-      <button type="button" class="inspector-action" :title="t('site.builder.duplicate')" :disabled="locked || builder.isCard(node)" @click="builder.duplicate(node.id)">
+      <button type="button" class="inspector-action" :title="t('site.builder.duplicate')" :disabled="locked || builder.isCard(node) || node.kind === 'area_content'" @click="builder.duplicate(node.id)">
         <Icon icon="mdi:content-copy" class="h-4 w-4" />
       </button>
       <button type="button" class="inspector-action hover:!text-red-600" :title="t('common.delete')" :disabled="locked" @click="builder.remove(node.id)">
@@ -150,8 +150,29 @@
               </template>
             </BuilderControl>
           </div>
-          <p v-if="builder.componentTrees.value[component.id] && !instanceFields.length" class="text-xs text-slate-500">{{ t("site.component.noEditable") }}</p>
+          <p v-if="builder.componentTrees.value[component.id] && !instanceFields.length && !instanceAreas.length" class="text-xs text-slate-500">{{ t("site.component.noEditable") }}</p>
         </template>
+        <div v-if="instanceAreas.length" class="space-y-2 border-t border-slate-100 pt-3">
+          <h4 class="text-xs font-semibold text-slate-700">{{ t("site.area.title") }}</h4>
+          <p class="text-[11px] text-slate-500">{{ t("site.area.instanceHint") }}</p>
+          <ul class="space-y-1">
+            <li v-for="item in instanceAreas" :key="item.content?.id ?? item.area.id">
+              <button
+                type="button"
+                class="flex w-full min-w-0 items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs ring-1 ring-inset transition-colors disabled:cursor-default"
+                :class="item.removed ? 'bg-amber-50 text-amber-800 ring-amber-200 hover:bg-amber-100' : 'bg-white text-slate-700 ring-slate-200 hover:bg-slate-50'"
+                :disabled="!item.content"
+                @click="builder.select(item.content.id)"
+              >
+                <Icon :icon="item.removed ? 'mdi:alert-outline' : 'mdi:tray-arrow-down'" class="h-4 w-4 shrink-0" aria-hidden="true" />
+                <span class="min-w-0 flex-1 truncate font-medium">{{ item.removed ? t("site.area.removedName") : item.area.name || t("site.kind.component_area") }}</span>
+                <span class="shrink-0" :class="item.removed ? 'text-amber-700' : 'text-slate-400'">
+                  {{ areaCount(item.content) }}
+                </span>
+              </button>
+            </li>
+          </ul>
+        </div>
       </template>
 
       <template v-else-if="tab === 'content'">
@@ -246,6 +267,16 @@
           {{ node.props.field || builder.canAddPageField() ? t("site.page.placeHint") : t("site.page.noFieldHint") }}
         </p>
         <p v-if="node.kind === 'site_content'" class="rounded-lg bg-slate-50 px-3 py-3 text-xs text-slate-600 ring-1 ring-slate-200">{{ t('site.modal.contentHint') }}</p>
+        <p v-if="node.kind === 'component_area'" class="rounded-lg bg-slate-50 px-3 py-3 text-xs text-slate-600 ring-1 ring-slate-200">{{ t("site.area.componentHint") }}</p>
+        <template v-if="node.kind === 'area_content'">
+          <p v-if="builder.isRemovedArea(node)" class="rounded-lg bg-amber-50 px-3 py-3 text-xs text-amber-800 ring-1 ring-amber-200">{{ t("site.area.removedHint") }}</p>
+          <p v-else class="rounded-lg bg-slate-50 px-3 py-3 text-xs text-slate-600 ring-1 ring-slate-200">
+            {{ t("site.area.contentHint", { area: builder.nodeLabel(node), component: areaInstance ? builder.nodeLabel(areaInstance) : "" }) }}
+          </p>
+          <button v-if="areaInstance" type="button" class="btn-secondary btn-sm" @click="builder.select(areaInstance.id)">
+            <Icon icon="mdi:puzzle-outline" class="mr-1 h-4 w-4" />{{ t("site.area.selectPlacement") }}
+          </button>
+        </template>
         <div v-if="node.kind === 'collection'" class="rounded-lg bg-slate-50 px-3 py-3 text-xs text-slate-600 ring-1 ring-slate-200">
           <p class="font-medium text-slate-800">{{ hasCard ? t("site.card.custom") : t("site.card.standard") }}</p>
           <p class="mt-1">{{ t(cardHint) }}</p>
@@ -263,7 +294,7 @@
             </template>
           </div>
         </div>
-        <p v-if="visibleProps.length === 0 && node.kind !== 'site_content'" class="text-xs text-slate-500">{{ t("site.builder.noOptions") }}</p>
+        <p v-if="visibleProps.length === 0 && !['site_content', 'component_area', 'area_content'].includes(node.kind)" class="text-xs text-slate-500">{{ t("site.builder.noOptions") }}</p>
       </template>
 
       <template v-else>
@@ -276,7 +307,7 @@
           :key="group.key"
           v-model:open="expandedStyleGroups[group.key]"
           heading-tag="h4"
-          :title="t(`site.styleGroup.${group.key}`)"
+          :title="groupTitle(group)"
           content-class="mt-3 space-y-3"
         >
           <SpacingControl
@@ -330,7 +361,7 @@ import ColumnLayoutPicker from "./ColumnLayoutPicker.vue";
 import SegmentedControl from "../SegmentedControl.vue";
 import { DEVICE_ICONS, STATE_ICONS } from "./controlOptions.js";
 import { nodeIcon } from "./kindIcons.js";
-import { COMPONENT, findNode } from "../../../composables/layoutTree.js";
+import { COMPONENT, findNode, locate } from "../../../composables/layoutTree.js";
 import { FRAME_DEFAULT, FRAME_NONE, frameLabel } from "../../../composables/templates.js";
 import { useBuilderBreadcrumbs } from "../../../composables/useBuilderBreadcrumbs.js";
 import { useSiteBuilder } from "../../../composables/useSiteBuilder.js";
@@ -349,12 +380,12 @@ defineEmits(["edit-template-part", "assign-template-part"]);
 const BUTTON_COLORS = ["button_color", "button_text_color", "button_border_color"];
 const ICON_SHAPE = ["shape", "shape_color", "shape_padding"];
 /** So do a section's shape dividers, one group per edge. */
-const dividerKeys = (edge) => [`divider_${edge}`, ...["color", "height", "flip", "invert"].map((option) => `divider_${edge}_${option}`)];
+const dividerKeys = (edge) => [`divider_${edge}`, ...["color", "height", "width", "flip", "invert"].map((option) => `divider_${edge}_${option}`)];
 
 const STYLE_GROUPS = [
   { key: "button", part: "props", keys: BUTTON_COLORS },
   { key: "icon", part: "props", keys: ICON_SHAPE },
-  { key: "spacing", keys: ["padding_y", "padding_x", "padding_top", "padding_right", "padding_bottom", "padding_left", "margin_top", "margin_right", "margin_bottom", "margin_left"] },
+  { key: "spacing", keys: ["padding_top", "padding_right", "padding_bottom", "padding_left", "margin_top", "margin_right", "margin_bottom", "margin_left"] },
   { key: "background", keys: ["background", "background_gradient", "background_image", "background_size", "background_position", "background_repeat", "background_blur", "background_effect", "overlay"] },
   { key: "dividerTop", part: "props", keys: dividerKeys("top") },
   { key: "dividerBottom", part: "props", keys: dividerKeys("bottom") },
@@ -362,6 +393,7 @@ const STYLE_GROUPS = [
   { key: "shape", keys: ["radius", "shadow", "opacity", "border", "border_width", "border_style", "border_color", "max_width"] },
   { key: "position", keys: ["position", "pin", "offset_x", "offset_y", "z_index"] },
   { key: "animation", keys: ["animation", "animation_trigger", "animation_duration", "animation_delay"] },
+  { key: "conditions", keys: ["visible_if"] },
   { key: "advanced", keys: ["hide_on", "anchor", "class"] },
 ];
 
@@ -391,6 +423,11 @@ const OPEN_STYLE_GROUPS = ["button", "icon", "spacing", "text"];
 const expandedStyleGroups = ref(Object.fromEntries(STYLE_GROUPS.map(({ key }) => [key, OPEN_STYLE_GROUPS.includes(key)])));
 
 const node = computed(() => builder.selected.value);
+/** A closed Conditional group still tells that the element has conditions. */
+function groupTitle(group) {
+  const count = group.key === "conditions" ? node.value?.style?.visible_if?.conditions?.length ?? 0 : 0;
+  return count ? `${t(`site.styleGroup.${group.key}`)} (${count})` : t(`site.styleGroup.${group.key}`);
+}
 const kindSpec = computed(() => builder.spec.value?.kinds?.[node.value?.kind] ?? {});
 /** Hover and focus edit only their own values, so each element starts in its normal state. */
 const hasStates = computed(() => !isInstance.value && ["props", "style"].some((part) => (kindSpec.value.states?.[part]?.length || kindSpec.value.states?.variants?.hover?.[part]?.length)));
@@ -436,8 +473,16 @@ const component = computed(() => builder.componentOf(node.value));
 watch(() => component.value?.id, (id) => builder.loadComponentTree(id), { immediate: true });
 /** What the component lets this placement set. */
 const instanceFields = computed(() => (isInstance.value ? builder.instanceFields(node.value) : []));
+/** What this placement shows in each content area of its component. */
+const instanceAreas = computed(() => (isInstance.value ? builder.instanceAreas(node.value) : []));
+function areaCount(content) {
+  const count = content?.children?.length ?? 0;
+  return count === 0 ? t("site.area.empty") : count === 1 ? t("site.area.elementCountOne") : t("site.area.elementCount", { count });
+}
+/** The placement whose content for one area is selected. */
+const areaInstance = computed(() => (node.value?.kind === "area_content" ? locate(builder.nodes.value, node.value.id)?.parent ?? null : null));
 /** In a component, each content prop can be left for every placement to set. */
-const canMarkEditable = computed(() => !!builder.componentId.value && !!node.value && ![COMPONENT, "page_content"].includes(node.value.kind));
+const canMarkEditable = computed(() => !!builder.componentId.value && !!node.value && ![COMPONENT, "page_content", "component_area", "area_content"].includes(node.value.kind));
 const locked = computed(() => builder.translating?.value || (!!node.value && builder.isLockedRoot(node.value.id)));
 const nodePath = useBuilderBreadcrumbs(builder);
 const fieldConfig = computed(() => (node.value?.kind === "field" ? builder.fieldConfig(node.value) : null));
@@ -588,8 +633,8 @@ const visibleProps = computed(() => {
     return keys.filter((key) => rules[key]);
   }
 
-  // Each page content area owns its field; the inspector names it instead.
-  if (current.kind === "page_content") return [];
+  // Each page content area owns its field; the inspector names it instead. Area content belongs to its component's area.
+  if (["page_content", "component_area", "area_content"].includes(current.kind)) return [];
 
   if (current.kind === "icon") return keys.filter((key) => !ICON_SHAPE.includes(key));
 
@@ -600,14 +645,15 @@ const visibleProps = computed(() => {
 
   if (current.kind === "collection") {
     // Search results come from the query, not from one type, its sorting or visitor filters.
-    // Lists of several types sort by date and have no single type's fields to filter by.
+    // Lists of several types sort by date on their own; visitors filter and sort by the fields of all of them.
     const source = props.list_source ?? "type";
     const hidden = {
       search: ["type", "sort_field", "sort_order", "filter_field", "filter_value", "exclude_current", "filters", "sort_choices"],
-      types: ["type", "search_fields", "filter_field", "filter_value", "filters", "sort_choices"],
+      types: ["type", "search_fields", "filter_field", "filter_value"],
     }[source] ?? ["collections", "search_fields"];
     // Visitor filters and sorting need the list's fields.
-    return keys.filter((key) => !hidden.includes(key) && (key !== "filter_value" || props.filter_field) && (!["filters", "sort_choices"].includes(key) || props.type));
+    const hasFields = source === "types" ? !!props.collections?.length : !!props.type;
+    return keys.filter((key) => !hidden.includes(key) && (key !== "filter_value" || props.filter_field) && (!["filters", "sort_choices"].includes(key) || hasFields));
   }
 
   if (["image", "gallery"].includes(current.kind)) {

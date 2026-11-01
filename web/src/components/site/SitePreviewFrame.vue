@@ -1,5 +1,6 @@
 <template>
-  <div ref="containerRef" class="relative h-full w-full overflow-hidden">
+  <!-- The padding leaves room for the frame's ring, which the clipping would otherwise cut off at the edges. -->
+  <div ref="containerRef" class="relative h-full w-full overflow-hidden p-px">
     <div
       class="mx-auto origin-top-left overflow-hidden rounded-xl bg-[#fff] shadow-sm ring-1 ring-slate-200"
       :class="{ 'transition-[width] duration-200': device !== 'full' }"

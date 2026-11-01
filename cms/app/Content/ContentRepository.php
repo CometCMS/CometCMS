@@ -23,6 +23,23 @@ final class ContentRepository
     private JsonStore $store;
     private JsonStore $revisions;
     private WorkspaceContext $workspace;
+    private array $collectionsCache = [];
+    private array $identifiersCache = [];
+    private int $readGeneration = -1;
+
+    private function invalidateReads(): void
+    {
+        $this->collectionsCache = $this->identifiersCache = [];
+        $this->readGeneration = JsonStore::generation();
+    }
+
+    /** Stored values stay unresolved until the caller chooses its locale. */
+    private function storedEntries(string $collection): array
+    {
+        Security::assertSafeName($collection);
+        if ($this->readGeneration !== JsonStore::generation()) $this->invalidateReads();
+        return $this->collectionsCache[$collection] ??= $this->store->allUnsorted($collection);
+    }
 
     public function __construct(
         private readonly ContentTypeRepository $types = new ContentTypeRepository(),
@@ -54,7 +71,9 @@ final class ContentRepository
     public function all(string $collection, bool $includeDeleted = false): array
     {
         Security::assertSafeName($collection);
-        $entries = array_map(fn(array $entry): array => $this->normalizeStoredEntry($entry), $this->store->all($collection));
+        $entries = $this->storedEntries($collection);
+        JsonStore::sortByModified($entries);
+        $entries = array_map(fn(array $entry): array => $this->normalizeStoredEntry($entry), $entries);
 
         if (!$includeDeleted) {
             $entries = array_values(array_filter($entries, static fn(array $entry): bool => empty($entry['deleted_at'])));
@@ -87,10 +106,21 @@ final class ContentRepository
         $locale = $this->locale($locale);
         $direct = $this->find($collection, $identifier, $includeDeleted);
         if ($direct !== null && ($this->stableId($direct) === $identifier || $this->resolveLocaleFields($direct, $locale)['slug'] === $identifier)) return $direct;
-        foreach ($this->all($collection, $includeDeleted) as $candidate) {
-            if ($this->stableId($candidate) === $identifier || $this->resolveLocaleFields($candidate, $locale)['slug'] === $identifier) return $candidate;
+        $entries = $this->storedEntries($collection);
+        $key = $collection . '|' . $locale . '|' . ($includeDeleted ? '1' : '0');
+        if (!isset($this->identifiersCache[$key])) {
+            JsonStore::sortByModified($entries);
+            $lookup = [];
+            foreach ($entries as $candidate) {
+                if (!$includeDeleted && !empty($candidate['deleted_at'])) continue;
+                $lookup[$this->stableId($candidate)] ??= $candidate['id'];
+                $slug = $this->resolveLocaleFields($candidate, $locale)['slug'] ?? '';
+                if ($slug !== '') $lookup[$slug] ??= $candidate['id'];
+            }
+            $this->identifiersCache[$key] = $lookup;
         }
-        return null;
+        $id = $this->identifiersCache[$key][$identifier] ?? null;
+        return $id !== null ? $this->find($collection, $id, $includeDeleted) : null;
     }
 
     public function locale(string $locale = ''): string
@@ -129,6 +159,8 @@ final class ContentRepository
 
     private function saveUnlocked(string $collection, array $payload, array $user, ?string $existingId, bool $autoResolveSlugConflicts, ?array $validateOnlyFields): array
     {
+        // A writer may have changed storage while we waited for the routing lock.
+        $this->invalidateReads();
         Security::assertSafeName($collection);
         $existing = $existingId !== null ? $this->find($collection, $existingId, true) : null;
         if (isset($payload['revision']) && $existing !== null && $payload['revision'] !== ($existing['revision'] ?? '')) throw new ConflictException();
@@ -137,21 +169,12 @@ final class ContentRepository
         $site->validateEntryUrls($site->settings(), $entry);
         $locale = $this->locale((string) ($payload['locale'] ?? ''));
         $oldStatus = $existing['publication'][$locale]['status'] ?? null;
-        $oldId = $existing['id'] ?? null;
 
         if ($existing !== null) {
-            if ($oldId !== null && $oldId !== $entry['id']) {
-                $this->moveRevisionHistory($collection, (string) $oldId, (string) $entry['id']);
-            }
-
             $this->writeRevision($collection, (string) $entry['id'], $existing, 'content.updated', $user);
         }
 
         $this->store->write($this->stored($entry), $collection, (string) $entry['id']);
-
-        if ($oldId !== null && $oldId !== $entry['id']) {
-            $this->store->delete($collection, (string) $oldId);
-        }
 
         $event = $existing === null ? 'content.created' : 'content.updated';
         $this->afterWrite($event, $collection, (string) $entry['id'], $user);
@@ -363,6 +386,7 @@ final class ContentRepository
 
     private function restoreRevisionUnlocked(string $collection, string $id, string $revisionId, array $user, ?callable $authorize): ?array
     {
+        $this->invalidateReads();
         Security::assertSafeName($collection);
         Security::assertSafeName($id);
         Security::assertSafeName($revisionId);
@@ -389,30 +413,15 @@ final class ContentRepository
         $entry['updated_by'] = $user['id'] ?? null;
         unset($entry['deleted_at'], $entry['deleted_by']);
 
-        if ($entry['id'] === '') {
-            $entry['id'] = $id;
-            $entry['slug'] = $id;
-        }
-
         $entry['revision'] = bin2hex(random_bytes(12));
 
         if ($authorize !== null) $authorize($current, $entry, $this->revisionChanges($current, $entry));
         $site = new \CometCMS\Site\SiteRepository($this->workspace);
         $site->validateEntryUrls($site->settings(), $entry);
 
-        if ($current !== null) {
-            if ($id !== $entry['id']) {
-                $this->moveRevisionHistory($collection, $id, (string) $entry['id']);
-            }
-
-            $this->writeRevision($collection, (string) $entry['id'], $current, 'content.revision_restore', $user);
-        }
+        $this->writeRevision($collection, $id, $current, 'content.revision_restore', $user);
 
         $this->store->write($this->stored($entry), $collection, (string) $entry['id']);
-
-        if ($id !== $entry['id']) {
-            $this->store->delete($collection, $id);
-        }
 
         $this->afterWrite('content.updated', $collection, (string) $entry['id'], $user);
 
@@ -576,10 +585,13 @@ final class ContentRepository
 
     public function query(string $collection, array $params, bool $admin = false, array $overrides = []): array
     {
-        $entries = $this->all($collection, $admin && (($params['trash'] ?? '') === '1'));
+        $entries = $this->storedEntries($collection);
+        if (!$admin || ($params['trash'] ?? '') !== '1') {
+            $entries = array_values(array_filter($entries, static fn(array $entry): bool => empty($entry['deleted_at'])));
+        }
         foreach ($overrides as $override) {
             $entries = array_values(array_filter($entries, static fn(array $entry): bool =>
-                ($entry['uid'] ?? $entry['id']) !== ($override['uid'] ?? $override['id'])));
+                $entry['uid'] !== $override['uid']));
             $entries[] = $override;
         }
 
@@ -601,11 +613,16 @@ final class ContentRepository
             $order = 'asc';
         }
 
-        usort($entries, static function (array $a, array $b) use ($sort, $order): int {
-            $result = ContentQuery::compareSortValues(ContentQuery::valueAt($a, $sort), ContentQuery::valueAt($b, $sort));
+        $sortable = array_map(static fn(array $entry): array => [
+            'entry' => $entry, 'key' => ContentQuery::sortKey(ContentQuery::valueAt($entry, $sort)),
+            'modified' => (string) ($entry['updated_at'] ?? $entry['created_at'] ?? ''),
+        ], $entries);
+        usort($sortable, static function (array $a, array $b) use ($order): int {
+            $result = ContentQuery::compareSortKeys($a['key'], $b['key']);
 
-            return $order === 'asc' ? $result : -$result;
+            return ($order === 'asc' ? $result : -$result) ?: strcmp($b['modified'], $a['modified']);
         });
+        $entries = array_column($sortable, 'entry');
 
         $offset = max(0, (int) ($params['offset'] ?? 0));
         $limit = array_key_exists('limit', $params)
@@ -658,49 +675,9 @@ final class ContentRepository
 
     public function normalizeStoredEntry(array $entry): array
     {
-        if (!array_key_exists('values', $entry)) $entry = $this->upgradeEntry($entry);
         return $this->resolveLocaleFields($entry, $this->locale());
     }
 
-    /** Read old flat entries without rewriting files; the next save stores the new format. */
-    private function upgradeEntry(array $entry): array
-    {
-        $collection = (string) $entry['collection'];
-        $schema = $this->types->find($collection);
-        $originalSchema = (new JsonStore($this->workspace->path('content-types')))->read($collection)
-            ?? (array) comet_config('content_types.' . $collection, []);
-        $default = LanguageSettings::code($originalSchema['default_locale'] ?? '') ?: $schema['default_locale'];
-        $translations = is_array($entry['translations'] ?? null) ? $entry['translations'] : [];
-        $entry['revision'] = LocalizedValue::hash($entry);
-        $entry['values'] = [];
-        $slugField = $schema['slug_field'];
-        foreach ($schema['fields'] as $name => $config) {
-            $localized = in_array($name, ['title', 'slug', $slugField], true) || ($config['localized'] ?? true) !== false;
-            $source = $translations[$default] ?? [];
-            if (array_key_exists($name, $source) || array_key_exists($name, $entry)) {
-                $value = array_key_exists($name, $source) ? $source[$name] : $entry[$name];
-                $entry['values'][$name] = $localized ? LocalizedValue::set(null, $default, $value, $default) : $value;
-            }
-            if (!$localized) continue;
-            foreach ($translations as $locale => $translation) {
-                if ($locale === $default || !is_array($translation) || !array_key_exists($name, $translation)) continue;
-                $entry['values'][$name] = LocalizedValue::set($entry['values'][$name] ?? null, $locale, $translation[$name], $default);
-            }
-        }
-        // Old translations shared the entry slug and publication state.
-        $entry['values'][$slugField] ??= LocalizedValue::set(null, $default, $entry['slug'] ?? $entry['id'], $default);
-        $publication = ['status' => $entry['status'] ?? 'draft', 'published_at' => $entry['published_at'] ?? (($entry['status'] ?? '') === 'published' ? ($entry['created_at'] ?? null) : null)];
-        $entry['publication'] = [$default => $publication];
-        foreach ($translations as $locale => $translation) {
-            if (!is_array($translation)) continue;
-            $entry['publication'][$locale] = $publication;
-            if (!array_key_exists($locale, $entry['values'][$slugField]['values'])) {
-                $entry['values'][$slugField] = LocalizedValue::set($entry['values'][$slugField], $locale, $entry['slug'] ?? $entry['id'], $default);
-            }
-        }
-        if ($slugField !== 'slug') $entry['values']['slug'] = $entry['values'][$slugField];
-        return $this->stored($entry);
-    }
 
     private function stored(array $entry): array
     {
@@ -869,24 +846,6 @@ final class ContentRepository
         }
     }
 
-    private function moveRevisionHistory(string $collection, string $fromId, string $toId): void
-    {
-        if ($fromId === $toId) {
-            return;
-        }
-
-        foreach ($this->revisions->all($collection, $fromId) as $revision) {
-            $revisionId = (string) ($revision['id'] ?? '');
-
-            if ($revisionId === '') {
-                continue;
-            }
-
-            $revision['entry_id'] = $toId;
-            $this->revisions->write($revision, $collection, $toId, $revisionId);
-            $this->revisions->delete($collection, $fromId, $revisionId);
-        }
-    }
 
     private function replaceMediaValue(mixed $value, array $config, string $oldFilename, string $newFilename): mixed
     {
@@ -986,6 +945,7 @@ final class ContentRepository
 
     private function afterWrite(string $event, string $collection, string $id, array $user): void
     {
+        $this->invalidateReads();
         $entry = $this->find($collection, $id, true);
         $this->cache->clear();
         $this->logger->info($event, ['type' => $collection, 'slug' => $id, 'user_id' => $user['id'] ?? null]);

@@ -543,3 +543,47 @@
     @apply badge bg-amber-50 text-amber-700 ring-amber-600/20;
   }
 }
+
+/* v-tooltip (src/directives/tooltip.js): one shared hint, placed in the body. */
+.app-tooltip {
+  pointer-events: none;
+  position: fixed;
+  z-index: 1000;
+  width: max-content;
+  max-width: 18rem;
+  border-radius: 0.5rem;
+  background: rgb(15 23 42);
+  padding: 0.375rem 0.625rem;
+  text-align: left;
+  font-size: 0.75rem;
+  line-height: 1.1rem;
+  color: #fff;
+  box-shadow: 0 8px 24px rgb(15 23 42 / 0.2);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-2px);
+  transition: opacity 120ms, transform 120ms, visibility 120ms;
+}
+.app-tooltip[data-placement="right"] {
+  transform: translateX(-4px);
+}
+.app-tooltip.is-measuring {
+  transition: none;
+}
+.app-tooltip.is-visible {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+}
+.app-tooltip-title {
+  display: block;
+  font-weight: 600;
+}
+.app-tooltip-text {
+  display: block;
+  font-size: 10px;
+  color: rgb(203 213 225);
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-tooltip { transition: none; }
+}

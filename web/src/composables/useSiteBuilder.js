@@ -4,7 +4,9 @@ import { normalizeKey, uniqueKey } from './fieldBuilderUtils.js'
 import { useBuilderClipboard } from './builderClipboard.js'
 import { computed, inject, provide, ref, shallowRef } from 'vue'
 import {
+  AREA_CONTENT,
   COMPONENT,
+  COMPONENT_AREA,
   MODAL,
   PAGE_CONTENT,
   SITE_CONTENT,
@@ -17,8 +19,10 @@ import {
   columnLayoutOf,
   contains,
   createNode,
+  detachedCopy,
   duplicateNode,
   effectiveSpan,
+  fillAllAreas,
   findNode,
   insertNode,
   instanceNode,
@@ -39,26 +43,7 @@ import {
 
 const KEY = Symbol('site-builder')
 const HISTORY_LIMIT = 100
-
 const HOVER_ANIMATION_KEYS = ['animation', 'animation_duration', 'animation_delay']
-
-/** Upgrade legacy hover triggers on entry to the editor, including restored revisions. */
-function migrateHoverAnimations(tree) {
-  const result = clone(tree ?? [])
-  walk(result, (node) => {
-    if (node.style?.animation_trigger !== 'hover') return
-    if (node.states?.hover?.style?.animation === undefined) {
-      node.states ??= {}
-      node.states.hover ??= {}
-      node.states.hover.style ??= {}
-      for (const key of HOVER_ANIMATION_KEYS) {
-        if (node.style[key] !== undefined) node.states.hover.style[key] ??= node.style[key]
-      }
-    }
-    for (const key of [...HOVER_ANIMATION_KEYS, 'animation_trigger']) delete node.style[key]
-  })
-  return result
-}
 
 /** The content of each element that can become a field of its own: the prop and the type of field it becomes. */
 const CONTENT_PROPS = {
@@ -95,6 +80,7 @@ const MAX_FALLBACK = 2000
  */
 export function createSiteBuilder({ t, componentApi = {}, templateApi = {}, fieldApi = {}, linked = null, clipboardStorage }) {
   const nodes = ref([])
+  const serializedNodes = computed(() => JSON.stringify(nodes.value))
   const spec = ref(null)
   const type = ref(null)
   const types = ref([])
@@ -106,7 +92,7 @@ export function createSiteBuilder({ t, componentApi = {}, templateApi = {}, fiel
   const pageTypes = computed(() => types.value.filter((item) => item.visibility !== 'private'
     && (settings.value?.routes?.[item.name]?.enabled || settings.value?.homepage?.type === item.name)))
   const currentAvailable = ref(true)
-  /** Reusable components ({ id, name, root, type }) available in the Add panel. */
+  /** Reusable components ({ id, name, root, type, areas }) available in the Add panel. */
   const components = ref([])
   /** Editing a component (its id and root kind) or the modal template: the tree holds just that one root node. */
   const componentId = ref(null)
@@ -123,9 +109,13 @@ export function createSiteBuilder({ t, componentApi = {}, templateApi = {}, fiel
   const translating = computed(() => !!locale.value && locale.value !== defaultLocale.value)
   const hasSyntaxErrors = computed(() => hasInvalidValues(nodes.value))
   const selectedId = ref(null)
+  /** Table cell picked on the canvas: { id, row, column }; the inspector edits it. */
+  const selectedCell = ref(null)
   const hoverId = ref(null)
   /** One-shot CSS canvas picker: { rootId, className, onPick }. */
   const cssPicker = shallowRef(null)
+  /** Measured by the canvas: { id, width, device } of the selected row when it sits in a column (it switches by its own width). */
+  const nestedRow = shallowRef(null)
   /** Previewed device; on tablet and mobile, edits of options that allow it only apply there (node.responsive). */
   const device = ref('desktop')
   /** Edited state: normal, or hover/focus values of the options that allow them (node.states). */
@@ -146,13 +136,13 @@ export function createSiteBuilder({ t, componentApi = {}, templateApi = {}, fiel
   let linkedSnapshot = readLinked()
 
   const selected = computed(() => (selectedId.value ? findNode(nodes.value, selectedId.value) : null))
-  const isDirty = computed(() => JSON.stringify(nodes.value) !== savedSnapshot.value)
+  const isDirty = computed(() => serializedNodes.value !== savedSnapshot.value)
   const canUndo = computed(() => past.value.length > 0)
   const canRedo = computed(() => future.value.length > 0)
 
   function load(tree) {
-    nodes.value = migrateHoverAnimations(tree)
-    savedSnapshot.value = JSON.stringify(nodes.value)
+    nodes.value = withAreas(tree)
+    savedSnapshot.value = serializedNodes.value
     past.value = []
     future.value = []
     linkedSnapshot = readLinked()
@@ -160,13 +150,20 @@ export function createSiteBuilder({ t, componentApi = {}, templateApi = {}, fiel
   }
 
   function loadRevision(tree) {
-    mutate(() => { nodes.value = migrateHoverAnimations(tree) })
+    mutate(() => { nodes.value = withAreas(tree) })
     keepSelection()
   }
 
+  /** A copy of `tree` whose instances have content for each area of their component, also areas added since it was saved. */
+  function withAreas(tree) {
+    const copy = clone(tree ?? [])
+    fillAllAreas(spec.value, copy, components.value)
+    return copy
+  }
+
   function markSaved(tree) {
-    nodes.value = migrateHoverAnimations(tree)
-    savedSnapshot.value = JSON.stringify(nodes.value)
+    nodes.value = clone(tree ?? [])
+    savedSnapshot.value = serializedNodes.value
     if (selectedId.value && !findNode(nodes.value, selectedId.value)) selectedId.value = null
   }
 
@@ -207,7 +204,7 @@ export function createSiteBuilder({ t, componentApi = {}, templateApi = {}, fiel
       }
       return kept
     }
-    const current = JSON.stringify(nodes.value)
+    const current = serializedNodes.value
     past.value = keepChanges(past.value, current)
     future.value = keepChanges(future.value, current)
     lastCoalesce = ''
@@ -216,7 +213,7 @@ export function createSiteBuilder({ t, componentApi = {}, templateApi = {}, fiel
   function record(coalesce, linkedState) {
     const now = Date.now()
     if (!coalesce || coalesce !== lastCoalesce || now - lastChange > 1000) {
-      past.value.push({ nodes: JSON.stringify(nodes.value), linked: linkedState })
+      past.value.push({ nodes: serializedNodes.value, linked: linkedState })
       if (past.value.length > HISTORY_LIMIT) past.value.shift()
       future.value = []
     }
@@ -229,7 +226,7 @@ export function createSiteBuilder({ t, componentApi = {}, templateApi = {}, fiel
   }
 
   function currentStep() {
-    return { nodes: JSON.stringify(nodes.value), linked: linkedSnapshot }
+    return { nodes: serializedNodes.value, linked: linkedSnapshot }
   }
 
   function restore(step) {
@@ -260,6 +257,7 @@ export function createSiteBuilder({ t, componentApi = {}, templateApi = {}, fiel
   }
 
   function select(id) {
+    if (selectedCell.value?.id !== id) selectedCell.value = null
     selectedId.value = id
   }
 
@@ -273,8 +271,12 @@ export function createSiteBuilder({ t, componentApi = {}, templateApi = {}, fiel
   function entryContext(id) {
     const collection = id ? templateCollection(nodes.value, id) : null
     if (collection) return { type: ['search', 'types'].includes(collection.props?.list_source) ? mixedCardType(collection) : types.value.find((item) => item.name === collection.props?.type) ?? null, currentAvailable: true, collection }
+    // A component fits every type, so it offers the fields of all of them.
+    if (componentId.value) return { type: componentType.value, currentAvailable: true, collection: null }
     return { type: type.value, currentAvailable: currentAvailable.value, collection: null }
   }
+
+  const componentType = computed(() => combinedType(pageTypes.value.length ? pageTypes.value : types.value.filter((item) => item.visibility !== 'private'), t('site.builder.anyType')) ?? type.value)
 
   /**
    * What the card of a list of several types can show: one type as it is,
@@ -286,17 +288,27 @@ export function createSiteBuilder({ t, componentApi = {}, templateApi = {}, fiel
     const chosen = collection.props?.collections ?? []
     const search = collection.props?.list_source === 'search'
     const searched = search && !chosen.length ? pageTypes.value : (search ? pageTypes.value : types.value).filter((item) => chosen.includes(item.name))
-    if (!searched.length) return null
-    if (searched.length === 1) return searched[0]
+    return combinedType(searched, t(search ? 'site.builder.searchResultsType' : 'site.builder.mixedType'))
+  }
+
+  /**
+   * Several types as one: all their fields, with field_types naming the types
+   * that have each field and type_labels the types in order. One type stays
+   * as it is; none gives null.
+   */
+  function combinedType(list, label) {
+    if (!list.length) return null
+    if (list.length === 1) return list[0]
     const fields = {}
     const fieldTypes = {}
-    for (const item of searched) {
+    const typeLabels = list.map((item) => resolveLocalized(item.label, locale.value || defaultLocale.value, defaultLocale.value) || item.name)
+    list.forEach((item, index) => {
       for (const [key, config] of Object.entries(item.fields ?? {})) {
         fields[key] ??= config
-        ;(fieldTypes[key] ??= []).push(resolveLocalized(item.label, locale.value || defaultLocale.value, defaultLocale.value) || item.name)
+        ;(fieldTypes[key] ??= []).push(typeLabels[index])
       }
-    }
-    return { name: '', label: t(search ? 'site.builder.searchResultsType' : 'site.builder.mixedType'), fields, field_types: fieldTypes, type_count: searched.length }
+    })
+    return { name: '', label, fields, field_types: fieldTypes, type_labels: typeLabels, type_count: list.length }
   }
 
   /** Whether every type a card of several types shows has the field `key` (always, for one type). */
@@ -364,33 +376,67 @@ export function createSiteBuilder({ t, componentApi = {}, templateApi = {}, fiel
 
   const dropOptions = { isTemplateField }
 
-  /** Drop containers: structure, tabs, item templates, page content, the modal panel and lists without a card yet. */
+  /** Drop containers: structure, tabs, item templates, content areas, the modal panel and lists without a card yet. */
   function isDropContainer(node) {
-    return !!node && (isStructure(node.kind) || ['tabs', 'tab', PAGE_CONTENT, MODAL].includes(node.kind) || isTemplateField(node) || (node.kind === 'collection' && !node.children?.length))
-  }
-
-  /** The single root of a component's or the modal template's tree stays where it is. */
-  function isLockedRoot(id) {
-    return !!rootKind.value && nodes.value[0]?.id === id
+    return !!node && (isStructure(node.kind) || ['tabs', 'tab', PAGE_CONTENT, AREA_CONTENT, MODAL].includes(node.kind) || isTemplateField(node) || (node.kind === 'collection' && !node.children?.length))
   }
 
   /**
-   * Whether a resolved drop may happen: nothing joins a locked root. Page
-   * content and the modal's site content go neither into page content,
+   * The single root of a component's or the modal template's tree stays
+   * where it is, and so does an instance's content for an area of its component.
+   */
+  function isLockedRoot(id) {
+    if (rootKind.value && nodes.value[0]?.id === id) return true
+    const node = id ? findNode(nodes.value, id) : null
+    return node?.kind === AREA_CONTENT && !isRemovedArea(node)
+  }
+
+  /** The component an instance's area content belongs to. */
+  function areaComponent(node) {
+    return node?.kind === AREA_CONTENT ? componentOf(locate(nodes.value, node.id)?.parent) : null
+  }
+
+  /** The area of the component that area content fills: { id, name }, or null when the component no longer has it. */
+  function areaOf(node) {
+    return areaComponent(node)?.areas?.find((area) => area.id === node.props?.area) ?? null
+  }
+
+  /** Content for an area its component no longer has: kept, not shown, and free to delete. */
+  function isRemovedArea(node) {
+    return !!areaComponent(node) && !areaOf(node)
+  }
+
+  /** What an instance shows in each area of its component, in order, then content of removed areas: [{ area, content, removed }]. */
+  function instanceAreas(instance) {
+    if (instance?.kind !== COMPONENT) return []
+    const contents = (instance.children ?? []).filter((child) => child.kind === AREA_CONTENT)
+    const areas = componentOf(instance)?.areas ?? []
+    return [
+      ...areas.map((area) => ({ area, content: contents.find((child) => child.props?.area === area.id) ?? null, removed: false })),
+      ...contents.filter((child) => !areas.some((area) => area.id === child.props?.area)).map((content) => ({ area: null, content, removed: true })),
+    ]
+  }
+
+  /**
+   * Whether a resolved drop may happen: nothing joins a locked root, and
+   * area content stays with its instance. Page content, content areas and
+   * the modal's site content go neither into page content, area content,
    * cards or item templates nor twice into one tree (page content: per field).
    */
   function placeable(result) {
-    if (!result || (rootKind.value && result.parentId === null)) return false
+    if (!result || (rootKind.value && result.parentId === null) || result.node.kind === AREA_CONTENT) return false
     const places = []
     const slots = []
+    let areas = false
     walk([result.node], (node) => {
       if (node.kind === PAGE_CONTENT) places.push(node)
       if (node.kind === SITE_CONTENT) slots.push(node)
+      if (node.kind === COMPONENT_AREA) areas = true
     })
-    if (!places.length && !slots.length) return true
+    if (!places.length && !slots.length && !areas) return true
     const parent = result.parentId ? findNode(nodes.value, result.parentId) : null
     const around = parent ? [...ancestors(nodes.value, parent.id), parent] : []
-    if (around.some((node) => [PAGE_CONTENT, 'collection', 'field'].includes(node.kind))) return false
+    if (around.some((node) => [PAGE_CONTENT, AREA_CONTENT, 'collection', 'field'].includes(node.kind))) return false
     if (slots.length > 1 || (slots.length && findKind(SITE_CONTENT, slots[0].id))) return false
     return places.every((place) => !place.props?.field || !findPlace(place.props.field, place.id))
   }
@@ -507,25 +553,11 @@ export function createSiteBuilder({ t, componentApi = {}, templateApi = {}, fiel
       if (translating.value && !def?.localized) return
       const next = def?.localized ? setLocalized(node[group]?.[key], locale.value || defaultLocale.value, value, defaultLocale.value) : value
       node[group] = { ...(node[group] ?? {}), [key]: next }
-      if (group === 'style') splitPairedPadding(node, key)
       // Like the server, style keeps only values that differ from their default.
       if (group === 'style' && isDefaultStyle(key, value)) {
         delete node.style[key]
       }
     }, { coalesce: `${id}:${group}:${key}` })
-  }
-
-  /** Split legacy paired padding on the first edge edit, keeping its opposite. */
-  function splitPairedPadding(node, key) {
-    if (!/^padding_(top|right|bottom|left)$/.test(key)) return
-    const vertical = ['padding_top', 'padding_bottom'].includes(key)
-    const pair = vertical ? 'padding_y' : 'padding_x'
-    if (!node.style[pair]) return
-    for (const side of vertical ? ['top', 'bottom'] : ['left', 'right']) {
-      const edge = `padding_${side}`
-      if (edge !== key && !node.style[edge]) node.style[edge] = node.style[pair]
-    }
-    delete node.style[pair]
   }
 
   // ─── Device and state overrides ──────────────────────────────────────
@@ -597,7 +629,6 @@ export function createSiteBuilder({ t, componentApi = {}, templateApi = {}, fiel
           continue
         }
         node[group] = { ...(node[group] ?? {}), [key]: value }
-        if (group === 'style') splitPairedPadding(node, key)
         if (group === 'style' && isDefaultStyle(key, value)) delete node.style[key]
       }
     })
@@ -642,7 +673,8 @@ export function createSiteBuilder({ t, componentApi = {}, templateApi = {}, fiel
   function renameNode(id, value) {
     if (translating.value) return false
     const node = findNode(nodes.value, id)
-    if (!node || typeof value !== 'string') return
+    // Area content is named after its component's area.
+    if (!node || node.kind === AREA_CONTENT || typeof value !== 'string') return
     const name = Array.from(value.replace(/[\r\n]/g, ' ')).slice(0, spec.value?.max_node_name_length ?? 120).join('').trim()
     if ((node.name ?? '') === name) return
     mutate(() => {
@@ -668,9 +700,15 @@ export function createSiteBuilder({ t, componentApi = {}, templateApi = {}, fiel
     const result = insertion(node, targetId)
     if (!placeable(result)) return false
     mutate((tree) => insertNode(tree, result.parentId, result.index, result.node))
-    selectedId.value = node.id
-    placed(node)
+    selectNew(node, result.node)
     return true
+  }
+
+  /** Select a new node, or what was placed of it when a preset section went in as just its row. */
+  function selectNew(node, inserted) {
+    const target = findNode([inserted], node.id) ? node : inserted
+    selectedId.value = target.id
+    placed(target)
   }
 
   /** Give newly placed page content elements their fields (see assignPageField()). */
@@ -692,15 +730,14 @@ export function createSiteBuilder({ t, componentApi = {}, templateApi = {}, fiel
       const result = resolveDrop(spec.value, nodes.value, node, targetId, position, dropOptions)
       if (!placeable(result)) return false
       mutate((tree) => insertNode(tree, result.parentId, result.index, result.node))
-      selectedId.value = node.id
-      placed(node)
+      selectNew(node, result.node)
       return true
     }
 
     const node = findNode(nodes.value, current.id)
     if (!node || isLockedRoot(node.id) || targetId === current.id || (targetId && contains(node, targetId))) return false
 
-    const before = JSON.stringify(nodes.value)
+    const before = serializedNodes.value
     let moved = false
     mutate((tree) => {
       removeNode(tree, current.id)
@@ -733,7 +770,7 @@ export function createSiteBuilder({ t, componentApi = {}, templateApi = {}, fiel
 
   function duplicate(id = selectedId.value) {
     if (translating.value) return false
-    if (!id || isLockedRoot(id) || isCard(findNode(nodes.value, id)) || holdsPageContent(findNode(nodes.value, id))) return
+    if (!id || isLockedRoot(id) || isCard(findNode(nodes.value, id)) || holdsPageContent(findNode(nodes.value, id)) || findNode(nodes.value, id)?.kind === AREA_CONTENT) return
     let copy = null
     mutate((tree) => {
       copy = duplicateNode(tree, id)
@@ -742,7 +779,7 @@ export function createSiteBuilder({ t, componentApi = {}, templateApi = {}, fiel
   }
 
   function shift(id, delta) {
-    if (translating.value) return false
+    if (translating.value || isLockedRoot(id)) return false
     mutate((tree) => shiftNode(tree, id, delta))
   }
 
@@ -868,7 +905,11 @@ export function createSiteBuilder({ t, componentApi = {}, templateApi = {}, fiel
     if (kind === 'tabs' && children.length === 0) {
       children = [1, 2].map((index) => make('tab', { title: t('site.tabs.tabTitle', { number: index }) }))
     }
-    return createNode(spec.value, kind, props, style, children)
+    const node = createNode(spec.value, kind, props, style, children)
+    if (kind === 'row' && children.length === 0) {
+      applyColumnPreset(spec.value, node, [12])
+    }
+    return node
   }
 
   // ─── Components ────────────────────────────────────────────────────────
@@ -878,9 +919,8 @@ export function createSiteBuilder({ t, componentApi = {}, templateApi = {}, fiel
   }
 
   function canInsertComponent(component) {
-    const context = entryContext(selectedId.value)
+    // Components fit every type; a field the shown entry lacks just stays empty.
     return component.id !== componentId.value
-      && (!component.type || (context.currentAvailable && component.type === context.type?.name))
   }
 
   async function renameComponent(id, name) {
@@ -899,13 +939,11 @@ export function createSiteBuilder({ t, componentApi = {}, templateApi = {}, fiel
     function detachInstances(tree) {
       return tree.map((node) => {
         if (node.kind === COMPONENT && node.props?.component === id) {
-          const key = `${node.id}:${JSON.stringify(node.overrides ?? {})}`
-          if (!copies.has(key)) copies.set(key, cloneWithNewIds(withOverrides(component.nodes[0], node.overrides)))
+          const key = JSON.stringify(node)
+          if (!copies.has(key)) copies.set(key, detachedCopy(node, component.nodes[0]))
+          // What the instance put into its areas may hold more instances of the component.
           const copy = clone(copies.get(key))
-          copy.id = node.id
-          if (node.name) copy.name = node.name
-          if (copy.kind === 'column') copy.props.span = clone(node.props.span ?? copy.props.span)
-          return copy
+          return { ...copy, children: detachInstances(copy.children ?? []) }
         }
         return { ...node, children: detachInstances(node.children ?? []) }
       })
@@ -922,9 +960,11 @@ export function createSiteBuilder({ t, componentApi = {}, templateApi = {}, fiel
     return component
   }
 
-  /** Content slots stay in their own document rather than becoming reusable components. */
+  /** Content slots and a component's content areas stay in their own document rather than becoming reusable components. */
   function canConvert(node) {
-    return !translating.value && !!node && isStructure(node.kind) && !isLockedRoot(node.id) && !holdsPageContent(node) && !!componentApi.create
+    let area = false
+    if (node) walk([node], (item) => !(area = item.kind === COMPONENT_AREA))
+    return !translating.value && !!node && isStructure(node.kind) && !isLockedRoot(node.id) && !holdsPageContent(node) && !area && !!componentApi.create
   }
 
   /** Whether `node` is or contains a page content place or the modal's site content slot. */
@@ -1128,7 +1168,7 @@ export function createSiteBuilder({ t, componentApi = {}, templateApi = {}, fiel
     componentApi.edit?.(id)
   }
 
-  /** Replace an instance with an editable copy of its component. */
+  /** Replace an instance with an editable copy of its component, with what it shows in each content area in place. */
   async function detach(id) {
     if (translating.value) return false
     const node = findNode(nodes.value, id)
@@ -1136,9 +1176,7 @@ export function createSiteBuilder({ t, componentApi = {}, templateApi = {}, fiel
     const component = await componentApi.load(node.props.component)
     const root = component?.nodes?.[0]
     if (!root) return false
-    const copy = cloneWithNewIds(withOverrides(root, node.overrides))
-    if (node.name) copy.name = node.name
-    if (copy.kind === 'column') copy.props = { ...copy.props, span: clone(node.props.span ?? copy.props.span) }
+    const copy = detachedCopy(node, root)
     let replaced = false
     mutate((tree) => {
       const where = locate(tree, id)
@@ -1176,6 +1214,7 @@ export function createSiteBuilder({ t, componentApi = {}, templateApi = {}, fiel
     if (node.name) return node.name
     if (node.kind === 'tab') return valueFor(node, 'props', 'title') || kindLabel('tab')
     if (node.kind === COMPONENT) return componentOf(node)?.name ?? t('site.component.missing')
+    if (node.kind === AREA_CONTENT) return areaOf(node)?.name || kindLabel(COMPONENT_AREA)
     if (isCard(node)) return t('site.kind.card')
     if (isStacked(node)) return t(`site.kind.${node.kind}Stacked`)
     return kindLabel(node.kind)
@@ -1195,6 +1234,10 @@ export function createSiteBuilder({ t, componentApi = {}, templateApi = {}, fiel
         return props.items ? t('site.accordion.count', { count: props.items.length }) : smartSummary(props.title)
       case 'tabs':
         return t('site.tabs.count', { count: node.children?.length ?? 0 })
+      case 'table': {
+        const rows = Array.isArray(props.rows) ? props.rows : []
+        return t('site.table.size', { rows: rows.length, columns: rows[0]?.length ?? 0 })
+      }
       case 'icon':
         return props.icon
       case 'collection':
@@ -1233,13 +1276,17 @@ export function createSiteBuilder({ t, componentApi = {}, templateApi = {}, fiel
         return t('site.component.instanceOf', { kind: kindLabel(props.root) })
       case PAGE_CONTENT:
         return pageFields().find((field) => field.key === props.field)?.label ?? t('site.page.noField')
+      case COMPONENT_AREA:
+        return t('site.area.filledByPlacement')
+      case AREA_CONTENT:
+        return isRemovedArea(node) ? t('site.area.removed') : t('site.area.filledHere')
       default:
         return ''
     }
   }
 
   const api = {
-    nodes, spec, type, types, pageTypes, sharedField, menus, forms, settings, selectedId, selected, hoverId, cssPicker, drag,
+    nodes, spec, type, types, pageTypes, sharedField, combinedType, menus, forms, settings, selectedId, selectedCell, selected, hoverId, cssPicker, nestedRow, drag,
     isDirty, canUndo, canRedo, savedSnapshot,
     load, loadRevision, markSaved, mutate, linkedChanged, rebaseLinked, undo, redo, select, selectParent,
     currentAvailable, locale, translating, defaultLocale, valueFor, translationState, resetTranslation, hasSyntaxErrors,
@@ -1250,7 +1297,7 @@ export function createSiteBuilder({ t, componentApi = {}, templateApi = {}, fiel
     kindLabel, nodeLabel, isStacked, nodeSummary,
     clipboard, styleClipboard, contextMenu, copy, paste, pasteStyle,
     addColumn, addSectionAfter, openContextMenu, closeContextMenu,
-    components, componentId, rootKind, componentDialog, isLockedRoot, componentOf, canConvert, canInsertComponent, deleteComponent, renameComponent,
+    components, componentId, rootKind, componentDialog, isLockedRoot, componentOf, areaOf, isRemovedArea, instanceAreas, canConvert, canInsertComponent, deleteComponent, renameComponent,
     replaceWithInstance, convertToComponent, detach, editComponent,
     componentTrees, loadComponentTree, isEditable, toggleEditable, instanceFields, hasInstanceValue, setInstanceValue, resetInstanceValue,
     fieldDialog, canMakeField, convertToField,

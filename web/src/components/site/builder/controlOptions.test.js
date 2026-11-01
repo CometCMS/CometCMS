@@ -24,7 +24,7 @@ describe('builder option bars', () => {
   })
 
   it('shows spacing tokens for padding and spacers, not for button sizes', () => {
-    const padding = barOptions('style', 'padding_y', ['', 'none', 'xs', 'sm', 'md'], { title, theme })
+    const padding = barOptions('style', 'padding_top', ['', 'none', 'xs', 'sm', 'md'], { title, theme })
     expect(padding.map((option) => option.label)).toEqual(['–', '0', 'XS', 'S', 'M'])
     expect(padding[4].title).toBe('md · 16px')
 

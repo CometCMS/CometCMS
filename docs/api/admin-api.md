@@ -169,7 +169,7 @@ Example response:
       "uploaded_by": "admin123",
       "uploaded_at": "2026-05-03T20:30:10Z",
       "url": "https://yourdomain.com/media/default/20260503203010-a1b2c3d4-example.png",
-      "thumb_url": "https://yourdomain.com/media/default/20260503203010-a1b2c3d4-example.png?variant=thumbnail"
+      "thumb_url": "https://yourdomain.com/media/default/20260503203010-a1b2c3d4-example.png?size=thumbnail"
     }
   ],
   "meta": {

@@ -16,7 +16,7 @@ vi.mock('../../composables/useLanguages.js', () => ({
   updateWorkspaceLanguages: vi.fn(),
 }))
 vi.mock('../../composables/useDialogFocus.js', () => ({ useDialogFocus: vi.fn() }))
-vi.mock('@iconify/vue', () => ({ Icon: { render: () => null } }))
+vi.mock('@iconify/vue', () => ({ Icon: { render: () => null }, addIcon: vi.fn() }))
 
 beforeEach(() => {
   vi.clearAllMocks()
