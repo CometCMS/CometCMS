@@ -6,6 +6,7 @@ use CometCMS\Extensions\Extension;
 use CometCMS\Extensions\ExtensionReview;
 use CometCMS\Extensions\ExtensionException;
 use CometCMS\Extensions\ExtensionRegistry;
+use CometCMS\Extensions\ExtensionSeeder;
 use CometCMS\Site\Blocks\BlockTemplate;
 use CometCMS\Site\LayoutSchema;
 use CometCMS\Site\NodeRenderer;
@@ -1290,37 +1291,85 @@ test('extension preset ledger follows renamed presets and resolves existing pres
     assert_same([], $site->themePresets());
 });
 
-test('disabling an extension hides its seeded components and presets until it is enabled or removed', function (): void {
+test('disabling an extension hides each seed kind that ExtensionSeeder::KINDS marks as hidden', function (): void {
     $registry = ExtensionRegistry::active();
     $files = [
         'comet-extension.json' => json_encode(['api_version' => 1, 'name' => 'test/design', 'title' => 'Design', 'version' => '1.0.0']),
         'theme.json' => '{"name":"Design preset","theme":{"colors":{"primary":"#123456"}}}',
+        'content-types/design-item.json' => json_encode(['label' => 'Design items', 'fields' => []]),
         'components/design-hero.json' => json_encode(['name' => 'Design hero', 'root' => 'section', 'type' => '', 'nodes' => [['kind' => 'section', 'children' => []]]]),
+        'templates/design-item/detail.json' => json_encode(['templates' => [['id' => 'default', 'name' => 'Item', 'header' => 'design-hero', 'footer' => 'default']], 'layouts' => []]),
     ];
+    // Every seed kind the compiler produces needs a visibility decision and a check here.
+    $visible = [
+        'content_types' => fn(): bool => (new \CometCMS\Content\ContentTypeRepository())->exists('design-item'),
+        'components' => fn(): bool => in_array('design-hero', array_column((new SiteRepository())->components(), 'id'), true) && (new SiteRepository())->component('design-hero') !== null,
+        'templates' => function (): bool {
+            $types = new \CometCMS\Content\ContentTypeRepository(includeDisabled: true);
+            return $types->exists('design-item') && (new SiteRepository(null, $types, includeDisabled: true))->hasTemplate('design-item', 'detail', SiteRepository::DEFAULT_TEMPLATE);
+        },
+        'presets' => fn(): bool => in_array('Design preset', array_column((new SiteRepository())->themePresets(), 'name'), true),
+    ];
+    assert_same(array_keys(ExtensionSeeder::KINDS), array_keys($visible));
+    $kinds = array_unique(array_column(Extension::compile($files)['seeds'], 'kind'));
+    sort($kinds);
+    $declared = array_keys(ExtensionSeeder::KINDS);
+    sort($declared);
+    assert_same($declared, $kinds);
     $own = (new SiteRepository())->createComponent('Own', [LayoutSchema::node('column')]);
     $registry->installFiles($files, seeds: []);
-    $visible = static function (): array {
-        $site = new SiteRepository();
-        return [array_column($site->components(), 'id'), array_column($site->themePresets(), 'name'), $site->component('design-hero') !== null];
-    };
-    assert_same([['design-hero', $own['id']], ['Design preset'], true], $visible());
+    foreach ($visible as $kind => $check) assert_true($check(), $kind . ' is visible after install');
 
     $registry->setEnabled('test/design', false);
-    assert_same([[$own['id']], [], false], $visible());
+    foreach ($visible as $kind => $check) assert_same(!ExtensionSeeder::KINDS[$kind], $check(), $kind . ' follows its hide-on-disable decision');
     $site = new SiteRepository();
+    assert_same([$own['id']], array_column($site->components(), 'id'));
     assert_true($site->componentDisabled('design-hero'));
     assert_false($site->componentDisabled('missing'));
     assert_true(is_file($registry->workspace->path('site') . '/theme/components/design-hero.json'));
-    assert_same(['components', 'presets'], array_column($registry->details('test/design')['seeded'], 'kind'));
+    $seeded = array_unique(array_column($registry->details('test/design')['seeded'], 'kind'));
+    sort($seeded);
+    assert_same($declared, $seeded);
 
     $registry->setEnabled('test/design', true);
-    assert_same([['design-hero', $own['id']], ['Design preset'], true], $visible());
+    foreach ($visible as $kind => $check) assert_true($check(), $kind . ' is restored on enable');
 
     $registry->setEnabled('test/design', false);
     $registry->delete('test/design', array_map(fn(array $item): string => $item['kind'] . '/' . $item['id'], $registry->details('test/design')['seeded']));
-    $site = new SiteRepository(includeDisabled: true);
-    assert_same([$own['id']], array_column($site->components(), 'id'));
-    assert_same([], $site->themePresets());
+    foreach ($visible as $kind => $check) assert_false($check(), $kind . ' is removed with a disabled extension');
+    assert_same([$own['id']], array_column((new SiteRepository(includeDisabled: true))->components(), 'id'));
+});
+
+test('extension updates refresh unedited seeds and keep edited ones unless overwritten', function (): void {
+    $registry = ExtensionRegistry::active();
+    $version = fn(string $version, string $name): array => [
+        'comet-extension.json' => json_encode(['api_version' => 1, 'name' => 'test/refresh', 'title' => 'Refresh', 'version' => $version]),
+        'components/refresh-hero.json' => json_encode(['name' => $name, 'root' => 'section', 'type' => '', 'nodes' => [['kind' => 'section', 'children' => []]]]),
+    ];
+    $registry->installFiles($version('1.0.0', 'Hero one'), seeds: []);
+    $plan = static function (array $files) use ($registry): array {
+        try { $registry->installFiles($files); } catch (ExtensionReview $e) { return $e->plan[0]; }
+        throw new RuntimeException('Expected a seed review.');
+    };
+    $item = $plan($version('1.1.0', 'Hero two'));
+    assert_same(['exists' => true, 'tracked' => true, 'modified' => false, 'default' => 'overwrite'], array_intersect_key($item, array_flip(['exists', 'tracked', 'modified', 'default'])));
+    $registry->installFiles($version('1.1.0', 'Hero two'), seeds: []);
+    assert_same('Hero two', (new SiteRepository())->component('refresh-hero')['name']);
+    assert_false($registry->details('test/refresh')['seeded'][0]['modified']);
+
+    $site = new SiteRepository();
+    $site->saveComponent('refresh-hero', [LayoutSchema::node('section', [], ['padding_top' => 'lg'])]);
+    $item = $plan($version('1.2.0', 'Hero three'));
+    assert_same(['modified' => true, 'default' => 'skip'], array_intersect_key($item, array_flip(['modified', 'default'])));
+    $registry->installFiles($version('1.2.0', 'Hero three'), seeds: []);
+    assert_same('Hero two', (new SiteRepository())->component('refresh-hero')['name']);
+    $registry->installFiles($version('1.3.0', 'Hero four'), seeds: ['components/refresh-hero' => 'overwrite']);
+    assert_same('Hero four', (new SiteRepository())->component('refresh-hero')['name']);
+
+    // A same-named component the site made itself is never refreshed by default.
+    $registry->delete('test/refresh');
+    $item = $plan($version('2.0.0', 'Hero five'));
+    assert_same(['exists' => true, 'tracked' => false, 'default' => 'skip'], array_intersect_key($item, array_flip(['exists', 'tracked', 'default'])));
 });
 
 test('extension component seeds normalize against their own incoming blocks and reject missing blocks before writing', function (): void {

@@ -11,6 +11,7 @@ use CometCMS\Core\ValidationException;
 use CometCMS\Localization\LocalizedValue;
 use CometCMS\Localization\LanguageSettings;
 use CometCMS\Extensions\ExtensionRegistry;
+use CometCMS\Extensions\HiddenSeeds;
 use CometCMS\Storage\JsonStore;
 use CometCMS\Workspaces\WorkspaceContext;
 use CometCMS\Workspaces\WorkspaceRepository;
@@ -64,8 +65,7 @@ final class SiteRepository
     private ?array $settingsCache = null;
     private ?array $typesCache = null;
     private ?ExtensionRegistry $extensionRegistry = null;
-    private array $hiddenSeeds = [];
-    private int $hiddenGeneration = -1;
+    private HiddenSeeds $hiddenSeeds;
 
     /** $includeDisabled also lists components and presets of disabled extensions. */
     public function __construct(?WorkspaceContext $workspace = null, ?ContentTypeRepository $types = null, private readonly bool $includeDisabled = false)
@@ -75,6 +75,7 @@ final class SiteRepository
         $this->store = new JsonStore($this->workspace->path('site'));
         $this->themeStore = new JsonStore($this->workspace->path('site') . '/theme');
         $this->revisions = new JsonStore($this->workspace->path('revisions') . '/site');
+        $this->hiddenSeeds = new HiddenSeeds($this->workspace);
     }
 
     public function workspace(): WorkspaceContext
@@ -90,12 +91,7 @@ final class SiteRepository
     /** Whether a seeded item is hidden because its extension is disabled. */
     private function hidden(string $kind, string $id): bool
     {
-        if ($this->includeDisabled) return false;
-        if ($this->hiddenGeneration !== JsonStore::generation()) {
-            $this->hiddenSeeds = array_map(array_flip(...), ExtensionRegistry::disabledSeeds($this->workspace));
-            $this->hiddenGeneration = JsonStore::generation();
-        }
-        return isset($this->hiddenSeeds[$kind][$id]);
+        return !$this->includeDisabled && $this->hiddenSeeds->has($kind, $id);
     }
 
     /** The extension registry also resolves block kinds for the renderer. */

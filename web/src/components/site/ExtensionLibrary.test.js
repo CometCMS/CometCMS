@@ -123,6 +123,26 @@ describe('extension confirmations', () => {
     expect(api.extensions.install.mock.calls[1][1]).toMatchObject({ acceptChanges: true, allowScripts: true, seeds: { 'content_types/project': 'create', 'components/hero': 'overwrite' } })
   })
 
+  it('defaults update choices to refreshing unedited seeds and labels each seed status', async () => {
+    api.extensions.install.mockRejectedValueOnce({ code: 'extension_review', details: {
+      extension: pkg.name, installed_version: '1.0.0', version: '1.1.0', changes: [], scripts: [],
+      plan: [
+        { kind: 'components', id: 'hero', name: 'Hero', exists: true, tracked: true, modified: false, default: 'overwrite' },
+        { kind: 'components', id: 'cta', name: 'CTA', exists: true, tracked: true, modified: true, default: 'skip' },
+        { kind: 'components', id: 'own', name: 'Own', exists: true, tracked: false, modified: false, default: 'skip' },
+      ],
+    } }).mockResolvedValueOnce({ data: pkg })
+    const root = await mount()
+    find(root, (el) => el.props.id === 'extension-upload').props.onChange({ target: { files: [new File(['zip'], 'portfolio.zip')], value: 'selected' } })
+    await vi.waitFor(() => expect(find(root, (el) => el.tag === 'dialog')?.props.title).toBe('Review extension'))
+    expect(text(root)).toContain('From earlier version')
+    expect(text(root)).toContain('Edited since install')
+    expect(text(root)).toContain('Exists')
+    find(root, (el) => el.tag === 'dialog').children.at(-1).props.onClick()
+    await vi.waitFor(() => expect(api.extensions.install).toHaveBeenCalledTimes(2))
+    expect(api.extensions.install.mock.calls[1][1].seeds).toEqual({ 'components/hero': 'overwrite', 'components/cta': 'skip', 'components/own': 'skip' })
+  })
+
   it('offers deletion for broken extensions without an inventory row', async () => {
     api.extensions.list.mockResolvedValue({ data: { can_install: true, extensions: [], errors: [
       { extension: 'test/broken', file: 'comet-extension.json', line: null, message: 'Invalid manifest.' },

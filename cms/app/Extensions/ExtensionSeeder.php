@@ -17,6 +17,12 @@ use CometCMS\Workspaces\WorkspaceContext;
 /** Copies extension seeds into normal site storage. Only the ledger records their origin. */
 final class ExtensionSeeder
 {
+    /**
+     * Every seed kind, in write order, and whether disabling its extension
+     * hides it. Each new kind must decide here; templates keep applying.
+     */
+    public const KINDS = ['content_types' => true, 'components' => true, 'templates' => false, 'presets' => true];
+
     private ContentTypeRepository $types;
     private SiteRepository $site;
     private JsonStore $store;
@@ -54,13 +60,26 @@ final class ExtensionSeeder
         return $seeds;
     }
 
-    /** @return list<array{kind: string, id: string, name: string, exists: bool}> */
+    /**
+     * What installing would do with each seed. Items this extension seeded
+     * and nobody edited since are refreshed by default; anything edited or
+     * owned elsewhere is kept unless explicitly overwritten.
+     *
+     * @return list<array{kind: string, id: string, name: string, exists: bool, tracked: bool, modified: bool, default: string}>
+     */
     public function plan(array $seeds): array
     {
-        $tracked = array_fill_keys(array_map(self::key(...), $this->ledger()[$this->extension] ?? []), true);
+        $tracked = [];
+        foreach ($this->ledger()[$this->extension] ?? [] as $entry) $tracked[self::key($entry)] = $entry;
         return array_map(function (array $seed) use ($tracked): array {
+            $entry = $tracked[self::key($seed)] ?? null;
+            $exists = $entry !== null || $this->exists($seed);
+            $modified = $entry !== null && $this->hash($entry) !== $entry['hash'];
             return array_intersect_key($seed, array_flip(['kind', 'id', 'name'])) + [
-                'exists' => isset($tracked[self::key($seed)]) || $this->exists($seed),
+                'exists' => $exists,
+                'tracked' => $entry !== null,
+                'modified' => $modified,
+                'default' => !$exists ? 'create' : ($entry !== null && !$modified ? 'overwrite' : 'skip'),
             ];
         }, $this->resolve($seeds));
     }
@@ -199,7 +218,7 @@ final class ExtensionSeeder
         if (array_diff(array_keys($choices), $known) !== []) throw ExtensionException::single('', 'Unknown seed choice.');
         $selected = [];
         foreach ($seeds as $index => $seed) {
-            $choice = $choices[self::key($seed)] ?? ($plan[$index]['exists'] ? 'skip' : 'create');
+            $choice = $choices[self::key($seed)] ?? $plan[$index]['default'];
             if (!in_array($choice, ['create', 'overwrite', 'skip'], true) || ($choice === 'create' && $plan[$index]['exists'])) {
                 throw ExtensionException::single(self::file($seed), 'Choose skip or overwrite for an existing item.');
             }
@@ -222,7 +241,7 @@ final class ExtensionSeeder
         $snapshots = $this->snapshot($seeds);
         $written = [];
         try {
-            foreach (['content_types', 'components', 'templates', 'presets'] as $kind) {
+            foreach (array_keys(self::KINDS) as $kind) {
                 foreach ($seeds as $seed) {
                     if ($seed['kind'] !== $kind) continue;
                     $data = $seed['data'];

@@ -7,7 +7,7 @@ namespace CometCMS\Content;
 use CometCMS\Cache\ApiCache;
 use CometCMS\Core\Security;
 use CometCMS\Core\ValidationException;
-use CometCMS\Extensions\ExtensionRegistry;
+use CometCMS\Extensions\HiddenSeeds;
 use CometCMS\Localization\LanguageSettings;
 use CometCMS\Localization\LocalizedValue;
 use CometCMS\Site\FormRepository;
@@ -20,8 +20,7 @@ final class ContentTypeRepository
 {
     private JsonStore $store;
     private SettingsStore $settings;
-    private array $disabledTypes = [];
-    private int $extensionGeneration = -1;
+    private HiddenSeeds $hidden;
 
     private WorkspaceContext $workspace;
 
@@ -32,20 +31,12 @@ final class ContentTypeRepository
         $this->workspace->ensure();
         $this->store = new JsonStore($this->workspace->path('content-types'));
         $this->settings = new SettingsStore();
+        $this->hidden = new HiddenSeeds($this->workspace);
     }
 
     public function isDisabled(string $name): bool
     {
-        return !$this->includeDisabled && in_array($name, $this->disabledTypes(), true);
-    }
-
-    private function disabledTypes(): array
-    {
-        if ($this->extensionGeneration !== JsonStore::generation()) {
-            $this->disabledTypes = ExtensionRegistry::disabledContentTypes($this->workspace);
-            $this->extensionGeneration = JsonStore::generation();
-        }
-        return $this->disabledTypes;
+        return !$this->includeDisabled && $this->hidden->has('content_types', $name);
     }
 
     public function all(): array
@@ -71,7 +62,7 @@ final class ContentTypeRepository
         }
 
         if (!$this->includeDisabled) {
-            foreach ($this->disabledTypes() as $name) unset($types[$name]);
+            foreach ($this->hidden->ids('content_types') as $name) unset($types[$name]);
         }
         $order = array_flip($this->contentTypeOrder());
 

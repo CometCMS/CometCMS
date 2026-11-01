@@ -145,7 +145,7 @@
               <tbody>
                 <tr v-for="item in group.items" :key="seedKey(item)">
                   <td class="py-2 pr-2">{{ item.name }}</td>
-                  <td class="pr-2"><span class="rounded bg-slate-100 px-1.5 py-0.5">{{ t(item.exists ? 'site.extensions.exists' : 'site.extensions.new') }}</span></td>
+                  <td class="pr-2"><span class="rounded bg-slate-100 px-1.5 py-0.5">{{ t(seedStatus(item)) }}</span></td>
                   <td>
                     <select v-if="item.exists" v-model="seedChoices[seedKey(item)]" :aria-label="t('site.extensions.choiceFor', { name: item.name })" :disabled="busy" class="form-input py-1 text-xs">
                       <option value="skip">{{ t('site.extensions.skip') }}</option>
@@ -190,6 +190,8 @@ const pendingReview = ref(null);
 const seedChoices = ref({});
 const removeChoices = ref([]);
 const seedKey = (item) => `${item.kind}/${item.id}`;
+// Seeds from an earlier version are refreshed unless someone edited them since.
+const seedStatus = (item) => !item.exists ? 'site.extensions.new' : !item.tracked ? 'site.extensions.exists' : item.modified ? 'site.extensions.edited' : 'site.extensions.unedited';
 const seedGroups = computed(() => ['content_types', 'components', 'templates', 'presets'].map((kind) => ({ kind, items: (pendingReview.value?.plan ?? []).filter((item) => item.kind === kind) })).filter((group) => group.items.length));
 const brokenExtensions = computed(() => [...new Set((data.value?.errors ?? []).map((issue) => issue.extension))]
   .filter((name) => name && !(data.value?.extensions ?? []).some((pkg) => pkg.name === name)));
@@ -269,7 +271,7 @@ async function upload(files, consent = { acceptChanges: false, allowScripts: fal
     pendingReview.value = null;
     if (err.code === "extension_review" && err.details) {
       pendingReview.value = { ...err.details, file: files[0] };
-      seedChoices.value = Object.fromEntries(err.details.plan.map((item) => [seedKey(item), item.exists ? 'skip' : 'create']));
+      seedChoices.value = Object.fromEntries(err.details.plan.map((item) => [seedKey(item), item.default ?? (item.exists ? 'skip' : 'create')]));
     } else {
       error.value = fail(err);
     }

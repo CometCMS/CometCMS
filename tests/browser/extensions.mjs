@@ -546,8 +546,9 @@ try {
   await waitFor(`!!document.querySelector('#extension-upload')`, 'extension upload');
   await dropFiles([portfolioZip]);
   await waitFor(`document.querySelectorAll('[role="alertdialog"] select').length === 4`, 'all seeds conflict on reinstall');
-  assert(await evaluate(`[...document.querySelectorAll('[role="alertdialog"] select')].every((el) => el.value === 'skip')`), 'Existing seeds default to skip');
-  await evaluate(`(() => { const el = document.querySelector('[role="alertdialog"] select[aria-label="Action for Portfolio hero"]'); el.value = 'overwrite'; el.dispatchEvent(new Event('change', { bubbles: true })); })()`);
+  assert(await evaluate(`[...document.querySelectorAll('[role="alertdialog"] select')].every((el) => el.value === 'overwrite')`), 'Unedited seeds from the installed version default to refresh');
+  assert(await evaluate(`document.querySelector('[role="alertdialog"]').innerText.includes('From earlier version')`), 'Review labels refreshable seeds');
+  await evaluate(`(() => { const el = document.querySelector('[role="alertdialog"] select[aria-label="Action for Portfolio dusk"]'); el.value = 'skip'; el.dispatchEvent(new Event('change', { bubbles: true })); })()`);
   await click('Install extension', '[role="alertdialog"] button');
   await waitFor(`document.body.innerText.includes('Comet Portfolio updated')`, 'reinstall with conflict choices');
   await evaluate(`document.querySelector('button[aria-label="Delete extension: Comet Portfolio"]').click()`);
@@ -562,7 +563,7 @@ try {
   await command('Page.navigate', { url: `${origin}/admin/content-types` });
   await waitFor(`document.body.innerText.includes('Projects')`, 'kept type remains in admin');
   assert(errors.length === 0, errors.join('\n'));
-  console.log('Extensions browser checks passed (ZIP picker/drop, script consent and CSP, asset serving, icons, list editing, map slider/coordinates/tiles/zoom, comparison drag/touch/keyboard/instances/fallback, testimonial, vertical text orientations/heading levels/layout, slideshow navigation/autoplay/reduced motion, slots, palette, preview, publish, enable/disable hiding seeded types/components/presets, deletion, cancel, reinstall, confirmed update, built-in accordion, seed preview/conflicts, seeded type/preset and selective uninstall).');
+  console.log('Extensions browser checks passed (ZIP picker/drop, script consent and CSP, asset serving, icons, list editing, map slider/coordinates/tiles/zoom, comparison drag/touch/keyboard/instances/fallback, testimonial, vertical text orientations/heading levels/layout, slideshow navigation/autoplay/reduced motion, slots, palette, preview, publish, enable/disable hiding seeded types/components/presets, deletion, cancel, reinstall, confirmed update, built-in accordion, seed preview/conflicts/update refresh, seeded type/preset and selective uninstall).');
 } finally {
   socket?.close();
   chrome.kill();
