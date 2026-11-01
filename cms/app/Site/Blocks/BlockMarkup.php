@@ -238,6 +238,9 @@ final class BlockMarkup
             // A link prop the editor set to open in a new tab adds target and rel itself.
             $attributes .= $this->extra(['target', $linkTarget]);
         }
+        if ($linkTarget !== null && !$element->hasAttribute('data-link-modal')) {
+            $attributes .= $this->extra(['modal', $linkTarget, !$element->hasAttribute('aria-haspopup')]);
+        }
 
         // libxml nests the siblings of HTML5 void elements it does not know; browsers do not.
         return in_array($tag, self::VOID, true)

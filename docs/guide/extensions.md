@@ -131,7 +131,7 @@ Every prop needs `type` and `label` (up to 120 bytes); `default` is optional.
 | `text` | `max` 1–20000 (2000) | `""` | Multi-line text area | Escaped text; line breaks become `<br>` in element content |
 | `richtext` | none | `""` | Rich-text editor; can be bound to fields | HTML, written `{{{name}}}` |
 | `url` | `max` 1–5000 (2000) | `""` | URL field | A relative, `http(s)`, `mailto` or `tel` URL |
-| `link` | none; the default is a URL | no link | Page, entry, anchor or URL picker with "new tab"; can be bound to fields | The link's address |
+| `link` | none; the default is a URL | no link | Shared page, entry, anchor or URL picker with new-tab and page-modal options; can be bound to fields | The link's address |
 | `bool` | none | `false` | Switch | Truthy or falsy |
 | `int` | `min`, `max` within ±1,000,000; optional `control: "slider"` | 0, clamped | Number, or a slider with an exact number field | The number |
 | `enum` | `options` (required): 1–50 values of letters, digits, `-` and `_` | the first option | Select | The option |
@@ -163,7 +163,7 @@ Templates are HTML with Mustache tags. All values are HTML-escaped.
 
 Elsewhere inside a start tag, tags may only appear in quoted attribute values: `class="cometcms-callout cometcms-callout--{{tone}}"`. Sections can nest 16 deep. Each section must open and close inside the same element, or inside the same attribute value, so every combination of values produces well-formed HTML. Raw output is only for `richtext` props; there are no partials and no delimiter changes, and the only dotted names are `.url` and `.alt` on media props. List iteration cannot be nested, including reusing an enclosing list inside itself. Scalar conditions inside lists are supported.
 
-**Links.** Put a `link` prop in an `<a href="{{cta}}">`. When the editor chooses "open in new tab", CometCMS adds `target="_blank" rel="noopener noreferrer"` itself, unless the template sets its own `target`.
+**Links.** Declare a `link` prop to use the builder's shared destination picker, then put it in an `<a href="{{cta}}">`. Keep the visible label in a separate text prop. When the editor chooses "open in new tab", CometCMS adds `target="_blank" rel="noopener noreferrer"` itself, unless the template sets its own `target`. For internal page destinations, "open in modal" adds `data-link-modal` and `aria-haspopup="dialog"` and uses the site's modal template. These options also work on links inside list items. A plain `url` prop only provides a URL input.
 
 **Colors.** A `color` prop prints its theme key, which fits theme classes such as `c-bg-{{tint}}` or your own class names. To use it in your CSS, set a custom property: `style="--cometcms-tint: {{tint}}"` becomes `--cometcms-tint: var(--c-accent)`, which follows the theme and dark mode. An empty color becomes `initial`, so `var(--cometcms-tint, fallback)` uses the fallback. The `style` attribute accepts nothing else.
 
@@ -195,7 +195,7 @@ The callout template uses most of this:
   <div>
     <h3 class="cometcms-callout__title">{{title}}</h3>
     <p>{{message}}</p>
-    {{#show_link}}{{#url}}<a class="cometcms-callout__link" href="{{url}}">{{link_label}}</a>{{/url}}{{/show_link}}
+    {{#show_link}}{{#link}}<a class="cometcms-callout__link" href="{{link}}">{{link_label}}</a>{{/link}}{{/show_link}}
   </div>
 </aside>
 ```
@@ -242,7 +242,7 @@ export default function mount(element, props) {
 }
 ```
 
-- **Values.** `props` holds each prop by name: text as strings, `int` as numbers, `bool` as booleans, lists as arrays of item objects, and media, links and colors as objects whose `_` is the URL, the address or the color key (media also have `alt`, links `new_tab`, colors `css`). Bound and translated props are already resolved.
+- **Values.** `props` holds each prop by name: text as strings, `int` as numbers, `bool` as booleans, lists as arrays of item objects, and media, links and colors as objects whose `_` is the URL, the address or the color key (media also have `alt`, links `new_tab` and `open_modal`, colors `css`). Bound and translated props are already resolved.
 - **Website and previews.** Scripts run in the builder iframe and in full-page draft previews with the resolved block props. After edits, previews containing scripted blocks reload to reset generated markup, listeners and timers while preserving scroll position. Blocks should still provide readable HTML when JavaScript is unavailable (progressive enhancement).
 - **Self-contained.** `view.js` must export its mount function as the default export and cannot `import` anything. Both `export default function mount(…) { … }` and bundled `export { mount as default }` are accepted. The browser parses and executes the module; installer checks do not replace testing it in a preview. Bundle dependencies into the file, for example `esbuild src/stats.js --bundle --format=esm --outfile=blocks/stats/view.js`. It is limited to 128 KiB and cannot contain `</script`.
 - **Errors.** An exception in one instance is logged to the console and does not stop the others.

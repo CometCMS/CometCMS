@@ -94,7 +94,7 @@ final class BlockTemplate
     {
         $html = '';
         foreach ($nodes as $node) {
-            $value = in_array($node[0], ['value', 'raw', 'target', '#', '^'], true) ? self::lookup($scopes, $node[1]) : null;
+            $value = in_array($node[0], ['value', 'raw', 'target', 'modal', '#', '^'], true) ? self::lookup($scopes, $node[1]) : null;
             if ($node[0] === '#' && is_array($value) && array_is_list($value)) {
                 foreach ($value as $item) {
                     $html .= self::nodes($node[2], [...$scopes, is_array($item) ? $item : []], $assetUrl, $slot);
@@ -108,6 +108,7 @@ final class BlockTemplate
                 'asset' => Security::e($assetUrl($node[1])),
                 'slot' => $slot,
                 'target' => is_array($value) && !empty($value['new_tab']) ? ' target="_blank" rel="noopener noreferrer"' : '',
+                'modal' => is_array($value) && !empty($value['open_modal']) ? ' data-link-modal' . ($node[2] ? ' aria-haspopup="dialog"' : '') : '',
                 '#', '^' => self::matches($value, $node[3]) === ($node[0] === '#') ? self::nodes($node[2], $scopes, $assetUrl, $slot) : '',
                 default => '',
             };

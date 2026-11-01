@@ -114,7 +114,7 @@ test('extensions register their blocks without changing built-ins or crossing wo
     }
     $callout = $spec['kinds']['block:cometcms/callout'];
     assert_same('Callout', $callout['label']);
-    assert_same(['type' => 'url', 'label' => 'Link URL', 'max' => 2000, 'default' => '#details', 'localized' => true], $callout['props']['url']);
+    assert_same(['type' => 'link', 'label' => 'Link', 'default' => ['type' => 'url', 'url' => '#details'], 'localized' => true, 'binding' => 'link'], $callout['props']['link']);
     assert_true($callout['props']['title']['localized']);
     assert_false(isset($callout['props']['tone']['localized']));
     assert_same([], $callout['children']);
@@ -238,7 +238,7 @@ test('block templates compile allow-listed HTML and render only escaped values',
 test('custom blocks normalize props, keep translations and work in columns tabs repeaters and component roots', function (): void {
     $blocks = ExtensionRegistry::active();
     $blocks->installFiles(comet_block_files(), allowScripts: true);
-    $block = LayoutSchema::node('block:cometcms/callout', ['title' => "  Hello\nworld  ", 'show_link' => 'yes', 'tone' => 'invalid', 'url' => 'javascript:alert(1)', 'unknown' => 'drop'], ['padding_y' => 'lg']);
+    $block = LayoutSchema::node('block:cometcms/callout', ['title' => "  Hello\nworld  ", 'show_link' => 'yes', 'tone' => 'invalid', 'link' => ['type' => 'url', 'url' => 'javascript:alert(1)'], 'unknown' => 'drop'], ['padding_y' => 'lg']);
     $column = LayoutSchema::node('column', [], [], [
         $block,
         LayoutSchema::node('tabs', [], [], [LayoutSchema::node('tab', [], [], [$block])]),
@@ -250,7 +250,7 @@ test('custom blocks normalize props, keep translations and work in columns tabs 
     assert_same('Hello world', $saved['props']['title']);
     assert_same(true, $saved['props']['show_link']);
     assert_same('info', $saved['props']['tone']);
-    assert_same('#details', $saved['props']['url']);
+    assert_same(['type' => 'url', 'url' => '', 'new_tab' => false], $saved['props']['link']);
     assert_false(isset($saved['props']['unknown']));
     foreach ([$nodes[0]['children'][1]['children'][0]['children'][0], $nodes[0]['children'][2]['children'][0], $nodes[0]['children'][3]['children'][0]['children'][0]] as $nested) {
         assert_same('block:cometcms/callout', $nested['kind']);
@@ -268,7 +268,7 @@ test('custom blocks normalize props, keep translations and work in columns tabs 
 test('block pages render extension CSS once, asset URLs and identical output in previews', function (): void {
     $site = comet_site_test_setup();
     $site->blocks()->installFiles(comet_block_files(), allowScripts: true);
-    $callout = LayoutSchema::node('block:cometcms/callout', ['title' => 'Hello <world>', 'message' => 'Text & more', 'tone' => 'success', 'url' => 'https://example.test/info']);
+    $callout = LayoutSchema::node('block:cometcms/callout', ['title' => 'Hello <world>', 'message' => 'Text & more', 'tone' => 'success', 'link' => ['type' => 'url', 'url' => 'https://example.test/info']]);
     comet_block_page($site, [$callout, $callout, LayoutSchema::node('block:cometcms/logo-bar')]);
     $site = new SiteRepository();
     $entry = \CometCMS\Content\ContentRepository::make()->findByIdentifier('about', 'about');
@@ -642,6 +642,10 @@ test('block templates iterate lists, place rich text and slots, and use media, c
         . '<ul><li class="on">One / T</li><li class="">Two / T</li></ul><a href="/about" target="_blank" rel="noopener noreferrer">Go</a><div><b>child</b></div></section>',
         BlockTemplate::render($tree, $values, static fn(string $file): string => $file, '<b>child</b>'));
     assert_true(str_contains(BlockTemplate::render($tree, ['rows' => [], 'tint' => ['_' => '', 'css' => 'initial'], 'cta' => ['_' => '#']] + $values, static fn(string $file): string => $file), '<ul><li>none</li></ul><a href="#">'));
+    $modalValues = ['cta' => ['_' => '/about', 'new_tab' => false, 'open_modal' => true]] + $values;
+    assert_true(str_contains(BlockTemplate::render($tree, $modalValues, strval(...)), '<a href="/about" data-link-modal aria-haspopup="dialog">Go</a>'));
+    $explicit = $compile('<a href="{{cta}}" target="_self" aria-haspopup="dialog">Go</a>');
+    assert_same('<a href="/about" target="_self" aria-haspopup="dialog" rel="noopener noreferrer" data-link-modal>Go</a>', BlockTemplate::render($explicit, $modalValues, strval(...)));
     foreach ([
         '<p>{{body}}</p>', '<p>{{{title}}}</p>', '<p>{{{body}}}</p>', '<a title="{{{body}}}">x</a>', '<p>{{rows}}</p>', '{{#rows=x}}a{{/rows}}',
         '<p>{{photo.size}}</p>', '<p>{{title.alt}}</p>', '<p>{{label}}</p>', '<img src="{{title}}" alt="">', '<img src="{{photo.alt}}" alt="">',
@@ -696,6 +700,36 @@ test('rendered blocks resolve media, theme colors, links, lists, bindings and tr
     assert_true(str_contains($translated, 'href="https://example.test/de"'));
     assert_false(str_contains($translated, 'https://example.test/partner'));
 
+});
+
+test('extension links render page modals and keep list item destinations independent', function (): void {
+    $site = comet_site_test_setup();
+    $site->blocks()->installFiles(comet_block_files(), allowScripts: true);
+    $modal = ['type' => 'home', 'open_modal' => true, 'new_tab' => true];
+    $external = ['type' => 'url', 'url' => 'https://example.test/partner', 'open_modal' => true, 'new_tab' => true];
+    $nodes = [
+        LayoutSchema::node('block:cometcms/pricing', ['cta' => $modal]),
+        LayoutSchema::node('block:cometcms/logo-bar', ['logos' => [
+            ['name' => 'Home', 'link' => $modal],
+            ['name' => 'Partner', 'link' => $external],
+        ]]),
+        LayoutSchema::node('block:cometcms/slideshow', ['slides' => [
+            ['title' => 'Home', 'link' => $modal, 'link_label' => 'Home'],
+            ['title' => 'Partner', 'link' => $external, 'link_label' => 'Partner'],
+        ]]),
+    ];
+    foreach ($nodes as $node) {
+        $node['props'] = LayoutSchema::normalizeProps($node['kind'], $node['props'], $site->blocks());
+        $html = comet_block_render($node);
+        assert_same(1, substr_count($html, ' data-link-modal '), $node['kind']);
+        assert_true(str_contains($html, 'href="/" data-link-modal aria-haspopup="dialog"'), $node['kind']);
+        assert_same($node['kind'] === 'block:cometcms/pricing' ? 0 : 1, substr_count($html, 'target="_blank"'), $node['kind']);
+        assert_false(str_contains($html, 'href="https://example.test/partner" data-link-modal'), $node['kind']);
+    }
+    $none = comet_block_render(LayoutSchema::node('block:cometcms/callout', ['link' => ['type' => 'none']]));
+    assert_false(str_contains($none, 'cometcms-callout__link'));
+    $hidden = comet_block_render(LayoutSchema::node('block:cometcms/callout', ['link' => $modal, 'show_link' => false]));
+    assert_false(str_contains($hidden, 'data-link-modal'));
 });
 
 test('slot blocks hold child elements in layouts, repeaters and while their extension is missing', function (): void {

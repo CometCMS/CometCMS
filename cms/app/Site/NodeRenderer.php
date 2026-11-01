@@ -301,7 +301,7 @@ final class NodeRenderer
     /**
      * Saved block props (already localized and with bindings resolved) as template
      * values: media become URLs with alt text, colors theme keys with their CSS
-     * value, links an href with the editor's new-tab choice.
+     * value, links an href with the editor's new-tab and modal choices.
      */
     private function blockValues(array $specs, array $props, array $state): array
     {
@@ -311,7 +311,7 @@ final class NodeRenderer
             $values[$key] = match ($spec['type']) {
                 'media' => $this->blockMedia(is_string($value) ? $value : ''),
                 'color' => is_string($value) && $value !== '' ? ['_' => $value, 'css' => 'var(--c-' . $value . ')'] : ['_' => '', 'css' => 'initial'],
-                'link' => ($link = is_array($value) ? $this->resolveLink($value, $state) : null) !== null ? ['_' => $link['href'], 'new_tab' => $link['new_tab']] : ['_' => ''],
+                'link' => ($link = is_array($value) ? $this->resolveLink($value, $state) : null) !== null ? ['_' => $link['href'], 'new_tab' => $link['new_tab'], 'open_modal' => $link['open_modal']] : ['_' => ''],
                 'url' => is_string($value) && HtmlSanitizer::isSafeUrl(trim($value)) ? trim($value) : '',
                 // Saved layouts are sanitized already; like the text element, render does it again.
                 'richtext' => is_string($value) ? HtmlSanitizer::sanitize($value) : '',

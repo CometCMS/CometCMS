@@ -14,6 +14,11 @@ import { t } from '../i18n/index.js'
 const manifest = JSON.parse(readFileSync(new URL('../../../examples/extensions/comet-essentials/blocks/callout/block.json', import.meta.url), 'utf8'))
 // A block is named after its package vendor and folder: cometcms/essentials's blocks/callout is cometcms/callout.
 const kind = 'block:cometcms/callout'
+// The API compiles manifest URL defaults into structured link values.
+const props = {
+  ...manifest.props,
+  link: { ...manifest.props.link, default: { type: 'url', url: manifest.props.link.default }, binding: 'link' },
+}
 const spec = {
   root: ['section'], elements: ['heading', kind], item_elements: [kind], style: {},
   kinds: {
@@ -22,7 +27,7 @@ const spec = {
     heading: { props: { text: { default: '' } }, children: [] },
     field: { props: {}, children: [kind] }, tabs: { props: {}, children: ['tab'] },
     tab: { props: {}, children: [kind] },
-    [kind]: { label: manifest.title, description: manifest.description, extension: true, props: manifest.props, style: [], children: [] },
+    [kind]: { label: manifest.title, description: manifest.description, extension: true, props, style: [], children: [] },
   },
 }
 
@@ -65,12 +70,14 @@ describe('block package blocks in the builder', () => {
     expect(column.children[0].id).not.toBe(column.children[1].id)
   })
 
-  it('uses manifest labels and provides an editable URL input and enum choices', async () => {
-    const { html } = await fixture((builder) => h('div', Object.entries(manifest.props).map(([name, def]) => h(BuilderControl, {
+  it('uses manifest labels and provides the shared link picker and enum choices', async () => {
+    const { html } = await fixture((builder) => h('div', Object.entries(props).map(([name, def]) => h(BuilderControl, {
       node: builder.make(kind), name, def, value: def.default,
     }))))
     for (const def of Object.values(manifest.props)) expect(html).toContain(def.label)
     expect(html).toContain('value="#details"')
+    expect(html).toContain('aria-label="Link type: Custom link"')
+    expect(html).toContain('aria-label="Open in a new tab"')
     expect(html).toContain('value="Something worth sharing"')
     expect(html).toContain('success')
     expect(html).not.toContain('site.prop.url')

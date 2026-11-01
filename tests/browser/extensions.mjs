@@ -207,6 +207,15 @@ try {
   await field('textarea[id$="-props-message"]', 'Extensions work');
   const previewDocument = '[...document.querySelectorAll("iframe")].map((el) => el.contentDocument).find((doc) => doc?.querySelector(".cometcms-callout"))';
   await waitFor(`(${previewDocument})?.querySelector('.cometcms-callout p')?.textContent === 'Extensions work'`, 'live custom block preview');
+  await waitFor('!!document.querySelector(\'button[aria-label^="Link type:"]\')', 'callout uses the shared link picker');
+  await evaluate(`document.querySelector('button[aria-label^="Link type:"]').click()`);
+  await click('Homepage', '[role="menuitemradio"]');
+  await waitFor('!!document.querySelector(\'button[aria-label="Open in modal"]\')', 'internal destination offers modal opening');
+  await evaluate(`document.querySelector('button[aria-label="Open in a new tab"]').click()`);
+  await waitFor(`(${previewDocument})?.querySelector('.cometcms-callout__link')?.target === '_blank'`, 'callout new-tab choice appears in preview');
+  await evaluate(`document.querySelector('button[aria-label="Open in modal"]').click()`);
+  await waitFor(`(${previewDocument})?.querySelector('.cometcms-callout__link')?.hasAttribute('data-link-modal')`, 'callout modal choice appears in preview');
+  assert(await evaluate(`!(${previewDocument}).querySelector('.cometcms-callout__link').target && document.querySelector('button[aria-label="Open in a new tab"]').getAttribute('aria-pressed') === 'false'`), 'Choosing modal opening clears new-tab behavior');
   const preview = await evaluate(`(() => { const doc = ${previewDocument}; const el = doc.querySelector('.cometcms-callout'); const copy = el.cloneNode(true); copy.querySelectorAll('[draggable]').forEach((node) => node.removeAttribute('draggable')); return { html: copy.outerHTML, border: doc.defaultView.getComputedStyle(el).borderInlineStartWidth, annotated: !!el.closest('[data-kind="block:cometcms/callout"]'), cssCount: doc.querySelectorAll('style[data-comet-blocks]').length }; })()`);
   assert(preview.border === '4px', 'Preview loads block CSS');
   await checkBlockColors(`(${previewDocument})`);
@@ -362,6 +371,11 @@ try {
   assert(published.html === preview.html, 'Preview and published custom markup match: ' + JSON.stringify({ preview: preview.html, published: published.html }));
   assert(published.border === preview.border, 'Published CSS matches preview');
   assert(!published.annotated, 'Public output excludes editor annotations');
+  await evaluate(`document.querySelector('.cometcms-callout__link').click()`);
+  await waitFor(`!!document.querySelector('dialog[data-link-modal-dialog][open]') && !!document.querySelector('.c-modal-frame')?.contentDocument?.querySelector('.cometcms-callout')`, 'published extension link opens its destination in the page modal');
+  assert(await evaluate(`location.pathname === '/' && !document.querySelector('.c-modal-frame').contentDocument.querySelector('header, footer') && document.querySelector('.cometcms-callout__link').getAttribute('aria-haspopup') === 'dialog'`), 'Extension modal keeps the parent page and embeds only destination content');
+  await evaluate(`document.querySelector('dialog[open] [data-modal-close]').click()`);
+  await waitFor(`!document.querySelector('dialog[data-link-modal-dialog][open]') && !document.querySelector('.c-modal-frame')`, 'extension modal closes and removes its frame');
   assert(await evaluate(`!!document.querySelector('.cometcms-card__body .c-el-heading') && [...document.querySelectorAll('.cometcms-plan__feature')].some((el) => el.textContent === 'Custom feature')`), 'Published slot children and list items');
   await waitFor('!!document.querySelector(\'[data-comet-block="cometcms/stats"][data-mounted="true"]\')', 'block script mounted under the site CSP');
   const map = 'document.querySelector(\'[data-comet-block="cometcms/maps"]\')';
@@ -374,7 +388,8 @@ try {
   await evaluate(`(${map}).querySelector('[data-zoom-out]').click()`);
   await waitFor(`(${map}).querySelector('[data-status]').textContent.endsWith('15')`, 'map zoom out');
   const csp = await evaluate(`fetch('/').then((res) => res.headers.get('content-security-policy'))`);
-  assert(/script-src 'sha256-[^']+' 127\.0\.0\.1:\d+\/_site\/[^ ]+\/blocks\/[a-f0-9]{64}\.js/.test(csp) && !csp.includes("'self' 'sha") && !/script-src[^;]*'unsafe/.test(csp), 'CSP allows exactly the block script: ' + csp);
+  const modalHash = createHash('sha256').update(readFileSync(join(root, 'cms/app/Site/assets/link-modal.js'), 'utf8') + '\ninitLinkModal(document);').digest('base64');
+  assert(/script-src (?:'sha256-[^']+' )+127\.0\.0\.1:\d+\/_site\/[^ ]+\/blocks\/[a-f0-9]{64}\.js/.test(csp) && csp.includes(`'sha256-${modalHash}'`) && !csp.includes("'self' 'sha") && !/script-src[^;]*'unsafe/.test(csp), 'CSP allows the exact block scripts and modal hash: ' + csp);
   await waitFor('!!document.querySelector(\'[data-comet-block="cometcms/slideshow"][data-mounted="true"]\')', 'slideshow mounted under the site CSP');
   const slideshow = 'document.querySelector(\'[data-comet-block="cometcms/slideshow"]\')';
   const activeSlide = `(${slideshow}).querySelector('[data-slide]:not([hidden])')`;

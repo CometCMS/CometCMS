@@ -18,7 +18,7 @@ final class ExtensionRegistry
     public const MAX_EXTENSIONS = 64;
     public const MAX_BLOCKS = 256;
     /** Bump whenever compiled extensions change shape, so cached indexes are rebuilt. */
-    private const COMPILER = 7;
+    private const COMPILER = 8;
 
     private ?array $index = null;
     private ?string $signature = null;

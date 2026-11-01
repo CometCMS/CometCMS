@@ -19,6 +19,8 @@ Before / after compares two media images with matching crops, editable labels, f
 
 Testimonial displays a quote, name, role and company, with an optional portrait and one-to-five-star rating. Choose left or centered alignment. Quotes and attribution are translatable and bindable; ratings include an editable accessible label. No JavaScript is needed.
 
+Callout, Card, Pricing plan, Logo bar and Slideshow use the builder's shared link picker for content entries, listing pages, the homepage, the current page, anchors and external URLs. Internal page links can open in the site's modal; links can also open in a new tab. Link labels stay separately editable.
+
 Maps accepts a location as decimal `latitude, longitude`, an accessible location name, and a zoom slider (1–19). Coordinates locate the pin; the name labels the map for assistive technology and is not a search query. Zoom buttons sit inside the map at bottom-left, with the full-map link and attribution at bottom-right. The map has no title or coordinates bar. It uses OpenStreetMap raster tiles and loads only the visible area. No API key is required. Builder and full-page previews run the block scripts, including the interactive map. See the [OpenStreetMap tile usage policy](https://operations.osmfoundation.org/policies/tiles/) when choosing a provider for production traffic.
 
 Logo bar scrolls logos infinitely to the left or right, with configurable speed, logo height and spacing. Entries accept media and optional links. Pause on hover is optional; keyboard focus always stops motion and reveals the focused link. Reduced-motion preferences show a static, wrapping row. Without JavaScript the original row remains visible.
