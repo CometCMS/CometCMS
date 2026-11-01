@@ -1,0 +1,251 @@
+{
+  "name": "Neo-Brutalism hero",
+  "root": "section",
+  "type": "",
+  "nodes": [
+    {
+      "id": "neo-hero",
+      "kind": "section",
+      "props": {},
+      "style": {
+        "padding_top": "xl",
+        "padding_bottom": "xl",
+        "border": [
+          "bottom"
+        ],
+        "border_width": 3,
+        "border_color": "border"
+      },
+      "children": [
+        {
+          "id": "neo-hero-row",
+          "kind": "row",
+          "props": {
+            "gap": "xl",
+            "align": "center"
+          },
+          "style": {},
+          "children": [
+            {
+              "id": "neo-hero-copy",
+              "kind": "column",
+              "props": {
+                "span": {
+                  "mobile": 12,
+                  "tablet": 12,
+                  "desktop": 7
+                },
+                "spacing": "lg"
+              },
+              "style": {},
+              "children": [
+                {
+                  "id": "neo-hero-eyebrow",
+                  "kind": "text",
+                  "props": {
+                    "html": "<p>INDEPENDENT BY DESIGN</p>"
+                  },
+                  "style": {
+                    "font_family": "monospace",
+                    "font_size": "sm",
+                    "font_weight": "bold"
+                  },
+                  "children": []
+                },
+                {
+                  "id": "neo-hero-title",
+                  "kind": "heading",
+                  "props": {
+                    "text": "MAKE SOME NOISE.",
+                    "level": "h1"
+                  },
+                  "style": {},
+                  "children": []
+                },
+                {
+                  "id": "neo-hero-intro",
+                  "kind": "text",
+                  "props": {
+                    "html": "<p>Big ideas deserve a bold home. Show your work, tell your story and put a little personality on the internet.</p>"
+                  },
+                  "style": {
+                    "font_size": "lg"
+                  },
+                  "children": []
+                },
+                {
+                  "id": "neo-hero-action-row",
+                  "kind": "row",
+                  "props": {
+                    "gap": "none"
+                  },
+                  "style": {},
+                  "children": [
+                    {
+                      "id": "neo-hero-action-column",
+                      "kind": "column",
+                      "props": {
+                        "span": {
+                          "mobile": 12,
+                          "tablet": 12,
+                          "desktop": 12
+                        },
+                        "spacing": "md",
+                        "direction": "row",
+                        "content_align": "start"
+                      },
+                      "style": {},
+                      "children": [
+                        {
+                          "id": "neo-hero-action-button",
+                          "kind": "button",
+                          "props": {
+                            "label": "Make your move",
+                            "link": {
+                              "type": "none"
+                            },
+                            "size": "lg",
+                            "button_color": "primary",
+                            "button_border_color": "primary",
+                            "icon": "mdi:arrow-right",
+                            "icon_position": "end"
+                          },
+                          "style": {
+                            "border": [
+                              "left",
+                              "top",
+                              "right",
+                              "bottom"
+                            ],
+                            "border_width": 3,
+                            "border_color": "border",
+                            "radius": "none",
+                            "shadow": "md",
+                            "margin_bottom": "sm"
+                          },
+                          "children": [],
+                          "states": {
+                            "hover": {
+                              "style": {
+                                "shadow": "sm"
+                              }
+                            },
+                            "focus": {
+                              "style": {
+                                "shadow": "none"
+                              }
+                            }
+                          },
+                          "responsive": {
+                            "mobile": {
+                              "props": {
+                                "size": "md"
+                              }
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "neo-hero-poster",
+              "kind": "column",
+              "props": {
+                "span": {
+                  "mobile": 12,
+                  "tablet": 12,
+                  "desktop": 5
+                },
+                "spacing": "md"
+              },
+              "style": {
+                "background": "secondary",
+                "border": [
+                  "left",
+                  "top",
+                  "right",
+                  "bottom"
+                ],
+                "border_width": 3,
+                "border_color": "border",
+                "radius": "none",
+                "shadow": "hard",
+                "padding_top": "lg",
+                "padding_right": "lg",
+                "padding_bottom": "lg",
+                "padding_left": "lg"
+              },
+              "children": [
+                {
+                  "id": "neo-hero-poster-label",
+                  "kind": "text",
+                  "props": {
+                    "html": "<p>NO SMALL IDEAS</p>"
+                  },
+                  "style": {
+                    "font_family": "monospace",
+                    "font_size": "sm",
+                    "font_weight": "bold"
+                  },
+                  "children": []
+                },
+                {
+                  "id": "neo-hero-poster-number",
+                  "kind": "heading",
+                  "props": {
+                    "text": "100%",
+                    "level": "h2"
+                  },
+                  "style": {
+                    "font_size": "5xl",
+                    "margin_bottom": "sm"
+                  },
+                  "children": [],
+                  "responsive": {
+                    "mobile": {
+                      "style": {
+                        "font_size": "4xl"
+                      }
+                    }
+                  }
+                },
+                {
+                  "id": "neo-hero-poster-title",
+                  "kind": "heading",
+                  "props": {
+                    "text": "Your rules.",
+                    "level": "h3"
+                  },
+                  "style": {},
+                  "children": []
+                },
+                {
+                  "id": "neo-hero-poster-text",
+                  "kind": "text",
+                  "props": {
+                    "html": "<p>Sharp edges. Clear words. A point of view that is unmistakably yours.</p>"
+                  },
+                  "style": {},
+                  "children": []
+                }
+              ],
+              "responsive": {
+                "mobile": {
+                  "style": {
+                    "padding_top": "md",
+                    "padding_right": "md",
+                    "padding_bottom": "md",
+                    "padding_left": "md"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

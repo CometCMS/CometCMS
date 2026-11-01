@@ -1,0 +1,185 @@
+{
+  "name": "Neo-Brutalism call to action",
+  "root": "section",
+  "type": "",
+  "nodes": [
+    {
+      "id": "neo-cta",
+      "kind": "section",
+      "props": {},
+      "style": {
+        "padding_top": "lg",
+        "padding_bottom": "xl"
+      },
+      "children": [
+        {
+          "id": "neo-cta-row",
+          "kind": "row",
+          "props": {},
+          "style": {},
+          "children": [
+            {
+              "id": "neo-cta-panel",
+              "kind": "column",
+              "props": {
+                "span": {
+                  "mobile": 12,
+                  "tablet": 12,
+                  "desktop": 12
+                },
+                "spacing": "md"
+              },
+              "style": {
+                "background": "secondary",
+                "border": [
+                  "left",
+                  "top",
+                  "right",
+                  "bottom"
+                ],
+                "border_width": 3,
+                "border_color": "border",
+                "radius": "none",
+                "shadow": "hard",
+                "padding_top": "xl",
+                "padding_right": "xl",
+                "padding_bottom": "xl",
+                "padding_left": "xl"
+              },
+              "children": [
+                {
+                  "id": "neo-cta-eyebrow",
+                  "kind": "text",
+                  "props": {
+                    "html": "<p>NEXT UP: SOMETHING GREAT</p>"
+                  },
+                  "style": {
+                    "font_family": "monospace",
+                    "font_size": "sm",
+                    "font_weight": "bold"
+                  },
+                  "children": []
+                },
+                {
+                  "id": "neo-cta-title",
+                  "kind": "heading",
+                  "props": {
+                    "text": "Got a bold idea?",
+                    "level": "h2"
+                  },
+                  "style": {},
+                  "children": []
+                },
+                {
+                  "id": "neo-cta-text",
+                  "kind": "text",
+                  "props": {
+                    "html": "<p>Let’s turn it into something people remember. Start a conversation and make your next big move.</p>"
+                  },
+                  "style": {
+                    "font_size": "lg",
+                    "max_width": "prose"
+                  },
+                  "children": []
+                },
+                {
+                  "id": "neo-cta-action-row",
+                  "kind": "row",
+                  "props": {
+                    "gap": "none"
+                  },
+                  "style": {},
+                  "children": [
+                    {
+                      "id": "neo-cta-action-column",
+                      "kind": "column",
+                      "props": {
+                        "span": {
+                          "mobile": 12,
+                          "tablet": 12,
+                          "desktop": 12
+                        },
+                        "spacing": "md",
+                        "direction": "row",
+                        "content_align": "start"
+                      },
+                      "style": {},
+                      "children": [
+                        {
+                          "id": "neo-cta-action-button",
+                          "kind": "button",
+                          "props": {
+                            "label": "Let’s talk",
+                            "link": {
+                              "type": "none"
+                            },
+                            "size": "lg",
+                            "button_color": "primary",
+                            "button_border_color": "primary",
+                            "icon": "mdi:arrow-right",
+                            "icon_position": "end"
+                          },
+                          "style": {
+                            "border": [
+                              "left",
+                              "top",
+                              "right",
+                              "bottom"
+                            ],
+                            "border_width": 3,
+                            "border_color": "border",
+                            "radius": "none",
+                            "shadow": "md",
+                            "margin_bottom": "sm"
+                          },
+                          "children": [],
+                          "states": {
+                            "hover": {
+                              "style": {
+                                "shadow": "sm"
+                              }
+                            },
+                            "focus": {
+                              "style": {
+                                "shadow": "none"
+                              }
+                            }
+                          },
+                          "responsive": {
+                            "mobile": {
+                              "props": {
+                                "size": "md"
+                              }
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "responsive": {
+                "tablet": {
+                  "style": {
+                    "padding_top": "lg",
+                    "padding_right": "lg",
+                    "padding_bottom": "lg",
+                    "padding_left": "lg"
+                  }
+                },
+                "mobile": {
+                  "style": {
+                    "padding_top": "md",
+                    "padding_right": "md",
+                    "padding_bottom": "md",
+                    "padding_left": "md"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
