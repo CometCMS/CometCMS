@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-1.5">
-    <p v-if="!items.length" class="text-xs text-slate-500">{{ t("site.blocks.listEmpty") }}</p>
+    <p v-if="!items.length" class="text-xs text-slate-500">{{ t("site.extensions.listEmpty") }}</p>
     <div v-for="(item, index) in items" :key="index" class="rounded-lg border border-slate-200 bg-white">
       <div class="flex items-center gap-1 px-2 py-1.5">
         <button
@@ -37,7 +37,7 @@
     </div>
     <button type="button" class="btn-secondary btn-sm w-full" :disabled="items.length >= (def.max ?? 20)" @click="add">
       <Icon icon="mdi:plus" class="h-4 w-4" />
-      {{ t("site.blocks.listAdd") }}
+      {{ t("site.extensions.listAdd") }}
     </button>
   </div>
 </template>
@@ -65,7 +65,7 @@ const items = computed(() => (Array.isArray(props.value) ? props.value : []));
 function title(item, index) {
   const key = Object.keys(props.def.fields ?? {}).find((name) => ["string", "text"].includes(props.def.fields[name].type));
   const text = key ? String(item?.[key] ?? "").trim() : "";
-  return text || t("site.blocks.listItem", { number: index + 1 });
+  return text || t("site.extensions.listItem", { number: index + 1 });
 }
 
 function add() {

@@ -44,6 +44,20 @@ const find = (el, predicate) => predicate(el) ? el : el.children.map((child) => 
 afterEach(() => { app?.unmount(); vi.clearAllMocks() })
 
 describe('homepage selection', () => {
+  it('offers a newly seeded type after extension content refresh', async () => {
+    const pinia = createPinia()
+    const site = useSiteStore(pinia)
+    site.data = { settings: { homepage: { type: '', entry: '' }, locales: ['en'], default_locale: 'en', domains: [] }, types: [{ name: 'project', label: 'Projects' }], theme: {}, menus: [] }
+    site.resetDraft()
+    const root = node()
+    app = renderer.createApp({ ...SiteGeneralPanel, render })
+    app.provide(ssrContextKey, {})
+    app.use(pinia).mount(root)
+    await nextTick()
+    const type = find(root, (el) => el.props.id === 'site-home-type')
+    expect(type.children.some((option) => option.props.value === 'project' && option.text === 'Projects')).toBe(true)
+  })
+
   it('keeps a selected page matched to its option after saving and reopening', async () => {
     const pinia = createPinia()
     const site = useSiteStore(pinia)

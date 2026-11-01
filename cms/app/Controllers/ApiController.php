@@ -136,7 +136,7 @@ final class ApiController
             $this->response->error('validation_failed', 'Choose an identifier for this content type.', 422, ['name' => ['Choose an identifier for this content type.']]);
         }
 
-        if ($this->types->exists($name)) {
+        if ($this->types->exists($name, includeDisabled: true)) {
             $this->response->error('validation_failed', 'A content type with this identifier already exists.', 422, ['name' => ['A content type with this identifier already exists.']]);
         }
 

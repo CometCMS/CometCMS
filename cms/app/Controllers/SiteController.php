@@ -6,7 +6,7 @@ namespace CometCMS\Controllers;
 
 use CometCMS\Core\Http;
 use CometCMS\Core\RateLimiter;
-use CometCMS\Site\Blocks\BlockRegistry;
+use CometCMS\Extensions\ExtensionRegistry;
 use CometCMS\Site\Flags;
 use CometCMS\Site\FormCaptcha;
 use CometCMS\Site\FormRepository;
@@ -105,7 +105,7 @@ final class SiteController
         if (!(new WorkspaceRepository())->exists($workspace)) {
             $this->http->notFound();
         }
-        $asset = (new BlockRegistry(new WorkspaceContext($workspace)))->asset($file);
+        $asset = (new ExtensionRegistry(new WorkspaceContext($workspace)))->asset($file);
         if ($asset === null) {
             $this->http->notFound();
         }

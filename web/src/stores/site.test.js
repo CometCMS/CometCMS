@@ -320,3 +320,36 @@ describe('homepage preview status', () => {
     expect(site.homepagePreview).toBeNull()
   })
 })
+
+
+describe('extension content refresh', () => {
+  beforeEach(() => { setActivePinia(createPinia()); vi.clearAllMocks(); mocks.workspace = 'default' })
+
+  it('makes seeded types and presets available while keeping unsaved designer edits', async () => {
+    api.site.get.mockResolvedValueOnce({ data: siteData('default') })
+    const site = useSiteStore()
+    await site.load()
+    site.draft.theme = { colors: { primary: '#123456' } }
+    api.site.get.mockResolvedValueOnce({ data: { ...siteData('default'), types: [{ name: 'project', label: 'Projects' }], theme_presets: [{ id: 'portfolio-dusk', name: 'Portfolio dusk' }], templates: { project: { detail: [{ id: 'default' }] } } } })
+    await site.refreshExtensions()
+    expect(site.data.types[0].name).toBe('project')
+    expect(site.data.theme_presets[0].name).toBe('Portfolio dusk')
+    expect(site.draft.templates.project.detail[0].id).toBe('default')
+    expect(site.draft.theme.colors.primary).toBe('#123456')
+    expect(site.dirtyParts).toEqual(['theme'])
+  })
+
+  it('ignores an extension refresh that returns after switching workspace', async () => {
+    api.site.get.mockResolvedValueOnce({ data: siteData('default') })
+    const site = useSiteStore()
+    await site.load()
+    const pending = deferred()
+    api.site.get.mockReturnValueOnce(pending.promise).mockResolvedValueOnce({ data: siteData('second') })
+    const refresh = site.refreshExtensions()
+    mocks.workspace = 'second'
+    await site.load()
+    pending.resolve({ data: siteData('default') })
+    await refresh
+    expect(site.data.workspace).toBe('second')
+  })
+})

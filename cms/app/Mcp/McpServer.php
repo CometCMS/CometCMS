@@ -284,7 +284,7 @@ final class McpServer
         $name = $this->segment($args['name'] ?? '', 'name');
         $this->requirePermission('create_content_type', ['name' => $name]);
 
-        if ($this->types->exists($name)) {
+        if ($this->types->exists($name, includeDisabled: true)) {
             throw new McpError('A content type with this API name already exists.', 422, ['code' => 'validation_failed', 'fields' => ['name' => ['A content type with this API name already exists.']]]);
         }
 

@@ -1,0 +1,12 @@
+{
+  "api_version": 1,
+  "name": "cometcms/portfolio",
+  "title": "Comet Portfolio",
+  "description": "A detailed project case study with media, services, dates, results, related work and a field-bound detail template. Requires Comet Essentials.",
+  "version": "1.1.0",
+  "author": "CometCMS",
+  "license": "MIT",
+  "requires": [
+    "cometcms/essentials"
+  ]
+}

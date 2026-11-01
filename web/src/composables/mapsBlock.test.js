@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseLocation, tilePosition } from '../../../examples/blocks/comet-essentials/blocks/maps/view.js'
+import { parseLocation, tilePosition } from '../../../examples/extensions/comet-essentials/blocks/maps/view.js'
 
 describe('Comet Essentials Maps coordinates', () => {
   it('accepts decimal coordinate pairs, including the equator and date line', () => {

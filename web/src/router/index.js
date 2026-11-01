@@ -83,7 +83,11 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
-    path: '/page-builder/:tab(design|templates|menus|fonts|components|blocks)?',
+    path: '/page-builder/extensions',
+    redirect: (to) => ({ path: '/website/extensions', query: to.query, hash: to.hash }),
+  },
+  {
+    path: '/page-builder/:tab(design|templates|menus|fonts|components)?',
     component: () => import('../views/PageBuilderView.vue'),
     meta: { requiresAuth: true },
   },
@@ -96,7 +100,7 @@ const routes = [
     meta: { requiresAuth: true, bare: true, viewKey: 'page-builder-editor' },
   },
   {
-    path: '/website/:tab(general|seo|forms|workspaces)?',
+    path: '/website/:tab(general|seo|forms|extensions|workspaces)?',
     component: () => import('../views/WebsiteView.vue'),
     meta: { requiresAuth: true },
   },

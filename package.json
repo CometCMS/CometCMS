@@ -19,7 +19,7 @@
     "web:lint": "npm --workspace web run lint",
     "web:test": "npm --workspace web run test",
     "docs:screenshots": "node scripts/capture-docs-screenshots.mjs",
-    "blocks": "php scripts/block-package.php",
+    "extensions": "php scripts/extension.php",
     "record:builder-guide": "node scripts/record-builder-guide.mjs"
   },
   "devDependencies": {

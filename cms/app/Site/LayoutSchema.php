@@ -8,7 +8,7 @@ use CometCMS\Core\HtmlSanitizer;
 use CometCMS\Core\ValidationException;
 use CometCMS\Localization\LocalizedValue;
 use CometCMS\Localization\LanguageSettings;
-use CometCMS\Site\Blocks\BlockRegistry;
+use CometCMS\Extensions\ExtensionRegistry;
 
 /**
  * The vocabulary of website layouts.
@@ -304,23 +304,23 @@ final class LayoutSchema
     private const BLOCK_BINDINGS = ['string' => 'text', 'richtext' => 'html', 'media' => 'media', 'link' => 'link'];
 
     /** Props that hold per-language values. Content props of custom blocks are translatable. */
-    public static function localizedProps(string $kind, ?BlockRegistry $blocks = null): array
+    public static function localizedProps(string $kind, ?ExtensionRegistry $blocks = null): array
     {
-        if (!BlockRegistry::isKind($kind)) {
+        if (!ExtensionRegistry::isKind($kind)) {
             return self::LOCALIZED_PROPS[$kind] ?? [];
         }
-        $props = ($blocks ?? BlockRegistry::active())->get($kind)['props'] ?? [];
+        $props = ($blocks ?? ExtensionRegistry::active())->get($kind)['props'] ?? [];
 
         return array_keys(array_filter($props, static fn(array $spec): bool => in_array($spec['type'], self::BLOCK_CONTENT_TYPES, true)));
     }
 
     /** Props that can be bound to content fields, and what they bind to. */
-    public static function bindings(string $kind, ?BlockRegistry $blocks = null): array
+    public static function bindings(string $kind, ?ExtensionRegistry $blocks = null): array
     {
-        if (!BlockRegistry::isKind($kind)) {
+        if (!ExtensionRegistry::isKind($kind)) {
             return SmartValue::PROPERTIES[$kind] ?? [];
         }
-        $props = ($blocks ?? BlockRegistry::active())->get($kind)['props'] ?? [];
+        $props = ($blocks ?? ExtensionRegistry::active())->get($kind)['props'] ?? [];
 
         return array_filter(array_map(static fn(array $spec): ?string => self::BLOCK_BINDINGS[$spec['type']] ?? null, $props));
     }
@@ -331,15 +331,16 @@ final class LayoutSchema
         return match ($prop['type']) {
             'richtext' => ['type' => 'html'] + $prop,
             'color' => ['options' => ['', ...Theme::COLOR_KEYS]] + $prop,
+            'icon' => ['options' => ['', ...Icons::names()]] + $prop,
             'list' => ['fields' => array_map(self::blockProp(...), $prop['fields'])] + $prop,
             default => $prop,
         };
     }
 
-    public static function propSpec(string $kind, ?BlockRegistry $blocks = null): array
+    public static function propSpec(string $kind, ?ExtensionRegistry $blocks = null): array
     {
-        if (BlockRegistry::isKind($kind)) {
-            return array_map(self::blockProp(...), ($blocks ?? BlockRegistry::active())->get($kind)['props'] ?? []);
+        if (ExtensionRegistry::isKind($kind)) {
+            return array_map(self::blockProp(...), ($blocks ?? ExtensionRegistry::active())->get($kind)['props'] ?? []);
         }
         $ratio = ['type' => 'enum', 'options' => ['', '1:1', '4:3', '3:2', '16:9', '21:9', '3:4'], 'default' => ''];
         $fit = ['type' => 'enum', 'options' => ['cover', 'contain'], 'default' => 'cover'];
@@ -633,9 +634,9 @@ final class LayoutSchema
     }
 
     /** Kinds a node of $parent may contain; "root" is the layout itself. */
-    public static function allowedChildren(string $parent, ?BlockRegistry $blocks = null): array
+    public static function allowedChildren(string $parent, ?ExtensionRegistry $blocks = null): array
     {
-        $custom = in_array($parent, ['column', 'tab', 'field', 'slot', 'item-slot', self::MODAL, self::AREA_CONTENT], true) ? array_keys(($blocks ?? BlockRegistry::active())->all()) : [];
+        $custom = in_array($parent, ['column', 'tab', 'field', 'slot', 'item-slot', self::MODAL, self::AREA_CONTENT], true) ? array_keys(($blocks ?? ExtensionRegistry::active())->all()) : [];
         return match ($parent) {
             'root' => ['section'],
             'section' => ['row'],
@@ -668,9 +669,9 @@ final class LayoutSchema
      * $modal describes the modal template, a single panel with its own elements;
      * $component a component's tree, which offers content areas.
      */
-    public static function spec(bool $pageContent = false, bool $modal = false, bool $component = false, ?BlockRegistry $blocks = null): array
+    public static function spec(bool $pageContent = false, bool $modal = false, ?ExtensionRegistry $blocks = null, bool $component = false): array
     {
-        $blocks ??= BlockRegistry::active();
+        $blocks ??= ExtensionRegistry::active();
         $custom = array_keys($blocks->all());
         $kinds = [];
 
@@ -683,7 +684,7 @@ final class LayoutSchema
             $kinds[$kind] = [
                 'props' => $props,
                 'style' => self::styleKeys($kind),
-                'children' => self::childrenFor(($blocks->get($kind)['slot'] ?? false) ? 'slot' : $kind, $pageContent, $modal, $component, $blocks),
+                'children' => self::childrenFor(($blocks->get($kind)['slot'] ?? false) ? 'slot' : $kind, $pageContent, $modal, $blocks, $component),
                 'responsive' => ['props' => self::RESPONSIVE_PROPS[$kind] ?? [], 'style' => array_values(array_intersect(self::RESPONSIVE_STYLE, self::styleKeys($kind)))],
                 'states' => [
                     'props' => self::STATE_PROPS[$kind] ?? [],
@@ -710,7 +711,7 @@ final class LayoutSchema
             'format_version' => self::FORMAT_VERSION,
             'bindings' => ['sources' => SmartValue::SOURCES, 'date_formats' => SmartValue::DATE_FORMATS, 'properties' => SmartValue::PROPERTIES + array_filter(array_combine($custom, array_map(static fn(string $kind): array => self::bindings($kind, $blocks), $custom))), 'style_properties' => SmartValue::STYLE_PROPERTIES],
             'kinds' => $kinds,
-            'root' => $modal ? self::allowedChildren('region:' . self::MODAL, $blocks) : self::childrenFor('root', $pageContent, false, $component, $blocks),
+            'root' => $modal ? self::allowedChildren('region:' . self::MODAL, $blocks) : self::childrenFor('root', $pageContent, false, $blocks, $component),
             'style' => $style,
             'elements' => [...self::ELEMENTS, ...$custom, ...($pageContent ? [self::PAGE_CONTENT] : []), ...($component ? [self::COMPONENT_AREA] : []), ...($modal ? self::MODAL_ELEMENTS : [])],
             'item_elements' => [...self::ITEM_ELEMENTS, ...$custom],
@@ -735,20 +736,20 @@ final class LayoutSchema
      * values are dropped rather than rejected so an older or hand-edited
      * layout keeps rendering what is still valid.
      */
-    public static function normalize(mixed $nodes, bool $pageContent = false, ?BlockRegistry $blocks = null): array
+    public static function normalize(mixed $nodes, bool $pageContent = false, ?ExtensionRegistry $blocks = null): array
     {
         $count = 0;
         $seen = [];
         $places = $pageContent ? [] : null;
 
-        return self::normalizeNodes(is_array($nodes) ? $nodes : [], 'root', $count, $seen, false, 0, $blocks ?? BlockRegistry::active(), $places);
+        return self::normalizeNodes(is_array($nodes) ? $nodes : [], 'root', $count, $seen, false, 0, $blocks ?? ExtensionRegistry::active(), $places);
     }
 
     /**
      * A region document: sections, or the modal template's single panel.
      * Saving ($requireContent) also needs the modal's one site content element.
      */
-    public static function normalizeRegion(string $region, mixed $nodes, bool $requireContent = false, ?BlockRegistry $blocks = null): array
+    public static function normalizeRegion(string $region, mixed $nodes, bool $requireContent = false, ?ExtensionRegistry $blocks = null): array
     {
         if ($region !== self::MODAL) {
             return self::normalize($nodes, blocks: $blocks);
@@ -756,7 +757,7 @@ final class LayoutSchema
 
         $count = 0;
         $seen = [];
-        $nodes = array_slice(self::normalizeNodes(is_array($nodes) ? $nodes : [], 'region:' . self::MODAL, $count, $seen, false, 0, $blocks ?? BlockRegistry::active()), 0, 1);
+        $nodes = array_slice(self::normalizeNodes(is_array($nodes) ? $nodes : [], 'region:' . self::MODAL, $count, $seen, false, 0, $blocks ?? ExtensionRegistry::active()), 0, 1);
         if ($requireContent && self::countKind($nodes, self::SITE_CONTENT) !== 1) {
             throw new ValidationException(['nodes' => 'The modal template must contain exactly one Linked page element.']);
         }
@@ -775,7 +776,7 @@ final class LayoutSchema
     }
 
     /** Kinds a node may contain, with the page content place, content areas and modal elements where the document offers them. */
-    public static function childrenFor(string $parent, bool $pageContent, bool $inModal, bool $areas = false, ?BlockRegistry $blocks = null): array
+    public static function childrenFor(string $parent, bool $pageContent, bool $inModal, ?ExtensionRegistry $blocks = null, bool $areas = false): array
     {
         $children = self::allowedChildren($parent, $blocks);
         if ($pageContent && in_array($parent, ['root', 'column', 'tab'], true)) {
@@ -927,7 +928,7 @@ final class LayoutSchema
     }
 
     /** Validate a component's tree: its first node of kind $root, nothing else. */
-    public static function normalizeComponent(mixed $nodes, string $root, ?BlockRegistry $blocks = null): array
+    public static function normalizeComponent(mixed $nodes, string $root, ?ExtensionRegistry $blocks = null): array
     {
         $count = 0;
         $seen = [];
@@ -935,7 +936,7 @@ final class LayoutSchema
 
         $places = null;
 
-        return self::normalizeNodes(array_slice($first, 0, 1), 'component:' . $root, $count, $seen, false, 0, $blocks ?? BlockRegistry::active(), $places, areas: true);
+        return self::normalizeNodes(array_slice($first, 0, 1), 'component:' . $root, $count, $seen, false, 0, $blocks ?? ExtensionRegistry::active(), $places, areas: true);
     }
 
     /** The content areas of a component's tree in order: [{id, name}], name '' when it has none. */
@@ -1399,9 +1400,9 @@ final class LayoutSchema
      * (null where no page content place may go); $areas allows a component's
      * content areas.
      */
-    private static function normalizeNodes(array $nodes, string $parent, int &$count, array &$seen, bool $insideItem, int $rows, BlockRegistry $blocks, ?array &$places = null, bool $inModal = false, string $path = 'root', bool $areas = false): array
+    private static function normalizeNodes(array $nodes, string $parent, int &$count, array &$seen, bool $insideItem, int $rows, ExtensionRegistry $blocks, ?array &$places = null, bool $inModal = false, string $path = 'root', bool $areas = false): array
     {
-        $allowed = self::childrenFor($parent, $places !== null, $inModal, $areas, $blocks);
+        $allowed = self::childrenFor($parent, $places !== null, $inModal, $blocks, $areas);
         $normalized = [];
         $filled = [];
 
@@ -1412,7 +1413,7 @@ final class LayoutSchema
 
             $kind = (string) ($node['kind'] ?? '');
             $placed = self::placementKind($node);
-            $missingBlock = BlockRegistry::isKind($kind) && in_array($parent, ['column', 'tab', 'field', 'slot', 'item-slot', self::MODAL, self::AREA_CONTENT], true);
+            $missingBlock = ExtensionRegistry::isKind($kind) && in_array($parent, ['column', 'tab', 'field', 'slot', 'item-slot', self::MODAL, self::AREA_CONTENT], true);
             if ($placed === '' || (!in_array($placed, $allowed, true) && !$missingBlock) || ($placed === 'row' && $rows > self::MAX_ROW_DEPTH)) {
                 continue;
             }
@@ -1451,7 +1452,7 @@ final class LayoutSchema
             // A repeater's item template may not contain another template.
             $childParent = $kind === 'field' ? ($insideItem ? '' : 'field') : $kind;
             // A block holds children in its slot; a missing block keeps them for a reinstall.
-            $slot = BlockRegistry::isKind($kind) && ($blocks->get($kind)['slot'] ?? $blocks->get($kind) === null);
+            $slot = ExtensionRegistry::isKind($kind) && ($blocks->get($kind)['slot'] ?? $blocks->get($kind) === null);
             if ($slot) $childParent = $insideItem ? 'item-slot' : 'slot';
             // Cards, item templates, the default content and instances' area content hold neither content place, content area nor modal elements.
             $repeated = in_array($kind, ['field', 'collection', self::PAGE_CONTENT, self::COMPONENT], true);
@@ -1511,10 +1512,10 @@ final class LayoutSchema
         return $normalized;
     }
 
-    public static function normalizeProps(string $kind, array $props, ?BlockRegistry $blocks = null): array
+    public static function normalizeProps(string $kind, array $props, ?ExtensionRegistry $blocks = null): array
     {
         // Keep bounded inert values when a package is unavailable so a later reinstall restores it.
-        if (BlockRegistry::isKind($kind) && ($blocks ?? BlockRegistry::active())->get($kind) === null) {
+        if (ExtensionRegistry::isKind($kind) && ($blocks ?? ExtensionRegistry::active())->get($kind) === null) {
             $props = array_filter($props, static fn(mixed $key): bool => is_string($key) && preg_match('/^[a-z][a-z0-9_]{0,63}$/D', $key) === 1, ARRAY_FILTER_USE_KEY);
             return self::inert(array_slice($props, 0, 32, true), 0);
         }

@@ -23,16 +23,17 @@ describe('entry preview URLs', () => {
   })
 })
 
-describe('block package requests', () => {
-  it('deletes a package from the active workspace', async () => {
+describe('extension requests', () => {
+  it('deletes an extension from the active workspace', async () => {
     const fetch = vi.fn().mockResolvedValue({ ok: true, headers: new Headers(), json: async () => ({ data: { name: 'cometcms/essentials' } }) })
     vi.stubGlobal('fetch', fetch)
     const { api, setActiveWorkspace } = await import('./index.js')
     setActiveWorkspace('my-website')
-    await api.blocks.delete('cometcms/essentials')
+    await api.extensions.delete('cometcms/essentials', ['components/hero'])
     const [url, options] = fetch.mock.calls[0]
-    expect(url).toContain('/site/blocks/cometcms/essentials')
+    expect(url).toContain('/site/extensions/cometcms/essentials')
     expect(options.method).toBe('DELETE')
+    expect(JSON.parse(options.body)).toEqual({ remove: ['components/hero'] })
     expect(options.headers['X-Comet-Workspace']).toBe('my-website')
   })
 
@@ -48,22 +49,23 @@ describe('block package requests', () => {
         sent.push(this)
         this.body = body
         this.status = 422
-        this.responseText = JSON.stringify({ error: { code: 'invalid_block_package', message: 'Invalid', details: [{ file: 'blocks/faq/template.html', line: 3, message: 'Unknown prop' }] } })
+        this.responseText = JSON.stringify({ error: { code: 'invalid_extension', message: 'Invalid', details: [{ file: 'blocks/callout/template.html', line: 3, message: 'Unknown prop' }] } })
         this.listeners.load()
       }
     }
     vi.stubGlobal('XMLHttpRequest', FakeXhr)
     const { api, setActiveWorkspace } = await import('./index.js')
     setActiveWorkspace('my-website')
-    const error = await api.blocks.install(new File(['zip'], 'comet-essentials.zip'), { acceptChanges: true, allowScripts: true }).catch((err) => err)
+    const error = await api.extensions.install(new File(['zip'], 'comet-essentials.zip'), { acceptChanges: true, allowScripts: true, seeds: { 'content_types/project': 'skip', 'components/hero': 'overwrite' } }).catch((err) => err)
     expect(sent[0].method).toBe('POST')
-    expect(sent[0].url).toContain('/site/blocks')
+    expect(sent[0].url).toContain('/site/extensions')
     expect(sent[0].headers['X-Comet-Workspace']).toBe('my-website')
-    expect(sent[0].body.get('package').name).toBe('comet-essentials.zip')
+    expect(sent[0].body.get('extension').name).toBe('comet-essentials.zip')
     expect(sent[0].body.get('accept_changes')).toBe('1')
     expect(sent[0].body.get('allow_scripts')).toBe('1')
-    expect(error.code).toBe('invalid_block_package')
-    expect(error.details).toEqual([{ file: 'blocks/faq/template.html', line: 3, message: 'Unknown prop' }])
+    expect(JSON.parse(sent[0].body.get('seeds'))).toEqual({ 'content_types/project': 'skip', 'components/hero': 'overwrite' })
+    expect(error.code).toBe('invalid_extension')
+    expect(error.details).toEqual([{ file: 'blocks/callout/template.html', line: 3, message: 'Unknown prop' }])
   })
 })
 

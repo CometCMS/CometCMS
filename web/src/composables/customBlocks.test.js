@@ -11,7 +11,7 @@ import KindIcon from '../components/site/builder/KindIcon.vue'
 import { nodeIcon } from '../components/site/builder/kindIcons.js'
 import { t } from '../i18n/index.js'
 
-const manifest = JSON.parse(readFileSync(new URL('../../../examples/blocks/comet-essentials/blocks/callout/block.json', import.meta.url), 'utf8'))
+const manifest = JSON.parse(readFileSync(new URL('../../../examples/extensions/comet-essentials/blocks/callout/block.json', import.meta.url), 'utf8'))
 // A block is named after its package vendor and folder: cometcms/essentials's blocks/callout is cometcms/callout.
 const kind = 'block:cometcms/callout'
 const spec = {

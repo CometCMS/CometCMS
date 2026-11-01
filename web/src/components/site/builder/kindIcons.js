@@ -46,7 +46,7 @@ export function componentIcon(component) {
   return component?.icon || KIND_ICONS.component
 }
 
-/** A kind's icon; block packages bring their own, as an Iconify name or an image. */
+/** A kind's icon; extensions bring their own, as an Iconify name or an image. */
 export function kindIcon(kind, spec = null) {
   return KIND_ICONS[kind] || spec?.kinds?.[kind]?.icon || (kind?.startsWith('block:') ? 'mdi:cube-outline' : 'mdi:shape-outline')
 }

@@ -8,10 +8,11 @@ use CometCMS\Auth\Auth;
 use CometCMS\Content\ContentRepository;
 use CometCMS\Core\Http;
 use CometCMS\Core\ValidationException;
-use CometCMS\Site\Blocks\BlockPackage;
-use CometCMS\Site\Blocks\BlockPackageChanges;
-use CometCMS\Site\Blocks\BlockPackageException;
-use CometCMS\Site\Blocks\BlockPackageScripts;
+use CometCMS\Extensions\Extension;
+use CometCMS\Extensions\ExtensionChanges;
+use CometCMS\Extensions\ExtensionException;
+use CometCMS\Extensions\ExtensionScripts;
+use CometCMS\Extensions\ExtensionSeeds;
 use CometCMS\Site\FormRepository;
 use CometCMS\Site\FormCaptchaSettings;
 use CometCMS\Site\LayoutSchema;
@@ -79,68 +80,113 @@ final class SiteController extends BaseController
         ]]);
     }
 
-    public function blocks(): never
+    public function extensions(): never
     {
         $user = $this->requirePermission('site.manage', ['resource' => 'site:*']);
-        $this->json(['data' => $this->site->blocks()->metadata() + ['can_install' => Auth::allows($user, 'admin')]]);
+        $this->json(['data' => $this->site->extensions()->metadata() + ['can_install' => Auth::allows($user, 'admin')]]);
     }
 
-    /** Install or update a block package from a ZIP upload. */
-    public function installBlock(): never
+    /** Install or update an extension from a ZIP upload. */
+    public function installExtension(): never
     {
         $this->requireUser('admin');
         $this->requirePermission('site.manage', ['resource' => 'site:*']);
         $this->verifyCsrf();
-        $upload = $_FILES['package'] ?? null;
+        $upload = $_FILES['extension'] ?? null;
         $error = is_array($upload) ? ($upload['error'] ?? UPLOAD_ERR_NO_FILE) : UPLOAD_ERR_NO_FILE;
         if (in_array($error, [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true)
-            || ($error === UPLOAD_ERR_OK && (int) ($upload['size'] ?? 0) > BlockPackage::MAX_BYTES)) {
-            $this->json(['error' => ['code' => 'invalid_block_package', 'message' => 'The package ZIP is too large for this server.', 'details' => []]], 413);
+            || ($error === UPLOAD_ERR_OK && (int) ($upload['size'] ?? 0) > Extension::MAX_BYTES)) {
+            $this->json(['error' => ['code' => 'invalid_extension', 'message' => 'The extension ZIP is too large for this server.', 'details' => []]], 413);
         }
-        if ($error !== UPLOAD_ERR_OK || !is_string($upload['tmp_name'] ?? null) || !is_uploaded_file($upload['tmp_name']) || array_diff(array_keys($_FILES), ['package']) !== []) {
-            $this->json(['error' => ['code' => 'invalid_block_package', 'message' => 'Upload one block package as a .zip file.', 'details' => []]], 422);
+        if ($error !== UPLOAD_ERR_OK || !is_string($upload['tmp_name'] ?? null) || !is_uploaded_file($upload['tmp_name']) || array_diff(array_keys($_FILES), ['extension']) !== []) {
+            $this->json(['error' => ['code' => 'invalid_extension', 'message' => 'Upload one extension as a .zip file.', 'details' => []]], 422);
         }
         try {
-            $result = $this->site->blocks()->install(
+            $seeds = null;
+            if (isset($_POST['seeds'])) {
+                $decoded = json_decode((string) $_POST['seeds']);
+                if (!$decoded instanceof \stdClass) throw ExtensionException::single('', 'Seed choices must be a JSON object.');
+                $seeds = (array) $decoded;
+            }
+            $result = $this->site->extensions()->install(
                 $upload['tmp_name'],
                 filter_var($_POST['accept_changes'] ?? false, FILTER_VALIDATE_BOOL),
                 filter_var($_POST['allow_scripts'] ?? false, FILTER_VALIDATE_BOOL),
+                $seeds,
             );
             $this->site->clearCache();
-            $this->logger->info('site.block_package_installed', ['workspace' => $this->site->workspace()->slug(), 'package' => $result['name'], 'version' => $result['version'], 'previous_version' => $result['previous_version'], 'scripts' => $result['scripts']]);
+            $this->logger->info('site.extension_installed', ['workspace' => $this->site->workspace()->slug(), 'extension' => $result['name'], 'version' => $result['version'], 'previous_version' => $result['previous_version'], 'scripts' => $result['scripts']]);
             $this->json(['data' => $result], 201);
-        } catch (BlockPackageException $e) {
-            $this->json(['error' => ['code' => 'invalid_block_package', 'message' => $e->getMessage(), 'details' => $e->errors()]], 422);
-        } catch (BlockPackageChanges $e) {
-            $this->json(['error' => ['code' => 'block_package_changes', 'message' => $e->getMessage(), 'details' => [
-                'package' => $e->package, 'installed_version' => $e->installedVersion, 'version' => $e->version, 'changes' => $e->changes,
+        } catch (ExtensionException $e) {
+            $this->json(['error' => ['code' => 'invalid_extension', 'message' => $e->getMessage(), 'details' => $e->errors()]], 422);
+        } catch (ExtensionChanges $e) {
+            $this->json(['error' => ['code' => 'extension_changes', 'message' => $e->getMessage(), 'details' => [
+                'extension' => $e->extension, 'installed_version' => $e->installedVersion, 'version' => $e->version, 'changes' => $e->changes,
             ]]], 409);
-        } catch (BlockPackageScripts $e) {
-            $this->json(['error' => ['code' => 'block_package_scripts', 'message' => $e->getMessage(), 'details' => [
-                'package' => $e->package, 'blocks' => $e->blocks,
+        } catch (ExtensionSeeds $e) {
+            $this->json(['error' => ['code' => 'extension_seeds', 'message' => $e->getMessage(), 'details' => [
+                'extension' => $e->extension, 'plan' => $e->plan,
+            ]]], 409);
+        } catch (ExtensionScripts $e) {
+            $this->json(['error' => ['code' => 'extension_scripts', 'message' => $e->getMessage(), 'details' => [
+                'extension' => $e->extension, 'blocks' => $e->blocks,
             ]]], 409);
         } catch (\RuntimeException $e) {
-            $this->json(['error' => ['code' => 'block_package_unavailable', 'message' => $e->getMessage()]], 503);
+            $this->json(['error' => ['code' => 'extension_unavailable', 'message' => $e->getMessage()]], 503);
         }
     }
 
-    public function deleteBlock(string $vendor, string $package): never
+    public function extension(string $vendor, string $extension): never
+    {
+        $this->requirePermission('site.manage', ['resource' => 'site:*']);
+        $details = $this->site->extensions()->details($vendor . '/' . $extension);
+        if ($details === null) $this->json(['error' => ['code' => 'not_found', 'message' => 'Extension not found.']], 404);
+        $this->json(['data' => $details]);
+    }
+
+    public function updateExtension(string $vendor, string $extension): never
     {
         $this->requireUser('admin');
         $this->requirePermission('site.manage', ['resource' => 'site:*']);
         $this->verifyCsrf();
-        $name = $vendor . '/' . $package;
+        $name = $vendor . '/' . $extension;
         try {
-            if (!$this->site->blocks()->delete($name)) {
-                $this->json(['error' => ['code' => 'not_found', 'message' => 'Package not found.']], 404);
+            $enabled = $this->requestJson()['enabled'] ?? null;
+            if (!is_bool($enabled)) throw new \InvalidArgumentException('Enabled must be a boolean.');
+            if (!$this->site->extensions()->setEnabled($name, $enabled)) {
+                $this->json(['error' => ['code' => 'not_found', 'message' => 'Extension not found.']], 404);
             }
             $this->site->clearCache();
-            $this->logger->info('site.block_package_deleted', ['workspace' => $this->site->workspace()->slug(), 'package' => $name]);
+            $this->logger->info('site.extension_toggled', ['workspace' => $this->site->workspace()->slug(), 'extension' => $name, 'enabled' => $enabled]);
+            $this->json(['data' => ['name' => $name, 'enabled' => $enabled]]);
+        } catch (\InvalidArgumentException $e) {
+            $this->json(['error' => ['code' => 'invalid_extension', 'message' => $e->getMessage()]], 422);
+        } catch (\RuntimeException $e) {
+            $this->json(['error' => ['code' => 'extension_unavailable', 'message' => $e->getMessage()]], 503);
+        }
+    }
+
+    public function deleteExtension(string $vendor, string $extension): never
+    {
+        $this->requireUser('admin');
+        $this->requirePermission('site.manage', ['resource' => 'site:*']);
+        $this->verifyCsrf();
+        $name = $vendor . '/' . $extension;
+        try {
+            $remove = $this->requestJson()['remove'] ?? [];
+            if (!is_array($remove) || !array_is_list($remove) || array_filter($remove, static fn(mixed $id): bool => !is_string($id)) !== []) {
+                throw new \InvalidArgumentException('Removal choices must be a list of seeded item ids.');
+            }
+            if (!$this->site->extensions()->delete($name, $remove)) {
+                $this->json(['error' => ['code' => 'not_found', 'message' => 'Extension not found.']], 404);
+            }
+            $this->site->clearCache();
+            $this->logger->info('site.extension_deleted', ['workspace' => $this->site->workspace()->slug(), 'extension' => $name]);
             $this->json(['data' => ['name' => $name]]);
         } catch (\InvalidArgumentException $e) {
-            $this->json(['error' => ['code' => 'invalid_block_package', 'message' => $e->getMessage()]], 422);
+            $this->json(['error' => ['code' => 'invalid_extension', 'message' => $e->getMessage()]], 422);
         } catch (\RuntimeException $e) {
-            $this->json(['error' => ['code' => 'block_package_unavailable', 'message' => $e->getMessage()]], 503);
+            $this->json(['error' => ['code' => 'extension_unavailable', 'message' => $e->getMessage()]], 503);
         }
     }
 
@@ -1239,7 +1285,7 @@ final class SiteController extends BaseController
             'default_locale' => $this->site->settings()['default_locale'],
             // The website's address serves another workspace (or none), so live links would mislead.
             'live_conflict' => $this->site->settings()['enabled'] && $this->liveUrlConflict($this->siteUrl() . '/'),
-            'spec' => LayoutSchema::spec($pageContent, $modal, $component, $this->site->blocks()),
+            'spec' => LayoutSchema::spec($pageContent, $modal, $this->site->blocks(), $component),
             'components' => $this->site->components(),
             'forms' => array_map(fn(array $form): array => ['id' => $form['id'], 'name' => $form['name'], 'type' => $form['type'], 'fields' => count($this->forms->inputs($form))], $this->forms->all()),
         ];

@@ -34,7 +34,7 @@ export default defineConfig({
           { text: 'Content Entries', link: '/guide/content-entries' },
           { text: 'Media Library', link: '/guide/media' },
           { text: 'Website', link: '/guide/website' },
-          { text: 'Custom Blocks', link: '/guide/custom-blocks' },
+          { text: 'Extensions', link: '/guide/extensions' },
         ],
       },
       {

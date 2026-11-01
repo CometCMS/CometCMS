@@ -1,0 +1,6 @@
+/* Shared by every block in the extension; emitted once when any of them is on the page. */
+:where([class*="c-block-cometcms__"]) {
+  --cometcms-accent: var(--c-primary, #2563eb);
+  --cometcms-success: #15803d;
+  --cometcms-radius: var(--radius-box, 0.75rem);
+}

@@ -8,7 +8,7 @@ use CometCMS\Core\HtmlSanitizer;
 use CometCMS\Core\Security;
 use CometCMS\Localization\LocalizedValue;
 use CometCMS\Localization\Messages;
-use CometCMS\Site\Blocks\BlockRegistry;
+use CometCMS\Extensions\ExtensionRegistry;
 use CometCMS\Site\Blocks\BlockTemplate;
 
 /**
@@ -232,7 +232,7 @@ final class NodeRenderer
             'site_title' => $this->siteTitle($node, $state),
             'language_switcher' => $this->languageSwitcher($node, $state),
             'theme_toggle' => $this->themeToggle($node),
-            default => BlockRegistry::isKind((string) ($node['kind'] ?? '')) ? $this->block($node, $state) : '',
+            default => ExtensionRegistry::isKind((string) ($node['kind'] ?? '')) ? $this->block($node, $state) : '',
         };
         if ($warnings && $this->annotating()) {
             $warning = '<div class="c-placeholder c-placeholder-warning" role="status"' . $this->placeholder('unresolvedFallback') . '>Unresolved content reference (using fallback if configured)</div>';
@@ -252,14 +252,14 @@ final class NodeRenderer
         return array_keys($this->blockScripts);
     }
 
-    /** CSS of the packages and blocks rendered so far: each package's shared CSS, then its blocks'. */
+    /** CSS of the extensions and blocks rendered so far: each extension's shared CSS, then its blocks'. */
     public function blockStylesheet(): string
     {
         $blocks = $this->ctx->site->blocks();
         $assetUrl = $this->ctx->blockAssetUrl(...);
         $css = [];
         foreach ($this->blockStyles as $name => $kinds) {
-            $parts = $blocks->package($name)['css'] ?? [];
+            $parts = $blocks->extension($name)['css'] ?? [];
             foreach (array_keys($kinds) as $kind) {
                 array_push($parts, "\n", ...($blocks->get($kind)['css'] ?? []));
             }
@@ -286,7 +286,7 @@ final class NodeRenderer
         $values = $this->blockValues($block['props'], $node['props'] ?? [], $state);
         // Compiled templates are well-formed allow-listed HTML; render only escapes values.
         $html = BlockTemplate::render($block['template'], $values, $this->ctx->blockAssetUrl(...), $slot);
-        $this->blockStyles[$block['package']][$node['kind']] = true;
+        $this->blockStyles[$block['extension']][$node['kind']] = true;
         // Installed block scripts also mount in previews, using the same resolved props.
         $attributes = '';
         if ($block['script'] !== '') {
@@ -295,7 +295,7 @@ final class NodeRenderer
                 . Security::e(json_encode($values, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR)) . '"';
         }
 
-        return $this->element($node, $html, [BlockRegistry::cssClass($block['name'])], '', $attributes);
+        return $this->element($node, $html, [ExtensionRegistry::cssClass($block['name'])], '', $attributes);
     }
 
     /**

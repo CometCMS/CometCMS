@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace CometCMS\Site\Blocks;
 
 use CometCMS\Core\Security;
+use CometCMS\Site\Icons;
 
 /**
  * Mustache-style block templates: escaped values, rich text, conditional and list
@@ -126,6 +127,11 @@ final class BlockTemplate
 
     private static function value(mixed $value, ?string $field): string
     {
+        if ($field === 'icon') {
+            $icon = is_string($value) ? (Icons::catalog()[$value] ?? null) : null;
+
+            return $icon === null ? '' : '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="32" height="32" fill="currentColor" focusable="false" aria-hidden="true">' . $icon['body'] . '</svg>';
+        }
         if (is_array($value) && !array_is_list($value)) {
             $value = $value[match ($field) { 'alt' => 'alt', 'css' => 'css', default => '_' }] ?? '';
         }
@@ -148,6 +154,7 @@ final class BlockTemplate
             'media' => $tag['field'] ?? 'url',
             'color' => $context === 'css' ? 'css' : null,
             'text' => $context === 'text' ? 'lines' : null,
+            'icon' => $context === 'text' ? 'icon' : null,
             default => null,
         };
     }

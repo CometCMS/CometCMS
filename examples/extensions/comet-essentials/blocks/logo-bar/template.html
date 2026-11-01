@@ -1,0 +1,19 @@
+<section class="cometcms-logo-bar" aria-label="{{label}}">
+  <div class="cometcms-logo-bar__track">
+    <div class="cometcms-logo-bar__group">
+      {{#logos}}
+      <div class="cometcms-logo-bar__item">
+        {{#link}}<a href="{{link}}">
+          {{#image}}<img src="{{image}}" alt="{{#name}}{{name}}{{/name}}{{^name}}{{image.alt}}{{/name}}" decoding="async">{{/image}}
+          {{^image}}<span>{{name}}</span>{{/image}}
+        </a>{{/link}}
+        {{^link}}
+          {{#image}}<img src="{{image}}" alt="{{#name}}{{name}}{{/name}}{{^name}}{{image.alt}}{{/name}}" decoding="async">{{/image}}
+          {{^image}}<span>{{name}}</span>{{/image}}
+        {{/link}}
+      </div>
+      {{/logos}}
+    </div>
+  </div>
+  {{^logos}}<p>{{empty_label}}</p>{{/logos}}
+</section>

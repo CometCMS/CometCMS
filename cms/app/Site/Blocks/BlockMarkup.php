@@ -73,7 +73,7 @@ final class BlockMarkup
     private const URL_TYPES = ['url', 'link', 'media'];
 
     private const HINTS = [
-        'script' => 'JavaScript is not supported in block packages yet.',
+        'script' => 'JavaScript is not supported in extensions yet.',
         'style' => 'Put CSS in the block\'s style.css.',
         'link' => 'Put CSS in the block\'s style.css.',
         'iframe' => 'Embeds are not supported.',
@@ -214,7 +214,7 @@ final class BlockMarkup
             }
             if (!$this->allowedAttribute($tag, $name, $svg)) {
                 $this->error($line, 'Attribute "' . $name . '" is not allowed on <' . $tag . '>.'
-                    . (str_starts_with($name, 'on') ? ' JavaScript is not supported in block packages yet.' : ''));
+                    . (str_starts_with($name, 'on') ? ' JavaScript is not supported in extensions yet.' : ''));
                 $this->mark($value, 'removed');
                 continue;
             }

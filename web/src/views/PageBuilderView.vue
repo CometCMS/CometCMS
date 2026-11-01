@@ -77,7 +77,6 @@
       </div>
       <SiteTemplatesPanel v-else-if="activeTab === 'templates'" />
       <SiteComponentsPanel v-else-if="activeTab === 'components'" />
-      <BlockLibrary v-else-if="activeTab === 'blocks'" />
       <section v-else-if="activeTab === 'fonts'" class="card p-6">
         <div class="mb-4">
           <h2 class="card-title">{{ t("site.fonts.libraryTitle") }}</h2>
@@ -115,7 +114,6 @@ import SiteMenusPanel from "../components/site/SiteMenusPanel.vue";
 import SiteComponentsPanel from "../components/site/SiteComponentsPanel.vue";
 import SiteTemplatesPanel from "../components/site/SiteTemplatesPanel.vue";
 import FontLibrary from "../components/site/FontLibrary.vue";
-import BlockLibrary from "../components/site/BlockLibrary.vue";
 import { useUnsavedChangesGuard } from "../composables/useUnsavedChangesGuard.js";
 import { useSiteStore } from "../stores/site.js";
 import { useToastStore } from "../stores/toast.js";
@@ -145,7 +143,7 @@ const builderLink = computed(() => {
 });
 const { leavePromptOpen, confirmLeave } = useUnsavedChangesGuard(isDirty);
 
-const validTabs = new Set(["design", "templates", "menus", "fonts", "components", "blocks"]);
+const validTabs = new Set(["design", "templates", "menus", "fonts", "components"]);
 const activeTab = computed(() => (validTabs.has(route.params.tab) ? route.params.tab : "design"));
 const tabs = computed(() => [
   { value: "design", label: t("site.builder.designSettings"), icon: "mdi:palette-outline", to: "/page-builder/design" },
@@ -153,7 +151,6 @@ const tabs = computed(() => [
   { value: "menus", label: t("site.tab.menus"), icon: "mdi:menu", to: "/page-builder/menus" },
   { value: "components", label: t("site.component.group"), icon: "mdi:puzzle-outline", to: "/page-builder/components" },
   { value: "fonts", label: t("site.tab.fonts"), icon: "mdi:format-font", to: "/page-builder/fonts" },
-  { value: "blocks", label: t("site.blocks.title"), icon: "mdi:puzzle-outline", to: "/page-builder/blocks" },
 ]);
 
 async function save() {

@@ -71,7 +71,7 @@ final class ContentTypesController extends BaseController
             ]], 422);
         }
 
-        if ($this->types->exists($name)) {
+        if ($this->types->exists($name, includeDisabled: true)) {
             $this->json(['error' => [
                 'code' => 'validation_failed',
                 'message' => 'A content type with this identifier already exists.',
@@ -141,6 +141,9 @@ final class ContentTypesController extends BaseController
 
     public function destroy(string $name): never
     {
+        if ($this->types->isDisabled($name)) {
+            $this->json(['error' => ['code' => 'not_found', 'message' => 'Content type not found.']], 404);
+        }
         $user = $this->requirePermission('schema.delete', ['type' => 'schema', 'name' => $name]);
         $this->verifyCsrf();
         $this->types->delete($name);

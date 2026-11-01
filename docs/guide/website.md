@@ -1,6 +1,6 @@
 # Website
 
-Developers can add their own page-builder elements with [block packages](./custom-blocks): ZIPs of HTML templates, CSS and assets, installed from **Page Builder → Custom blocks**.
+Developers can add their own page-builder elements with [extensions](./extensions): ZIPs of reusable blocks and optional site content, installed from **Website Settings → Extensions**.
 
 CometCMS provides a visual Page Builder with shared layouts and structured custom fields. Pages are rendered by PHP on your server, so there is still nothing to install: no Node or build step. Interactive elements, including gallery viewers and internal link modals, use small bundled scripts included only when needed. Custom blocks can also include their own scripts. Developers can also enable the headless API per content type, independently of website pages.
 

@@ -1,0 +1,108 @@
+{
+  "name": "Portfolio hero",
+  "root": "section",
+  "type": "project",
+  "nodes": [
+    {
+      "id": "portfolio-hero",
+      "kind": "section",
+      "props": {},
+      "children": [
+        {
+          "id": "portfolio-hero-row",
+          "kind": "row",
+          "props": {},
+          "children": [
+            {
+              "id": "portfolio-hero-column",
+              "kind": "column",
+              "props": {
+                "span": {
+                  "mobile": 12,
+                  "tablet": 12,
+                  "desktop": 12
+                },
+                "spacing": "lg"
+              },
+              "children": [
+                {
+                  "id": "portfolio-project_type",
+                  "kind": "field",
+                  "props": {
+                    "source": {
+                      "type": "reference",
+                      "source": "current",
+                      "path": [
+                        "project_type"
+                      ],
+                      "filters": []
+                    },
+                    "label": false,
+                    "display": "badges"
+                  },
+                  "children": []
+                },
+                {
+                  "id": "portfolio-title",
+                  "kind": "field",
+                  "props": {
+                    "source": {
+                      "type": "reference",
+                      "source": "current",
+                      "path": [
+                        "title"
+                      ],
+                      "filters": []
+                    },
+                    "label": false,
+                    "tag": "h1"
+                  },
+                  "children": []
+                },
+                {
+                  "id": "portfolio-brief",
+                  "kind": "block:cometcms/callout",
+                  "props": {
+                    "title": "The brief",
+                    "message": {
+                      "type": "reference",
+                      "source": "current",
+                      "path": [
+                        "summary"
+                      ],
+                      "filters": []
+                    },
+                    "show_link": false
+                  },
+                  "children": []
+                },
+                {
+                  "id": "portfolio-cover_image",
+                  "kind": "field",
+                  "props": {
+                    "source": {
+                      "type": "reference",
+                      "source": "current",
+                      "path": [
+                        "cover_image"
+                      ],
+                      "filters": []
+                    },
+                    "label": false,
+                    "display": "image",
+                    "ratio": "16:9"
+                  },
+                  "children": []
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "style": {
+        "padding_top": "xl",
+        "padding_bottom": "xl"
+      }
+    }
+  ]
+}

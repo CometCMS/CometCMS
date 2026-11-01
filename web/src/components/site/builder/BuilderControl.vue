@@ -102,6 +102,7 @@
       :label="label"
       :model-value="value ?? ''"
       :options="colorOptions"
+      :empty-label="group === 'props' && node.kind.startsWith('block:') ? t('site.option.none') : ''"
       @update:model-value="emitValue"
     />
 
@@ -269,6 +270,7 @@
       @input="emitValue($event.target.value)"
     ></textarea>
 
+    <textarea
       v-else-if="def.type === 'text'"
       :id="inputId"
       :value="value ?? ''"

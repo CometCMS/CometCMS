@@ -10,7 +10,7 @@ use CometCMS\Core\Security;
 use CometCMS\Core\ValidationException;
 use CometCMS\Localization\LocalizedValue;
 use CometCMS\Localization\LanguageSettings;
-use CometCMS\Site\Blocks\BlockRegistry;
+use CometCMS\Extensions\ExtensionRegistry;
 use CometCMS\Storage\JsonStore;
 use CometCMS\Workspaces\WorkspaceContext;
 use CometCMS\Workspaces\WorkspaceRepository;
@@ -63,7 +63,7 @@ final class SiteRepository
     private ContentTypeRepository $types;
     private ?array $settingsCache = null;
     private ?array $typesCache = null;
-    private ?BlockRegistry $blockRegistry = null;
+    private ?ExtensionRegistry $extensionRegistry = null;
 
     public function __construct(?WorkspaceContext $workspace = null, ?ContentTypeRepository $types = null)
     {
@@ -79,9 +79,15 @@ final class SiteRepository
         return $this->workspace;
     }
 
-    public function blocks(): BlockRegistry
+    public function extensions(): ExtensionRegistry
     {
-        return $this->blockRegistry ??= new BlockRegistry($this->workspace);
+        return $this->extensionRegistry ??= new ExtensionRegistry($this->workspace);
+    }
+
+    /** The extension registry also resolves block kinds for the renderer. */
+    public function blocks(): ExtensionRegistry
+    {
+        return $this->extensions();
     }
 
     /** @return array<string, array> content types keyed by name */
@@ -121,7 +127,18 @@ final class SiteRepository
         $settings['updated_at'] = Security::now();
         $settings['revision'] = bin2hex(random_bytes(12));
         // Workspace languages and website availability are derived on every read.
-        $this->store->write(array_diff_key($settings, array_flip(['enabled', 'locales', 'default_locale'])), 'settings');
+        $stored = array_diff_key($settings, array_flip(['enabled', 'locales', 'default_locale']));
+        // A disabled extension only hides its types. Saving unrelated settings
+        // must not erase their routes or a temporarily unavailable homepage.
+        $previous = $this->store->read('settings') ?? [];
+        $hidden = ExtensionRegistry::disabledContentTypes($this->workspace);
+        foreach ($hidden as $name) {
+            if (isset($previous['routes'][$name])) $stored['routes'][$name] = $previous['routes'][$name];
+        }
+        if ($settings['homepage']['type'] === '' && in_array($previous['homepage']['type'] ?? '', $hidden, true)) {
+            $stored['homepage'] = $previous['homepage'];
+        }
+        $this->store->write($stored, 'settings');
         $this->settingsCache = $settings;
         $this->clearCache();
 
@@ -471,14 +488,14 @@ final class SiteRepository
      * Normalize templates for saving or previewing ({type: {variant:
      * templates}}); anything invalid is rejected.
      */
-    public function validateTemplates(mixed $templates): array
+    public function validateTemplates(mixed $templates, ?array $types = null, ?array $components = null): array
     {
         if (!is_array($templates)) {
             throw new ValidationException(['templates' => 'Invalid templates.']);
         }
         $normalized = [];
         foreach ($templates as $type => $variants) {
-            $schema = $this->types()[(string) $type] ?? null;
+            $schema = ($types ?? $this->types())[(string) $type] ?? null;
             if ($schema === null || !is_array($variants)) {
                 throw new ValidationException(['templates' => 'Unknown content type: ' . $type]);
             }
@@ -486,7 +503,7 @@ final class SiteRepository
                 if (!in_array($variant, $this->variantsFor($schema), true)) {
                     throw new ValidationException(['templates' => 'Unknown page kind: ' . $variant]);
                 }
-                $normalized[(string) $type][(string) $variant] = $this->normalizeTemplates($schema, (string) $variant, $list, true);
+                $normalized[(string) $type][(string) $variant] = $this->normalizeTemplates($schema, (string) $variant, $list, true, $components);
             }
         }
 
@@ -617,7 +634,7 @@ final class SiteRepository
      * Known parts, unique ids, the default template last. Saving rejects
      * what reading drops or repairs.
      */
-    private function normalizeTemplates(array $schema, string $variant, mixed $list, bool $strict): array
+    private function normalizeTemplates(array $schema, string $variant, mixed $list, bool $strict, ?array $components = null): array
     {
         $fail = static function (string $message) use ($strict): bool {
             if ($strict) throw new ValidationException(['templates' => $message]);
@@ -628,7 +645,7 @@ final class SiteRepository
             $list = [];
         }
         $type = (string) $schema['name'];
-        $components = $strict ? array_column($this->components(), null, 'id') : null;
+        $components ??= $strict ? array_column($this->components(), null, 'id') : null;
         $seen = [];
         $default = null;
         $others = [];
@@ -765,6 +782,17 @@ final class SiteRepository
     public function hasTemplate(string $type, string $variant, string $template): bool
     {
         return in_array($template, array_column($this->templates($type, $variant), 'id'), true);
+    }
+
+    /** Remove an extension-seeded template list and its saved content areas. */
+    public function deleteTemplateSet(string $type, string $variant): void
+    {
+        Security::assertSafeName($type);
+        Security::assertSafeName($variant);
+        $this->themeStore->delete('templates', $type, $variant);
+        self::removeDirectory($this->themeStore->path('content', $type, $variant));
+        self::removeDirectory($this->revisions->path('content', $type, $variant));
+        $this->clearCache();
     }
 
     /** A deleted template's content area and its history. */
@@ -996,6 +1024,40 @@ final class SiteRepository
             'created_at' => Security::now(),
         ], $nodes, $type);
 
+        return $this->writeComponent($component);
+    }
+
+    /** Validate an extension component without writing it. Context includes other seeds. */
+    public function normalizeExtensionComponent(string $id, array $data, array $types, array $components, ExtensionRegistry $blocks): array
+    {
+        if ($id === '' || LayoutSchema::key($id) !== $id || !in_array($data['root'] ?? null, LayoutSchema::STRUCTURE, true)) {
+            throw new ValidationException(['component' => 'Invalid component id or root.']);
+        }
+        $component = [
+            'id' => $id, 'name' => $this->componentName($data['name'] ?? ''), 'icon' => '',
+            'root' => $data['root'], 'type' => $data['type'] ?? '', 'created_at' => Security::now(),
+        ];
+        if (!is_string($component['type']) || ($component['type'] !== '' && !isset($types[$component['type']]))) {
+            throw new ValidationException(['type' => 'Unknown component content type.']);
+        }
+        $nodes = LayoutSchema::normalizeComponent($data['nodes'] ?? [], $component['root'], $blocks);
+        if ($nodes === [] || ($component['type'] === '' && LayoutSchema::usesSource($nodes, 'current'))) {
+            throw new ValidationException(['nodes' => 'A component needs its root and a content type when it uses entry fields.']);
+        }
+        foreach (LayoutSchema::componentRefs($nodes) as $ref) {
+            $inner = $components[$ref] ?? null;
+            if ($ref === $id || $inner === null || (($inner['type'] ?? '') !== '' && $inner['type'] !== $component['type'])) {
+                throw new ValidationException(['nodes' => 'Invalid component reference: ' . $ref]);
+            }
+        }
+        return $component + ['nodes' => $nodes];
+    }
+
+    /** Copy an extension's component into the site's library, keeping its declared id. */
+    public function seedComponent(string $id, array $data, ?array $components = null): array
+    {
+        $component = $this->normalizeExtensionComponent($id, $data, $this->types(), $components ?? array_column($this->components(), null, 'id'), $this->blocks());
+        $component['created_at'] = $this->component($id)['created_at'] ?? $component['created_at'];
         return $this->writeComponent($component);
     }
 

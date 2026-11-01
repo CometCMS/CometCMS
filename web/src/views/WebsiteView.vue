@@ -27,7 +27,7 @@
         {{ t("site.openWebsite") }}
       </a>
       <button
-        v-if="editsSite && site.draft"
+        v-if="editsSite && activeTab !== 'extensions' && site.draft"
         type="button"
         class="btn-primary relative"
         :disabled="site.saving || !isDirty"
@@ -49,10 +49,11 @@
       :aria-label="t('website.navigation')"
     >
       <!-- One language switcher for every localized field on the page -->
-      <template v-if="editsSite && site.draft" #end><LanguageTabs /></template>
+      <template v-if="editsSite && activeTab !== 'extensions' && site.draft" #end><LanguageTabs /></template>
     </TabNavigation>
 
     <WorkspacesPanel v-if="showsWorkspaces" />
+    <ExtensionLibrary v-else-if="editsSite && activeTab === 'extensions'" />
 
     <template v-else-if="editsSite">
       <div v-if="site.loading && !site.draft" class="flex justify-center py-16">
@@ -118,6 +119,7 @@ import WorkspacesPanel from "../components/WorkspacesPanel.vue";
 import SiteGeneralPanel from "../components/site/SiteGeneralPanel.vue";
 import SiteSeoPanel from "../components/site/SiteSeoPanel.vue";
 import SiteFormsPanel from "../components/site/SiteFormsPanel.vue";
+import ExtensionLibrary from "../components/site/ExtensionLibrary.vue";
 import { useUnsavedChangesGuard } from "../composables/useUnsavedChangesGuard.js";
 import { useAuthStore } from "../stores/auth.js";
 import { useContentTypesStore } from "../stores/contentTypes.js";
@@ -147,6 +149,7 @@ const tabs = computed(() =>
         ...(site.data?.types?.some((type) => type.allow_submissions)
           ? [{ value: "forms", label: t("website.tab.forms"), icon: "mdi:form-select", to: "/website/forms" }]
           : []),
+        { value: "extensions", label: t("site.extensions.title"), icon: "mdi:puzzle-outline", to: "/website/extensions" },
       ]
     : [],
 );

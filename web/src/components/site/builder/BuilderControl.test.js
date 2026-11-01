@@ -64,6 +64,18 @@ describe('builder icon controls', () => {
   })
 })
 
+describe('extension accent colors', () => {
+  it('labels an empty extension color as None and keeps style color defaults', async () => {
+    const def = { type: 'color', default: 'primary', options: ['', 'primary'] }
+    const extension = await renderControl('accent', def, '', {
+      node: { id: 'card1', kind: 'block:cometcms/card', props: { accent: '' }, style: {} },
+    })
+    expect(extension).toContain('>None</span>')
+    const style = await renderControl('background', def, '', { group: 'style' })
+    expect(style).toContain('>Default</span>')
+  })
+})
+
 describe('builder gradient controls', () => {
   it('uses the shared gradient editor for backgrounds and text', async () => {
     for (const name of ['background_gradient', 'text_gradient']) {

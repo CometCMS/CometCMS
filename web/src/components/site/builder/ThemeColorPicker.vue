@@ -25,7 +25,7 @@
     >
       <button v-if="allowEmpty" type="button" class="mb-3 flex w-full items-center gap-2 rounded px-1 py-1 text-left text-xs text-slate-600 hover:bg-slate-50" :aria-pressed="!modelValue" @click="select('')">
         <Icon icon="mdi:circle-off-outline" class="h-4 w-4" />
-        {{ t('site.option.default') }}
+        {{ emptyLabel || t('site.option.default') }}
       </button>
       <section v-for="group in groups" :key="group.label" class="mb-3 last:mb-0">
         <p class="mb-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400">{{ group.label }}</p>
@@ -61,6 +61,7 @@ const props = defineProps({
   modelValue: { type: String, default: "" },
   options: { type: Array, default: () => [] },
   allowEmpty: { type: Boolean, default: true },
+  emptyLabel: { type: String, default: "" },
 });
 const emit = defineEmits(["update:modelValue"]);
 const { t } = useI18n();
@@ -68,7 +69,7 @@ const container = ref(null);
 const trigger = ref(null);
 const open = ref(false);
 const selected = computed(() => props.options.find((option) => option.value === props.modelValue));
-const selectedLabel = computed(() => selected.value?.label ?? (props.modelValue ? `${props.modelValue} (${t('site.builder.missing')})` : t('site.option.default')));
+const selectedLabel = computed(() => selected.value?.label ?? (props.modelValue ? `${props.modelValue} (${t('site.builder.missing')})` : props.emptyLabel || t('site.option.default')));
 const groups = computed(() => [
   { label: t("site.theme.colors"), options: props.options.filter((option) => !option.custom) },
   { label: t("site.theme.customColors"), options: props.options.filter((option) => option.custom) },

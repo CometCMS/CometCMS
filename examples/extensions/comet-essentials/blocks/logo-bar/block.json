@@ -1,0 +1,23 @@
+{
+  "title": "Logo bar",
+  "description": "An endlessly scrolling row of logos with optional links and pause on hover.",
+  "icon": "mdi:panorama-horizontal-outline",
+  "props": {
+    "label": { "type": "string", "label": "Accessible name", "max": 100, "default": "Our partners" },
+    "logos": {
+      "type": "list", "label": "Logos", "max": 50,
+      "fields": {
+        "name": { "type": "string", "label": "Name", "max": 120 },
+        "image": { "type": "media", "label": "Logo" },
+        "link": { "type": "link", "label": "Link (optional)" }
+      },
+      "default": [{ "name": "Partner one" }, { "name": "Partner two" }, { "name": "Partner three" }]
+    },
+    "direction": { "type": "enum", "label": "Direction", "options": ["left", "right"], "default": "left" },
+    "speed": { "type": "int", "label": "Speed (pixels per second)", "min": 10, "max": 200, "default": 40 },
+    "height": { "type": "int", "label": "Logo height (px)", "min": 24, "max": 160, "default": 64 },
+    "gap": { "type": "int", "label": "Space between logos (px)", "min": 8, "max": 160, "default": 48 },
+    "pause_on_hover": { "type": "bool", "label": "Pause on hover", "default": true },
+    "empty_label": { "type": "string", "label": "Empty message", "max": 120, "default": "Add logos to start your logo bar." }
+  }
+}

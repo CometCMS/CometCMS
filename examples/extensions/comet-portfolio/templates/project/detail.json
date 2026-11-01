@@ -1,0 +1,551 @@
+{
+  "templates": [
+    {
+      "id": "default",
+      "name": "Case study",
+      "conditions": [],
+      "header": "portfolio-hero",
+      "footer": "default"
+    }
+  ],
+  "layouts": {
+    "default": [
+      {
+        "id": "portfolio-case-study",
+        "kind": "section",
+        "props": {},
+        "children": [
+          {
+            "id": "portfolio-case-study-row",
+            "kind": "row",
+            "props": {},
+            "children": [
+              {
+                "id": "portfolio-story",
+                "kind": "column",
+                "props": {
+                  "span": {
+                    "mobile": 12,
+                    "tablet": 8,
+                    "desktop": 8
+                  },
+                  "spacing": "lg"
+                },
+                "children": [
+                  {
+                    "id": "portfolio-overview",
+                    "kind": "field",
+                    "props": {
+                      "source": {
+                        "type": "reference",
+                        "source": "current",
+                        "path": [
+                          "overview"
+                        ],
+                        "filters": []
+                      },
+                      "label": true,
+                      "display": "rich"
+                    },
+                    "children": []
+                  },
+                  {
+                    "id": "portfolio-challenge",
+                    "kind": "field",
+                    "props": {
+                      "source": {
+                        "type": "reference",
+                        "source": "current",
+                        "path": [
+                          "challenge"
+                        ],
+                        "filters": []
+                      },
+                      "label": true,
+                      "display": "rich"
+                    },
+                    "children": []
+                  },
+                  {
+                    "id": "portfolio-solution",
+                    "kind": "field",
+                    "props": {
+                      "source": {
+                        "type": "reference",
+                        "source": "current",
+                        "path": [
+                          "solution"
+                        ],
+                        "filters": []
+                      },
+                      "label": true,
+                      "display": "rich"
+                    },
+                    "children": []
+                  },
+                  {
+                    "id": "portfolio-outcome",
+                    "kind": "field",
+                    "props": {
+                      "source": {
+                        "type": "reference",
+                        "source": "current",
+                        "path": [
+                          "outcome"
+                        ],
+                        "filters": []
+                      },
+                      "label": true,
+                      "display": "rich"
+                    },
+                    "children": []
+                  }
+                ]
+              },
+              {
+                "id": "portfolio-details",
+                "kind": "column",
+                "props": {
+                  "span": {
+                    "mobile": 12,
+                    "tablet": 4,
+                    "desktop": 4
+                  },
+                  "spacing": "lg"
+                },
+                "children": [
+                  {
+                    "id": "portfolio-client",
+                    "kind": "field",
+                    "props": {
+                      "source": {
+                        "type": "reference",
+                        "source": "current",
+                        "path": [
+                          "client"
+                        ],
+                        "filters": []
+                      },
+                      "label": true
+                    },
+                    "children": []
+                  },
+                  {
+                    "id": "portfolio-role",
+                    "kind": "field",
+                    "props": {
+                      "source": {
+                        "type": "reference",
+                        "source": "current",
+                        "path": [
+                          "role"
+                        ],
+                        "filters": []
+                      },
+                      "label": true
+                    },
+                    "children": []
+                  },
+                  {
+                    "id": "portfolio-services",
+                    "kind": "field",
+                    "props": {
+                      "source": {
+                        "type": "reference",
+                        "source": "current",
+                        "path": [
+                          "services"
+                        ],
+                        "filters": []
+                      },
+                      "label": true,
+                      "display": "badges"
+                    },
+                    "children": []
+                  },
+                  {
+                    "id": "portfolio-launched_on",
+                    "kind": "field",
+                    "props": {
+                      "source": {
+                        "type": "reference",
+                        "source": "current",
+                        "path": [
+                          "launched_on"
+                        ],
+                        "filters": []
+                      },
+                      "label": true,
+                      "date_format": "long"
+                    },
+                    "children": []
+                  },
+                  {
+                    "id": "portfolio-duration_weeks",
+                    "kind": "field",
+                    "props": {
+                      "source": {
+                        "type": "reference",
+                        "source": "current",
+                        "path": [
+                          "duration_weeks"
+                        ],
+                        "filters": []
+                      },
+                      "label": true
+                    },
+                    "children": []
+                  },
+                  {
+                    "id": "portfolio-completion",
+                    "kind": "field",
+                    "props": {
+                      "source": {
+                        "type": "reference",
+                        "source": "current",
+                        "path": [
+                          "completion"
+                        ],
+                        "filters": []
+                      },
+                      "label": true,
+                      "display": "meter",
+                      "suffix": "%"
+                    },
+                    "children": []
+                  },
+                  {
+                    "id": "portfolio-featured",
+                    "kind": "field",
+                    "props": {
+                      "source": {
+                        "type": "reference",
+                        "source": "current",
+                        "path": [
+                          "featured"
+                        ],
+                        "filters": []
+                      },
+                      "label": true,
+                      "display": "badge",
+                      "true_text": "Featured project",
+                      "false_text": "Project archive"
+                    },
+                    "children": []
+                  },
+                  {
+                    "id": "portfolio-accent_color",
+                    "kind": "field",
+                    "props": {
+                      "source": {
+                        "type": "reference",
+                        "source": "current",
+                        "path": [
+                          "accent_color"
+                        ],
+                        "filters": []
+                      },
+                      "label": true,
+                      "display": "swatch"
+                    },
+                    "children": []
+                  },
+                  {
+                    "id": "portfolio-website",
+                    "kind": "field",
+                    "props": {
+                      "source": {
+                        "type": "reference",
+                        "source": "current",
+                        "path": [
+                          "website"
+                        ],
+                        "filters": []
+                      },
+                      "label": true,
+                      "link": {
+                        "type": "reference",
+                        "source": "current",
+                        "path": [
+                          "website"
+                        ],
+                        "filters": []
+                      }
+                    },
+                    "children": []
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "style": {
+          "padding_top": "xl",
+          "padding_bottom": "xl"
+        }
+      },
+      {
+        "id": "portfolio-results-section",
+        "kind": "section",
+        "props": {},
+        "children": [
+          {
+            "id": "portfolio-results-section-row",
+            "kind": "row",
+            "props": {},
+            "children": [
+              {
+                "id": "portfolio-results-column",
+                "kind": "column",
+                "props": {
+                  "span": {
+                    "mobile": 12,
+                    "tablet": 12,
+                    "desktop": 12
+                  },
+                  "spacing": "lg"
+                },
+                "children": [
+                  {
+                    "id": "portfolio-results",
+                    "kind": "field",
+                    "props": {
+                      "source": {
+                        "type": "reference",
+                        "source": "current",
+                        "path": [
+                          "results"
+                        ],
+                        "filters": []
+                      },
+                      "label": true,
+                      "display": "items",
+                      "columns": 3
+                    },
+                    "children": [
+                      {
+                        "id": "portfolio-result-value",
+                        "kind": "field",
+                        "props": {
+                          "source": {
+                            "type": "reference",
+                            "source": "item",
+                            "path": [
+                              "value"
+                            ],
+                            "filters": []
+                          },
+                          "tag": "h3"
+                        },
+                        "children": []
+                      },
+                      {
+                        "id": "portfolio-result-label",
+                        "kind": "field",
+                        "props": {
+                          "source": {
+                            "type": "reference",
+                            "source": "item",
+                            "path": [
+                              "label"
+                            ],
+                            "filters": []
+                          }
+                        },
+                        "children": []
+                      },
+                      {
+                        "id": "portfolio-result-detail",
+                        "kind": "field",
+                        "props": {
+                          "source": {
+                            "type": "reference",
+                            "source": "item",
+                            "path": [
+                              "detail"
+                            ],
+                            "filters": []
+                          }
+                        },
+                        "children": []
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "style": {
+          "padding_top": "xl",
+          "padding_bottom": "xl"
+        }
+      },
+      {
+        "id": "portfolio-gallery-section",
+        "kind": "section",
+        "props": {},
+        "children": [
+          {
+            "id": "portfolio-gallery-section-row",
+            "kind": "row",
+            "props": {},
+            "children": [
+              {
+                "id": "portfolio-gallery-column",
+                "kind": "column",
+                "props": {
+                  "span": {
+                    "mobile": 12,
+                    "tablet": 12,
+                    "desktop": 12
+                  },
+                  "spacing": "lg"
+                },
+                "children": [
+                  {
+                    "id": "portfolio-gallery",
+                    "kind": "field",
+                    "props": {
+                      "source": {
+                        "type": "reference",
+                        "source": "current",
+                        "path": [
+                          "gallery"
+                        ],
+                        "filters": []
+                      },
+                      "label": true,
+                      "display": "gallery",
+                      "columns": 3,
+                      "ratio": "4:3"
+                    },
+                    "children": []
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "style": {
+          "padding_top": "xl",
+          "padding_bottom": "xl"
+        }
+      },
+      {
+        "id": "portfolio-testimonial-section",
+        "kind": "section",
+        "props": {},
+        "children": [
+          {
+            "id": "portfolio-testimonial-section-row",
+            "kind": "row",
+            "props": {},
+            "children": [
+              {
+                "id": "portfolio-testimonial-column",
+                "kind": "column",
+                "props": {
+                  "span": {
+                    "mobile": 12,
+                    "tablet": 12,
+                    "desktop": 12
+                  },
+                  "spacing": "lg"
+                },
+                "children": [
+                  {
+                    "id": "portfolio-testimonial",
+                    "kind": "field",
+                    "props": {
+                      "source": {
+                        "type": "reference",
+                        "source": "current",
+                        "path": [
+                          "testimonial"
+                        ],
+                        "filters": []
+                      },
+                      "label": true
+                    },
+                    "children": []
+                  },
+                  {
+                    "id": "portfolio-testimonial_author",
+                    "kind": "field",
+                    "props": {
+                      "source": {
+                        "type": "reference",
+                        "source": "current",
+                        "path": [
+                          "testimonial_author"
+                        ],
+                        "filters": []
+                      },
+                      "label": false
+                    },
+                    "children": []
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "style": {
+          "padding_top": "xl",
+          "padding_bottom": "xl"
+        }
+      },
+      {
+        "id": "portfolio-related-section",
+        "kind": "section",
+        "props": {},
+        "children": [
+          {
+            "id": "portfolio-related-section-row",
+            "kind": "row",
+            "props": {},
+            "children": [
+              {
+                "id": "portfolio-related-column",
+                "kind": "column",
+                "props": {
+                  "span": {
+                    "mobile": 12,
+                    "tablet": 12,
+                    "desktop": 12
+                  },
+                  "spacing": "lg"
+                },
+                "children": [
+                  {
+                    "id": "portfolio-related_projects",
+                    "kind": "field",
+                    "props": {
+                      "source": {
+                        "type": "reference",
+                        "source": "current",
+                        "path": [
+                          "related_projects"
+                        ],
+                        "filters": []
+                      },
+                      "label": true,
+                      "display": "cards",
+                      "columns": 3
+                    },
+                    "children": []
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "style": {
+          "padding_top": "xl",
+          "padding_bottom": "xl"
+        }
+      }
+    ]
+  }
+}

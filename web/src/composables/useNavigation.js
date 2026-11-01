@@ -95,6 +95,8 @@ export function useNavigation() {
       website.push(section({ key: 'website-settings', label: t('app.nav.websiteSettings'), description: t('app.nav.websiteSettingsHint'), icon: 'mdi:cog-outline' }, [
         { key: 'website-general', label: t('website.tab.general'), to: '/website/general', match: ['/website/general'] },
         { key: 'website-seo', label: t('website.tab.seo'), to: '/website/seo', match: ['/website/seo'] },
+        site.data?.types?.some((type) => type.allow_submissions) && { key: 'website-forms', label: t('website.tab.forms'), to: '/website/forms', match: ['/website/forms'] },
+        { key: 'website-extensions', label: t('site.extensions.title'), to: '/website/extensions', match: ['/website/extensions'] },
       ]))
     }
     if (website.length > 0) {

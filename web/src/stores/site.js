@@ -88,6 +88,20 @@ export const useSiteStore = defineStore('site', () => {
     if (active === getActiveWorkspace() && generation === requestGeneration) applyFonts(response.data)
   }
 
+  /** Refresh seeded types, templates and presets while keeping pending edits in the designer. */
+  async function refreshExtensions() {
+    const active = getActiveWorkspace()
+    const generation = requestGeneration
+    const response = await api.site.get()
+    if (active !== getActiveWorkspace() || generation !== requestGeneration) return
+    const pending = Object.fromEntries(dirtyParts.value.map((part) => [part, clone(draft.value[part])]))
+    data.value = response.data
+    workspace = active
+    syncPageBuilderActive()
+    resetDraft()
+    Object.assign(draft.value, pending)
+  }
+
   function resetDraft() {
     draft.value = data.value
       ? { settings: clone(data.value.settings), languages: languagesOf(data.value.settings), form_settings: clone(data.value.form_settings ?? {}), theme: clone(data.value.theme), menus: clone(data.value.menus), templates: clone(data.value.templates ?? {}) }
@@ -270,5 +284,5 @@ export const useSiteStore = defineStore('site', () => {
     statusWorkspace = ''
   }
 
-  return { data, draft, loading, error, saving, fieldErrors, dirtyParts, isDirty, live, pageBuilderActive, homepagePreview, load, loadStatus, applyFonts, refreshFonts, save, saveRoute, resetDraft, markCustomized, createTemplate, createThemePreset, deleteThemePreset, applyRestoredTheme, discardTheme, invalidate }
+  return { data, draft, loading, error, saving, fieldErrors, dirtyParts, isDirty, live, pageBuilderActive, homepagePreview, load, loadStatus, applyFonts, refreshFonts, refreshExtensions, save, saveRoute, resetDraft, markCustomized, createTemplate, createThemePreset, deleteThemePreset, applyRestoredTheme, discardTheme, invalidate }
 })

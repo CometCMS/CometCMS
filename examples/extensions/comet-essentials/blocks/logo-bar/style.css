@@ -1,0 +1,63 @@
+.c-block-cometcms__logo-bar .cometcms-logo-bar {
+  overflow: hidden;
+  --logo-height: 64px;
+  --logo-gap: 48px;
+}
+.c-block-cometcms__logo-bar .cometcms-logo-bar__track {
+  display: flex;
+  width: max-content;
+  direction: ltr;
+}
+.c-block-cometcms__logo-bar .cometcms-logo-bar__group {
+  display: flex;
+  align-items: center;
+  flex: none;
+  gap: var(--logo-gap);
+  padding-inline-end: var(--logo-gap);
+}
+.c-block-cometcms__logo-bar .cometcms-logo-bar__item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: calc(var(--logo-height) * 2.5);
+  min-height: var(--logo-height);
+}
+.c-block-cometcms__logo-bar .cometcms-logo-bar__item a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  border-radius: 4px;
+}
+.c-block-cometcms__logo-bar .cometcms-logo-bar__item img {
+  display: block;
+  width: 100%;
+  height: var(--logo-height);
+  object-fit: contain;
+}
+.c-block-cometcms__logo-bar .cometcms-logo-bar[data-running] .cometcms-logo-bar__track {
+  animation: cometcms-logo-scroll var(--logo-duration, 30s) linear infinite;
+}
+.c-block-cometcms__logo-bar .cometcms-logo-bar[data-direction="right"] .cometcms-logo-bar__track {
+  animation-direction: reverse;
+}
+.c-block-cometcms__logo-bar .cometcms-logo-bar[data-pause-hover]:hover .cometcms-logo-bar__track,
+.c-block-cometcms__logo-bar .cometcms-logo-bar:focus-within .cometcms-logo-bar__track {
+  animation-play-state: paused;
+}
+.c-block-cometcms__logo-bar .cometcms-logo-bar:focus-within .cometcms-logo-bar__track {
+  transform: none;
+  animation: none;
+}
+@keyframes cometcms-logo-scroll {
+  to { transform: translateX(-50%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .c-block-cometcms__logo-bar .cometcms-logo-bar[data-running] .cometcms-logo-bar__track { animation: none; }
+  .c-block-cometcms__logo-bar .cometcms-logo-bar__group { flex-wrap: wrap; width: 100%; box-sizing: border-box; }
+  .c-block-cometcms__logo-bar .cometcms-logo-bar__track { width: 100%; }
+  .c-block-cometcms__logo-bar [data-logo-copy] { display: none; }
+}
+
+.c-block-cometcms__logo-bar .cometcms-logo-bar:not([data-running]) { overflow-x: auto; }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CometCMS\Site\Blocks;
 
+use CometCMS\Extensions\ExtensionRegistry;
 use CometCMS\Site\SiteContext;
 
 /**
@@ -29,7 +30,7 @@ final class BlockScripts
     }
 
     /** @return list<string> the loader elements for the given block kinds */
-    public static function elements(array $kinds, BlockRegistry $blocks, SiteContext $ctx): array
+    public static function elements(array $kinds, ExtensionRegistry $blocks, SiteContext $ctx): array
     {
         $elements = [];
         foreach ($kinds as $kind) {

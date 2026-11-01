@@ -487,19 +487,22 @@ export const api = {
     homePreviewUrl: (locale = '') => sitePreviewUrl('', locale),
   },
 
-  blocks: {
-    list: () => request('GET', '/site/blocks'),
-    delete: (name) => request('DELETE', `/site/blocks/${name.split('/').map(encodeURIComponent).join('/')}`),
+  extensions: {
+    setEnabled: (name, enabled) => request('PUT', `/site/extensions/${name.split('/').map(encodeURIComponent).join('/')}`, { enabled }),
+    list: () => request('GET', '/site/extensions'),
+    get: (name) => request('GET', `/site/extensions/${name.split('/').map(encodeURIComponent).join('/')}`),
+    delete: (name, remove = []) => request('DELETE', `/site/extensions/${name.split('/').map(encodeURIComponent).join('/')}`, { remove }),
     /**
-     * Install or update a package ZIP. Updates that break placed blocks, and packages
+     * Install or update an extension ZIP. Updates that break placed blocks, and extensions
      * with JavaScript, fail with 409 until acceptChanges and allowScripts are set.
      */
-    install: (file, { acceptChanges = false, allowScripts = false, onProgress } = {}) => {
+    install: (file, { acceptChanges = false, allowScripts = false, seeds, onProgress } = {}) => {
       const body = new FormData()
-      body.append('package', file, file.name)
+      body.append('extension', file, file.name)
       if (acceptChanges) body.append('accept_changes', '1')
       if (allowScripts) body.append('allow_scripts', '1')
-      return requestWithProgress('POST', '/site/blocks', body, onProgress)
+      if (seeds !== undefined) body.append('seeds', JSON.stringify(seeds))
+      return requestWithProgress('POST', '/site/extensions', body, onProgress)
     },
   },
 

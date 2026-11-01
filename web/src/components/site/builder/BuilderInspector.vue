@@ -73,7 +73,7 @@
         </div>
         <p class="min-h-[1rem] truncate text-xs text-slate-500">{{ builder.nodeSummary(node) }}</p>
         <p v-if="builder.spec.value?.kinds?.[node.kind]?.script" class="mt-1 flex items-start gap-1 text-[11px] leading-snug text-amber-700">
-          <Icon icon="mdi:language-javascript" class="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />{{ t("site.blocks.scriptPreviewHint") }}
+          <Icon icon="mdi:language-javascript" class="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />{{ t("site.extensions.scriptPreviewHint") }}
         </p>
       </div>
       <button type="button" class="inspector-action" :title="t('site.builder.duplicate')" :disabled="locked || builder.isCard(node) || node.kind === 'area_content'" @click="builder.duplicate(node.id)">
