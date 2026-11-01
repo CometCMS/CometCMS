@@ -22,11 +22,10 @@
       ]
     },
     "autoplay": { "type": "bool", "label": "Autoplay", "default": false },
+    "pause_on_hover": { "type": "bool", "label": "Pause on hover", "default": true },
     "interval": { "type": "int", "label": "Time per slide (ms)", "min": 2000, "max": 20000, "default": 5000 },
     "previous_label": { "type": "string", "label": "Previous button label", "max": 80, "default": "Previous slide" },
     "next_label": { "type": "string", "label": "Next button label", "max": 80, "default": "Next slide" },
-    "pause_label": { "type": "string", "label": "Pause button label", "max": 80, "default": "Pause slideshow" },
-    "play_label": { "type": "string", "label": "Play button label", "max": 80, "default": "Play slideshow" },
     "slide_label": { "type": "string", "label": "Slide selector label", "max": 80, "default": "Slide" },
     "empty_label": { "type": "string", "label": "Empty slideshow message", "max": 120, "default": "Add slides to start your slideshow." }
   }

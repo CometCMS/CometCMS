@@ -243,6 +243,11 @@ try {
   await waitFor(`(${previewDocument})?.querySelectorAll('.cometcms-slideshow [data-slide]').length === 3`, 'slideshow preview');
   await waitFor(`!!(${previewDocument})?.querySelector('[data-comet-block="cometcms/slideshow"][data-mounted="true"]')`, 'slideshow mounts in preview');
   assert(await evaluate(`!(${previewDocument}).querySelector('.cometcms-slideshow [data-controls]').hidden && (${previewDocument}).querySelectorAll('.cometcms-slideshow [data-slide]:not([hidden])').length === 1`), 'Preview renders the active slideshow');
+  assert(await evaluate(`document.querySelector('[role="switch"][id$="-props-pause_on_hover"]')?.getAttribute('aria-checked') === 'true'`), 'Slideshow pause-on-hover toggle defaults to enabled');
+  await evaluate(`document.querySelector('[role="switch"][id$="-props-pause_on_hover"]').click()`);
+  await waitFor(`JSON.parse((${previewDocument})?.querySelector('[data-comet-block="cometcms/slideshow"]')?.dataset.cometProps || '{}').pause_on_hover === false`, 'pause-on-hover can be disabled in the builder');
+  await evaluate(`document.querySelector('[role="switch"][id$="-props-pause_on_hover"]').click()`);
+  await waitFor(`JSON.parse((${previewDocument})?.querySelector('[data-comet-block="cometcms/slideshow"]')?.dataset.cometProps || '{}').pause_on_hover === true`, 'pause-on-hover can be enabled in the builder');
   await click('Add item');
   await waitFor('!!document.querySelector(\'input[id$="-props-slides-3-title"]\')', 'new slide fields');
   await field('input[id$="-props-slides-3-title"]', 'A custom slide');
@@ -345,13 +350,13 @@ try {
   const slideshowUrl = `/_site/${workspace}/blocks/${createHash('sha256').update(readFileSync(join(example, 'blocks/slideshow/view.js'))).digest('hex')}.js`;
   await evaluate(`(async () => {
     const { default: mount } = await import(${JSON.stringify(slideshowUrl)});
-    window.slideshowFixture = (id, count, autoplay = false) => {
+    window.slideshowFixture = (id, count, autoplay = false, pause_on_hover = true) => {
       const copy = (${slideshow}).cloneNode(true);
       copy.id = id;
       copy.querySelector('[data-selectors]').replaceChildren();
       [...copy.querySelectorAll('[data-slide]')].slice(count).forEach((slide) => slide.remove());
       document.body.append(copy);
-      mount(copy, { ...JSON.parse(copy.dataset.cometProps), autoplay, interval: 2000 });
+      mount(copy, { ...JSON.parse(copy.dataset.cometProps), autoplay, pause_on_hover, interval: 2000 });
       return copy;
     };
     window.slideshowFixture('slideshow-empty', 0);
@@ -359,25 +364,29 @@ try {
     window.slideshowFixture('slideshow-auto', 4, true);
   })()`);
   assert(await evaluate(`document.querySelector('#slideshow-empty [data-controls]').hidden && document.querySelector('#slideshow-single [data-controls]').hidden && document.querySelectorAll('#slideshow-single [data-slide]:not([hidden])').length === 1`), 'Empty and single-slide instances hide navigation');
+  assert(await evaluate(`!(${slideshow}).querySelector('[data-play]') && getComputedStyle((${slideshow}).querySelector('[data-status]')).clipPath === 'inset(50%)'`), 'Play/pause is removed and the duplicate counter is only available to screen readers');
   await waitFor(`document.querySelector('#slideshow-auto [data-status]').textContent === '2 / 4'`, 'autoplay advances independently');
   assert(await evaluate(`(${slideshow}).querySelector('[data-status]').textContent === '1 / 4'`), 'Instances keep their navigation independent');
   await evaluate(`document.querySelector('#slideshow-auto [data-next]').focus()`);
   const pausedSlide = await evaluate(`document.querySelector('#slideshow-auto [data-status]').textContent`);
   await delay(2200);
-  const focusState = await evaluate(`({ status: document.querySelector('#slideshow-auto [data-status]').textContent, play: document.querySelector('#slideshow-auto [data-play]').textContent, active: document.activeElement?.outerHTML, focused: document.hasFocus() })`);
-  assert(focusState.status === pausedSlide && focusState.play === 'Play slideshow', 'Keyboard focus stops autoplay: ' + JSON.stringify({ pausedSlide, ...focusState }));
-  await evaluate(`document.querySelector('#slideshow-auto [data-play]').click(); document.querySelector('#slideshow-auto .cometcms-slideshow').dispatchEvent(new PointerEvent('pointerenter'))`);
+  const focusState = await evaluate(`({ status: document.querySelector('#slideshow-auto [data-status]').textContent, active: document.activeElement?.outerHTML, focused: document.hasFocus() })`);
+  assert(focusState.status === pausedSlide, 'Keyboard focus stops autoplay: ' + JSON.stringify({ pausedSlide, ...focusState }));
+  await evaluate(`window.slideshowFixture('slideshow-hover', 4, true); document.querySelector('#slideshow-hover .cometcms-slideshow').dispatchEvent(new PointerEvent('pointerenter'))`);
   await delay(2200);
-  assert(await evaluate(`document.querySelector('#slideshow-auto [data-status]').textContent === ${JSON.stringify(pausedSlide)}`), 'Hover pauses autoplay after explicitly resuming');
-  await evaluate(`document.querySelector('#slideshow-auto .cometcms-slideshow').dispatchEvent(new PointerEvent('pointerleave'))`);
-  await waitFor(`document.querySelector('#slideshow-auto [data-status]').textContent !== ${JSON.stringify(pausedSlide)}`, 'autoplay resumes after hover');
-  await evaluate(`document.querySelector('#slideshow-auto [data-play]').click()`);
-  const buttonPausedSlide = await evaluate(`document.querySelector('#slideshow-auto [data-status]').textContent`);
+  assert(await evaluate(`document.querySelector('#slideshow-hover [data-status]').textContent === '1 / 4'`), 'Hover pauses autoplay when enabled');
+  await evaluate(`document.querySelector('#slideshow-hover .cometcms-slideshow').dispatchEvent(new PointerEvent('pointerleave'))`);
+  await waitFor(`document.querySelector('#slideshow-hover [data-status]').textContent === '2 / 4'`, 'autoplay resumes after hover');
+  await evaluate(`window.slideshowFixture('slideshow-no-hover', 4, true, false); document.querySelector('#slideshow-no-hover .cometcms-slideshow').dispatchEvent(new PointerEvent('pointerenter'))`);
+  await waitFor(`document.querySelector('#slideshow-no-hover [data-status]').textContent === '2 / 4'`, 'autoplay continues on hover when disabled');
+  await evaluate(`document.querySelector('#slideshow-no-hover [data-next]').click()`);
+  const manuallySelectedSlide = await evaluate(`document.querySelector('#slideshow-no-hover [data-status]').textContent`);
+  await delay(2200);
+  assert(await evaluate(`document.querySelector('#slideshow-no-hover [data-status]').textContent === ${JSON.stringify(manuallySelectedSlide)}`), 'Manual navigation stops autoplay');
   await command('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
   await evaluate(`window.slideshowFixture('slideshow-reduced', 4, true)`);
   await delay(2200);
-  assert(await evaluate(`document.querySelector('#slideshow-reduced [data-status]').textContent === '1 / 4' && document.querySelector('#slideshow-reduced [data-play]').textContent === 'Play slideshow'`), 'Reduced motion suppresses autoplay');
-  assert(await evaluate(`document.querySelector('#slideshow-auto [data-status]').textContent === ${JSON.stringify(buttonPausedSlide)} && document.querySelector('#slideshow-auto [data-play]').textContent === 'Play slideshow'`), 'Pause button stops autoplay');
+  assert(await evaluate(`document.querySelector('#slideshow-reduced [data-status]').textContent === '1 / 4'`), 'Reduced motion suppresses autoplay');
   await command('Emulation.setEmulatedMedia', { features: [] });
   await evaluate(`document.querySelectorAll('[id^="slideshow-"]').forEach((element) => element.remove())`);
   if (process.env.COMET_BLOCK_SCREENSHOT) {
