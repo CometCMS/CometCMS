@@ -527,6 +527,9 @@ try {
   await command('Page.navigate', { url: `${origin}/admin/content-types` });
   await waitFor(`!!document.querySelector('table')`, 'content type list while extension is disabled');
   assert(await evaluate(`!document.body.innerText.includes('Projects')`), 'Disabled imported type is absent from the type list');
+  const hiddenSeeds = await evaluate(`Promise.all(['/admin/api/site', '/admin/api/site/components'].map((url) => fetch(url, { headers: { 'X-Comet-Workspace': ${JSON.stringify(workspace)} } }).then((res) => res.json()))).then(([site, components]) => ({ presets: site.data.theme_presets.map((preset) => preset.name), components: components.data.map((component) => component.id) }))`);
+  assert(!hiddenSeeds.presets.includes('Portfolio dusk'), 'Disabled extension preset is hidden: ' + JSON.stringify(hiddenSeeds));
+  assert(!hiddenSeeds.components.includes('portfolio-hero'), 'Disabled extension component is hidden: ' + JSON.stringify(hiddenSeeds));
   await command('Page.navigate', { url: `${origin}/admin/website/extensions` });
   await waitFor(`!!document.querySelector('[role="switch"][aria-label="Comet Portfolio"][aria-checked="false"]')`, 'enable portfolio action');
   await evaluate(`document.querySelector('[role="switch"][aria-label="Comet Portfolio"][aria-checked="false"]').click()`);
@@ -549,15 +552,17 @@ try {
   await waitFor(`document.body.innerText.includes('Comet Portfolio updated')`, 'reinstall with conflict choices');
   await evaluate(`document.querySelector('button[aria-label="Delete extension: Comet Portfolio"]').click()`);
   await waitFor(`document.querySelectorAll('[role="alertdialog"] input[type="checkbox"]').length === 4`, 'uninstall seed selection');
-  assert(await evaluate(`[...document.querySelectorAll('[role="alertdialog"] input[type="checkbox"]')].every((el) => !el.checked)`), 'Uninstall defaults to keeping all site data');
-  await evaluate(`[...document.querySelectorAll('[role="alertdialog"] label')].filter((el) => !el.innerText.includes('Projects')).forEach((el) => el.querySelector('input').click())`);
+  // Unchanged seeds default to removal; a type with entries is kept unless chosen.
+  assert(await evaluate(`[...document.querySelectorAll('[role="alertdialog"] label')].find((el) => el.innerText.includes('Projects')).querySelector('input').checked === false`), 'Uninstall keeps a type with entries by default');
+  assert(await evaluate(`document.querySelector('[role="alertdialog"] input[type="checkbox"][value="components/portfolio-hero"]').checked`), 'Uninstall pre-selects the unchanged overwritten component');
+  await evaluate(`[...document.querySelectorAll('[role="alertdialog"] label')].filter((el) => !el.innerText.includes('Projects')).map((el) => el.querySelector('input')).filter((el) => !el.checked).forEach((el) => el.click())`);
   await click('Delete', '[role="alertdialog"] button');
   await waitFor(`document.body.innerText.includes('Extension removed.')`, 'selective uninstall');
   assert(await evaluate(`document.body.innerText.includes('Projects')`), 'Uninstall keeps the unchecked type');
   await command('Page.navigate', { url: `${origin}/admin/content-types` });
   await waitFor(`document.body.innerText.includes('Projects')`, 'kept type remains in admin');
   assert(errors.length === 0, errors.join('\n'));
-  console.log('Extensions browser checks passed (ZIP picker/drop, script consent and CSP, asset serving, icons, list editing, map slider/coordinates/tiles/zoom, comparison drag/touch/keyboard/instances/fallback, testimonial, vertical text orientations/heading levels/layout, slideshow navigation/autoplay/reduced motion, slots, palette, preview, publish, enable/disable, deletion, cancel, reinstall, confirmed update, built-in accordion, seed preview/conflicts, seeded type/preset and selective uninstall).');
+  console.log('Extensions browser checks passed (ZIP picker/drop, script consent and CSP, asset serving, icons, list editing, map slider/coordinates/tiles/zoom, comparison drag/touch/keyboard/instances/fallback, testimonial, vertical text orientations/heading levels/layout, slideshow navigation/autoplay/reduced motion, slots, palette, preview, publish, enable/disable hiding seeded types/components/presets, deletion, cancel, reinstall, confirmed update, built-in accordion, seed preview/conflicts, seeded type/preset and selective uninstall).');
 } finally {
   socket?.close();
   chrome.kill();
