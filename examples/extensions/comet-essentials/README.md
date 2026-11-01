@@ -23,4 +23,6 @@ Maps accepts a location as decimal `latitude, longitude`, a display name or addr
 
 Logo bar scrolls logos infinitely to the left or right, with configurable speed, logo height and spacing. Entries accept media and optional links. Pause on hover is optional; keyboard focus always stops motion and reveals the focused link. Reduced-motion preferences show a static, wrapping row. Without JavaScript the original row remains visible.
 
+Slideshow overlays titles, captions, links and navigation on the slide images, with a dark gradient for readability. Slides without images use the block background. Long captions expand the slide, and slide selectors scroll horizontally on narrow screens. Keyboard navigation, optional autoplay and reduced-motion support remain available.
+
 The root `icon.png` is the full-color icon shown in the Extensions list. It is a transparent 192×192 PNG below 64 KiB.
