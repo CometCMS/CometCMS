@@ -24,7 +24,7 @@ final class ExtensionSeeder
     public function __construct(private readonly WorkspaceContext $workspace, private readonly string $extension, private readonly ?ExtensionRegistry $blocks = null)
     {
         $this->types = new ContentTypeRepository($workspace, includeDisabled: true);
-        $this->site = new SiteRepository($workspace, $this->types);
+        $this->site = new SiteRepository($workspace, $this->types, includeDisabled: true);
         $this->store = new JsonStore($workspace->path('site'));
     }
 
@@ -212,7 +212,7 @@ final class ExtensionSeeder
     public function apply(array $seeds, array $choices): array
     {
         // Read the newly installed extension files rather than a preflight registry cached on the site.
-        $this->site = new SiteRepository($this->workspace, $this->types);
+        $this->site = new SiteRepository($this->workspace, $this->types, includeDisabled: true);
         $seeds = $this->validate($this->selected($seeds, $choices));
         $ledger = $this->ledger();
         $entries = [];
@@ -229,7 +229,7 @@ final class ExtensionSeeder
                     switch ($kind) {
                         case 'content_types':
                             $this->types->save($data);
-                            $this->site = new SiteRepository($this->workspace, $this->types);
+                            $this->site = new SiteRepository($this->workspace, $this->types, includeDisabled: true);
                             break;
                         case 'components':
                             $this->site->seedComponent($seed['id'], $data, $components);

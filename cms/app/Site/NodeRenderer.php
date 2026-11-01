@@ -584,7 +584,11 @@ final class NodeRenderer
         $tree = $component['nodes'][0] ?? null;
 
         if ($tree === null || $tree['kind'] !== $root || in_array($id, $stack, true) || count($stack) >= self::MAX_COMPONENT_DEPTH) {
-            return $tree === null ? $this->componentPlaceholder($node, 'missingComponent', 'Missing component') : $this->componentPlaceholder($node, 'componentLoop', 'A component cannot contain itself');
+            return match (true) {
+                $tree !== null => $this->componentPlaceholder($node, 'componentLoop', 'A component cannot contain itself'),
+                $this->annotating() && $this->ctx->site->componentDisabled($id) => $this->componentPlaceholder($node, 'disabledComponent', 'Component unavailable while its extension is disabled'),
+                default => $this->componentPlaceholder($node, 'missingComponent', 'Missing component'),
+            };
         }
 
         $tree = LayoutSchema::applyOverrides([$tree], $node['overrides'] ?? [])[0];

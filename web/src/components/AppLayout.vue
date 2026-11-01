@@ -27,7 +27,8 @@
           <button
             type="button"
             :aria-label="sidebarToggleLabel"
-            :title="sidebarToggleLabel"
+            :title="navigationCollapsed ? undefined : sidebarToggleLabel"
+            v-tooltip="navigationCollapsed && { title: sidebarToggleLabel, placement: 'right' }"
             aria-controls="primary-navigation"
             :aria-expanded="!sidebarCollapsed"
             class="sidebar-action hidden h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-sidebar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-theme-500 lg:inline-flex"
@@ -54,7 +55,7 @@
             :type="canSwitchWorkspaces ? 'button' : undefined"
             :aria-expanded="canSwitchWorkspaces ? workspaceSwitcherOpen : undefined"
             :aria-label="`${t(canSwitchWorkspaces ? 'app.nav.switchWorkspace' : 'app.nav.workspace')}: ${activeWorkspaceLabel}`"
-            :title="sidebarCollapsed ? activeWorkspaceLabel : undefined"
+            v-tooltip="navigationCollapsed && { title: activeWorkspaceLabel, placement: 'right' }"
             :aria-haspopup="canSwitchWorkspaces ? 'menu' : undefined"
             @click="canSwitchWorkspaces && (workspaceSwitcherOpen = !workspaceSwitcherOpen)"
             class="sidebar-workspace sidebar-surface h-9 w-full flex items-center gap-2.5 rounded-lg px-2 group"
@@ -150,7 +151,7 @@
             type="button"
             class="sidebar-search sidebar-surface flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-sm"
             :aria-label="t('app.search.open')"
-            :title="sidebarCollapsed ? `${t('app.search.open')} (${shortcutLabel})` : undefined"
+            v-tooltip="navigationCollapsed && { title: `${t('app.search.open')} (${shortcutLabel})`, placement: 'right' }"
             aria-haspopup="dialog"
             @click="paletteOpen = true; sidebarOpen = false"
           >
@@ -175,7 +176,7 @@
                   :class="{ 'is-active': isActive(item, route.path) }"
                   :aria-current="isActive(item, route.path) ? 'page' : undefined"
                   :aria-label="item.label"
-                  :title="sidebarCollapsed ? item.label : undefined"
+                  v-tooltip="navigationCollapsed && { title: item.label, placement: 'right' }"
                   @click="sidebarOpen = false"
                 >
                   <Icon :icon="item.icon" class="nav-icon" />
@@ -189,7 +190,7 @@
                     :aria-label="item.label"
                     :aria-expanded="!navigationCollapsed && isSectionExpanded(item)"
                     :aria-controls="`nav-section-${item.key}`"
-                    :title="sidebarCollapsed ? item.label : undefined"
+                    v-tooltip="navigationCollapsed && { title: item.label, placement: 'right' }"
                     @click="toggleNavSection(item)"
                   >
                     <Icon :icon="item.icon" class="nav-icon" />
@@ -227,7 +228,7 @@
                 to="/content-types/new"
                 class="nav-link opacity-70"
                 :aria-label="t('app.nav.addType')"
-                :title="sidebarCollapsed ? t('app.nav.addType') : undefined"
+                v-tooltip="navigationCollapsed && { title: t('app.nav.addType'), placement: 'right' }"
                 @click="sidebarOpen = false"
               >
                 <Icon icon="mdi:plus" class="nav-icon" />
@@ -302,7 +303,7 @@
             aria-haspopup="menu"
             :aria-expanded="accountMenuOpen"
             :aria-label="auth.user?.display_name || auth.user?.username"
-            :title="sidebarCollapsed ? (auth.user?.display_name || auth.user?.username) : undefined"
+            v-tooltip="navigationCollapsed && { title: auth.user?.display_name || auth.user?.username, placement: 'right' }"
             @click="accountMenuOpen = !accountMenuOpen"
           >
             <div
@@ -395,6 +396,7 @@ import ToastStack from "./ToastStack.vue";
 import CommandPalette from "./CommandPalette.vue";
 import { useNavigation } from "../composables/useNavigation.js";
 import { useNavigationSections } from "../composables/useNavigationSections.js";
+import { vTooltip } from "../directives/tooltip.js";
 
 const auth = useAuthStore();
 const router = useRouter();

@@ -323,7 +323,8 @@ async function previewRemove(pkg) {
   try {
     const result = await api.extensions.get(pkg.name);
     if (current !== generation || workspace !== getActiveWorkspace()) return;
-    removeChoices.value = [];
+    // Untouched seeds go with the extension; edited items and types with entries are kept unless chosen.
+    removeChoices.value = (result.data.seeded || []).filter((item) => !item.modified && !item.entry_count).map(seedKey);
     deleteTarget.value = result.data;
   } catch (err) {
     if (current === generation) error.value = fail(err);

@@ -38,17 +38,30 @@ final class ExtensionRegistry
     /** Site-owned types temporarily hidden with the extension that imported them. */
     public static function disabledContentTypes(WorkspaceContext $workspace): array
     {
+        return self::disabledSeeds($workspace)['content_types'] ?? [];
+    }
+
+    /**
+     * Seeded items hidden with their disabled extension, by seed kind. Their
+     * files stay in site storage, so re-enabling brings them back unchanged.
+     *
+     * @return array<string, list<string>> kind => ids
+     */
+    public static function disabledSeeds(WorkspaceContext $workspace): array
+    {
         $store = new JsonStore($workspace->path('site'));
+        $ledger = $store->read('extensions-seeded') ?? [];
+        if ($ledger === []) return [];
         $state = $store->read('extensions-state') ?? [];
         $installed = (new self($workspace))->index()['extensions'];
         $disabled = [];
-        foreach ($store->read('extensions-seeded') ?? [] as $name => $items) {
+        foreach ($ledger as $name => $items) {
             if (($state[$name] ?? true) !== false && ($installed[$name]['enabled'] ?? true)) continue;
             foreach ($items as $item) {
-                if (($item['kind'] ?? '') === 'content_types') $disabled[$item['id']] = true;
+                if (is_string($item['kind'] ?? null) && is_string($item['id'] ?? null)) $disabled[$item['kind']][$item['id']] = true;
             }
         }
-        return array_keys($disabled);
+        return array_map(array_keys(...), $disabled);
     }
 
     public static function isKind(string $kind): bool

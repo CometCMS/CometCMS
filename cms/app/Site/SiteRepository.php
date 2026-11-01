@@ -64,8 +64,11 @@ final class SiteRepository
     private ?array $settingsCache = null;
     private ?array $typesCache = null;
     private ?ExtensionRegistry $extensionRegistry = null;
+    private array $hiddenSeeds = [];
+    private int $hiddenGeneration = -1;
 
-    public function __construct(?WorkspaceContext $workspace = null, ?ContentTypeRepository $types = null)
+    /** $includeDisabled also lists components and presets of disabled extensions. */
+    public function __construct(?WorkspaceContext $workspace = null, ?ContentTypeRepository $types = null, private readonly bool $includeDisabled = false)
     {
         $this->workspace = $workspace ?? WorkspaceContext::active();
         $this->types = $types ?? new ContentTypeRepository($this->workspace);
@@ -82,6 +85,17 @@ final class SiteRepository
     public function extensions(): ExtensionRegistry
     {
         return $this->extensionRegistry ??= new ExtensionRegistry($this->workspace);
+    }
+
+    /** Whether a seeded item is hidden because its extension is disabled. */
+    private function hidden(string $kind, string $id): bool
+    {
+        if ($this->includeDisabled) return false;
+        if ($this->hiddenGeneration !== JsonStore::generation()) {
+            $this->hiddenSeeds = array_map(array_flip(...), ExtensionRegistry::disabledSeeds($this->workspace));
+            $this->hiddenGeneration = JsonStore::generation();
+        }
+        return isset($this->hiddenSeeds[$kind][$id]);
     }
 
     /** The extension registry also resolves block kinds for the renderer. */
@@ -222,7 +236,8 @@ final class SiteRepository
      */
     public function themePresets(): array
     {
-        $list = array_values(array_filter(array_map(fn(array $stored): ?array => $this->readThemePreset($stored), $this->themeStore->all('presets'))));
+        $list = array_values(array_filter(array_map(fn(array $stored): ?array => $this->readThemePreset($stored), $this->themeStore->all('presets')),
+            fn(?array $preset): bool => $preset !== null && !$this->hidden('presets', $preset['id'])));
         usort($list, static fn(array $a, array $b): int => strcasecmp($a['name'], $b['name']));
 
         return $list;
@@ -230,7 +245,7 @@ final class SiteRepository
 
     public function themePreset(string $id): ?array
     {
-        if ($id === '' || LayoutSchema::key($id) !== $id) {
+        if ($id === '' || LayoutSchema::key($id) !== $id || $this->hidden('presets', $id)) {
             return null;
         }
 
@@ -645,7 +660,8 @@ final class SiteRepository
             $list = [];
         }
         $type = (string) $schema['name'];
-        $components ??= $strict ? array_column($this->components(), null, 'id') : null;
+        // Templates may keep a header or footer from a disabled extension.
+        $components ??= $strict ? array_column($this->storedComponents(), null, 'id') : null;
         $seen = [];
         $default = null;
         $others = [];
@@ -958,6 +974,12 @@ final class SiteRepository
      */
     public function components(): array
     {
+        return array_values(array_filter($this->storedComponents(), fn(array $component): bool => !$this->hidden('components', $component['id'])));
+    }
+
+    /** Every stored component, also those hidden with a disabled extension. */
+    private function storedComponents(): array
+    {
         $list = [];
 
         foreach ($this->themeStore->all('components') as $stored) {
@@ -972,14 +994,25 @@ final class SiteRepository
         return $list;
     }
 
+    /** A component; null when missing or hidden with a disabled extension, so placements stop rendering. */
     public function component(string $id): ?array
+    {
+        return $this->hidden('components', $id) ? null : $this->storedComponent($id);
+    }
+
+    /** Whether a stored component is only unavailable because its extension is disabled. */
+    public function componentDisabled(string $id): bool
+    {
+        return $this->hidden('components', $id) && $this->storedComponent($id) !== null;
+    }
+
+    private function storedComponent(string $id): ?array
     {
         if ($id === '' || LayoutSchema::key($id) !== $id) {
             return null;
         }
 
-        $stored = $this->themeStore->read('components', $id);
-        return $this->readComponent($stored);
+        return $this->readComponent($this->themeStore->read('components', $id));
     }
 
     /**
@@ -1056,8 +1089,8 @@ final class SiteRepository
     /** Copy an extension's component into the site's library, keeping its declared id. */
     public function seedComponent(string $id, array $data, ?array $components = null): array
     {
-        $component = $this->normalizeExtensionComponent($id, $data, $this->types(), $components ?? array_column($this->components(), null, 'id'), $this->blocks());
-        $component['created_at'] = $this->component($id)['created_at'] ?? $component['created_at'];
+        $component = $this->normalizeExtensionComponent($id, $data, $this->types(), $components ?? array_column($this->storedComponents(), null, 'id'), $this->blocks());
+        $component['created_at'] = $this->storedComponent($id)['created_at'] ?? $component['created_at'];
         return $this->writeComponent($component);
     }
 
@@ -1230,7 +1263,7 @@ final class SiteRepository
         foreach ($this->storedAreas(false) as [$type, $variant, $area]) {
             $paths[] = ['content', $type, $variant, $area];
         }
-        foreach ($this->components() as $other) {
+        foreach ($this->storedComponents() as $other) {
             if ($other['id'] !== $id) {
                 $paths[] = ['components', $other['id']];
             }

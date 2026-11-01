@@ -137,7 +137,7 @@ describe('extension confirmations', () => {
     await vi.waitFor(() => expect(find(root, (el) => el.tag === 'dialog')).toBeTruthy())
   })
 
-  it('leaves uninstall items unchecked and warns only after selecting edited content with entries', async () => {
+  it('pre-selects only unchanged uninstall items and warns after selecting edited content with entries', async () => {
     api.extensions.get.mockResolvedValue({ data: { ...pkg, seeded: [{ kind: 'content_types', id: 'project', name: 'Projects', modified: true, entry_count: 3 }, { kind: 'components', id: 'hero', name: 'Hero', modified: false }] } })
     api.extensions.delete.mockResolvedValue({ data: { name: pkg.name } })
     const root = await mount()
@@ -145,13 +145,13 @@ describe('extension confirmations', () => {
     await vi.waitFor(() => expect(find(root, (el) => el.tag === 'dialog')).toBeTruthy())
     const checkboxes = findAll(root, (el) => el.tag === 'input' && el.props.type === 'checkbox')
     expect(checkboxes).toHaveLength(2)
-    expect(checkboxes.every((el) => !el.checked)).toBe(true)
+    expect(checkboxes.map((el) => !!el.checked)).toEqual([false, true])
     expect(text(root)).not.toContain('Contains 3 entries')
-    checkboxes[0].props['onUpdate:modelValue'](['content_types/project'])
+    checkboxes[0].props['onUpdate:modelValue'](['components/hero', 'content_types/project'])
     await nextTick()
     expect(text(root)).toContain('Edited since installation')
     expect(text(root)).toContain('Contains 3 entries')
     find(root, (el) => el.tag === 'dialog').children.at(-1).props.onClick()
-    await vi.waitFor(() => expect(api.extensions.delete).toHaveBeenCalledWith(pkg.name, ['content_types/project']))
+    await vi.waitFor(() => expect(api.extensions.delete).toHaveBeenCalledWith(pkg.name, ['components/hero', 'content_types/project']))
   })
 })

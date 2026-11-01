@@ -1290,6 +1290,39 @@ test('extension preset ledger follows renamed presets and resolves existing pres
     assert_same([], $site->themePresets());
 });
 
+test('disabling an extension hides its seeded components and presets until it is enabled or removed', function (): void {
+    $registry = ExtensionRegistry::active();
+    $files = [
+        'comet-extension.json' => json_encode(['api_version' => 1, 'name' => 'test/design', 'title' => 'Design', 'version' => '1.0.0']),
+        'theme.json' => '{"name":"Design preset","theme":{"colors":{"primary":"#123456"}}}',
+        'components/design-hero.json' => json_encode(['name' => 'Design hero', 'root' => 'section', 'type' => '', 'nodes' => [['kind' => 'section', 'children' => []]]]),
+    ];
+    $own = (new SiteRepository())->createComponent('Own', [LayoutSchema::node('column')]);
+    $registry->installFiles($files, seeds: []);
+    $visible = static function (): array {
+        $site = new SiteRepository();
+        return [array_column($site->components(), 'id'), array_column($site->themePresets(), 'name'), $site->component('design-hero') !== null];
+    };
+    assert_same([['design-hero', $own['id']], ['Design preset'], true], $visible());
+
+    $registry->setEnabled('test/design', false);
+    assert_same([[$own['id']], [], false], $visible());
+    $site = new SiteRepository();
+    assert_true($site->componentDisabled('design-hero'));
+    assert_false($site->componentDisabled('missing'));
+    assert_true(is_file($registry->workspace->path('site') . '/theme/components/design-hero.json'));
+    assert_same(['components', 'presets'], array_column($registry->details('test/design')['seeded'], 'kind'));
+
+    $registry->setEnabled('test/design', true);
+    assert_same([['design-hero', $own['id']], ['Design preset'], true], $visible());
+
+    $registry->setEnabled('test/design', false);
+    $registry->delete('test/design', array_map(fn(array $item): string => $item['kind'] . '/' . $item['id'], $registry->details('test/design')['seeded']));
+    $site = new SiteRepository(includeDisabled: true);
+    assert_same([$own['id']], array_column($site->components(), 'id'));
+    assert_same([], $site->themePresets());
+});
+
 test('extension component seeds normalize against their own incoming blocks and reject missing blocks before writing', function (): void {
     $site = new SiteRepository();
     $site->createComponent('Existing', [LayoutSchema::node('column')]);
