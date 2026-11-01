@@ -2,6 +2,8 @@ const messages = {
     "site.extensions.requires": "Benötigt:",
     "site.extensions.connectsTo": "Skripte verbinden sich mit:",
     "site.extensions.settings": "Einstellungen",
+    "site.extensions.settingsTitle": "Einstellungen: {name}",
+    "site.extensions.settingsLabel": "Einstellungen von {name}",
     "site.extensions.saveSettings": "Einstellungen speichern",
     "site.extensions.settingsSaved": "Einstellungen von {name} gespeichert.",
     "site.extensions.permissionsTitle": "Netzwerkzugriff",

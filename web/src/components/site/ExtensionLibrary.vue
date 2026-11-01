@@ -65,14 +65,13 @@
                 <Icon v-if="block.script" icon="mdi:language-javascript" class="h-3.5 w-3.5 text-amber-700" :aria-label="t('site.extensions.scriptsBadge')" />
               </li>
             </ul>
-            <button v-if="data.can_install && Object.keys(pkg.settings ?? {}).length" type="button" class="inline-flex items-center gap-1 pt-1 text-xs font-medium text-theme-700 hover:underline" :aria-expanded="settingsOpen === pkg.name" @click="settingsOpen = settingsOpen === pkg.name ? null : pkg.name">
-              <Icon icon="mdi:cog-outline" class="h-3.5 w-3.5" aria-hidden="true" />{{ t('site.extensions.settings') }}
-            </button>
-            <ExtensionSettings v-if="settingsOpen === pkg.name" :specs="pkg.settings" :model-value="pkg.settings_values" :disabled="busy" @save="(values) => saveSettings(pkg, values)" />
           </div>
         </div>
         <div class="flex shrink-0 flex-wrap items-center justify-end gap-2">
           <ToggleSwitch :model-value="pkg.enabled !== false" :disabled="busy || !data.can_install" :aria-label="pkg.title" @update:model-value="toggleEnabled(pkg)" />
+          <button v-if="data.can_install && Object.keys(pkg.settings ?? {}).length" type="button" class="btn-secondary btn-sm shrink-0" :disabled="busy" aria-haspopup="dialog" :aria-label="t('site.extensions.settingsLabel', { name: extensionText(pkg, 'title', locale) })" @click="openSettings(pkg)">
+            <Icon icon="mdi:cog-outline" class="h-4 w-4" aria-hidden="true" />
+          </button>
           <button v-if="data.can_install" type="button" class="btn-secondary btn-sm shrink-0 text-red-600" :disabled="busy" :aria-label="t('site.extensions.deleteLabel', { name: pkg.title })" @click="previewRemove(pkg)">
             <Icon icon="mdi:trash-can-outline" class="h-4 w-4" aria-hidden="true" />
             {{ t("common.delete") }}
@@ -172,6 +171,17 @@
         </section>
       </div>
     </ConfirmModal>
+    <ExtensionSettings
+      v-if="settingsTarget"
+      v-model="settingsOpen"
+      :title="t('site.extensions.settingsTitle', { name: extensionText(settingsTarget, 'title', locale) })"
+      :subtitle="`${settingsTarget.name} · ${settingsTarget.version}`"
+      :specs="settingsTarget.settings"
+      :stored="settingsTarget.settings_values"
+      :error="settingsError"
+      :disabled="busy"
+      @save="(values) => saveSettings(settingsTarget, values)"
+    />
   </section>
 </template>
 
@@ -191,7 +201,9 @@ import { useContentTypesStore } from "../../stores/contentTypes.js";
 import { useI18n } from "../../i18n/index.js";
 
 const { t, locale } = useI18n();
-const settingsOpen = ref(null);
+const settingsOpen = ref(false);
+const settingsTarget = ref(null);
+const settingsError = ref(null);
 const site = useSiteStore();
 const types = useContentTypesStore();
 const data = ref(null);
@@ -223,6 +235,7 @@ async function load() {
   dragDepth.value = 0;
   deleteTarget.value = null;
   pendingReview.value = null;
+  settingsOpen.value = false;
   busy.value = true;
   try {
     const result = await api.extensions.list();
@@ -331,20 +344,27 @@ async function toggleEnabled(pkg) {
   }
 }
 
+function openSettings(pkg) {
+  settingsTarget.value = pkg;
+  settingsError.value = null;
+  settingsOpen.value = true;
+}
+
 async function saveSettings(pkg, values) {
   if (busy.value || !data.value?.can_install) return;
   const current = generation;
   const workspace = getActiveWorkspace();
   busy.value = true;
-  error.value = null;
+  settingsError.value = null;
   success.value = "";
   try {
     const { data: saved } = await api.extensions.setSettings(pkg.name, values);
     if (current !== generation || workspace !== getActiveWorkspace()) return;
     pkg.settings_values = saved.settings;
+    settingsOpen.value = false;
     success.value = t("site.extensions.settingsSaved", { name: extensionText(pkg, "title", locale.value) });
   } catch (err) {
-    if (current === generation) error.value = fail(err);
+    if (current === generation) settingsError.value = fail(err);
   } finally {
     if (current === generation) busy.value = false;
   }

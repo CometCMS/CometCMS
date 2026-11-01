@@ -7,7 +7,7 @@ import ExtensionLibrary from './ExtensionLibrary.vue'
 import ToggleSwitch from '../ToggleSwitch.vue'
 import { api } from '../../api/index.js'
 
-vi.mock('../../api/index.js', () => ({ getActiveWorkspace: () => 'default', api: { extensions: { list: vi.fn(), setEnabled: vi.fn(), install: vi.fn(), get: vi.fn(), delete: vi.fn() } } }))
+vi.mock('../../api/index.js', () => ({ getActiveWorkspace: () => 'default', api: { extensions: { list: vi.fn(), setEnabled: vi.fn(), install: vi.fn(), get: vi.fn(), delete: vi.fn(), setSettings: vi.fn() } } }))
 vi.mock('../../stores/site.js', () => ({ useSiteStore: () => ({ refreshExtensions: vi.fn().mockResolvedValue() }) }))
 vi.mock('../../stores/contentTypes.js', () => ({ useContentTypesStore: () => ({ invalidate: vi.fn(), fetch: vi.fn().mockResolvedValue() }) }))
 vi.mock('@iconify/vue', () => ({ Icon: { render: () => null } }))
@@ -15,6 +15,10 @@ vi.mock('./builder/KindIcon.vue', () => ({ default: { render: () => null } }))
 vi.mock('../ConfirmModal.vue', async () => {
   const { h } = await import('vue')
   return { default: { props: ['modelValue', 'title', 'message', 'confirmLabel', 'loading'], emits: ['confirm', 'update:modelValue'], setup: (props, { slots, emit }) => () => props.modelValue ? h('dialog', { title: props.title }, [h('p', props.message), slots.default?.(), h('button', { onClick: () => emit('confirm') }, 'Confirm')]) : null } }
+})
+vi.mock('./ExtensionSettings.vue', async () => {
+  const { h } = await import('vue')
+  return { default: { props: ['modelValue', 'title', 'stored', 'error', 'disabled'], emits: ['save', 'update:modelValue'], setup: (props, { emit }) => () => props.modelValue ? h('settings-dialog', { title: props.title, error: props.error?.message }, [h('button', { onClick: () => emit('save', { units: 'imperial' }) }, 'Save')]) : null } }
 })
 const node = (tag = '', text = '') => ({ tag, text, props: {}, children: [], parent: null, addEventListener() {}, removeEventListener() {}, get options() { return this.children.filter((child) => child.tag === 'option') }, get value() { return this.props.value }, set value(value) { this.props.value = value } })
 const renderer = createRenderer({
@@ -173,5 +177,22 @@ describe('extension confirmations', () => {
     expect(text(root)).toContain('Contains 3 entries')
     find(root, (el) => el.tag === 'dialog').children.at(-1).props.onClick()
     await vi.waitFor(() => expect(api.extensions.delete).toHaveBeenCalledWith(pkg.name, ['components/hero', 'content_types/project']))
+  })
+
+  it('edits extension settings in a dialog that closes on save and keeps failures inside it', async () => {
+    api.extensions.list.mockResolvedValue({ data: { can_install: true, extensions: [{ ...pkg, enabled: true, settings: { units: { type: 'enum', options: ['metric', 'imperial'] } }, settings_values: { units: 'metric' } }], errors: [] } })
+    api.extensions.setSettings.mockRejectedValueOnce(Object.assign(new Error('Invalid units'), { details: [] })).mockResolvedValueOnce({ data: { settings: { units: 'imperial' } } })
+    const root = await mount()
+    const dialog = () => find(root, (el) => el.tag === 'settings-dialog')
+    expect(dialog()).toBeUndefined()
+    find(root, (el) => el.props['aria-label'] === 'Settings of Portfolio').props.onClick()
+    await nextTick()
+    expect(dialog().props.title).toBe('Portfolio settings')
+    find(dialog(), (el) => el.tag === 'button').props.onClick()
+    await vi.waitFor(() => expect(dialog().props.error).toBe('Invalid units'))
+    find(dialog(), (el) => el.tag === 'button').props.onClick()
+    await vi.waitFor(() => expect(dialog()).toBeUndefined())
+    expect(api.extensions.setSettings).toHaveBeenLastCalledWith(pkg.name, { units: 'imperial' })
+    expect(text(root)).toContain('Settings of Portfolio saved.')
   })
 })
