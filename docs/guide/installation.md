@@ -4,6 +4,7 @@
 
 **Server (production):**
 - PHP 8.2 or later (with `json`, `mbstring`, `fileinfo` extensions)
+  CometCMS checks PHP 8.2, `json` and `mbstring` on every request. If one is missing, the admin, the API and the website answer with an error that names it and how to install it, instead of failing later in unrelated places. `fileinfo` is recommended for reliable upload type detection.
 - A web server (Apache, Nginx, Caddy)
 
 **Development machine:**
