@@ -387,7 +387,7 @@ try {
   }
   await command('Page.navigate', { url: `${origin}/admin/website/extensions` });
   await waitFor('!!document.querySelector(\'button[aria-label="Delete extension: Comet Essentials"]\')', 'delete action');
-  await click('Disable');
+  await evaluate(`document.querySelector('[role="switch"][aria-label="Comet Essentials"][aria-checked="true"]').click()`);
   await waitFor('document.body.innerText.includes("Comet Essentials disabled.")', 'extension disabled');
   assert(await evaluate(`getComputedStyle(document.querySelector('img[src^="data:image/png;base64,"]').parentElement.parentElement).filter.includes('grayscale')`), 'Disabled extension artwork is grayed out');
   assert(await evaluate(`fetch('/').then((res) => res.text()).then((html) => !html.includes('Extensions work') && !html.includes('data-comet-block='))`), 'Disabling removes extension markup and scripts from published output');
@@ -395,8 +395,8 @@ try {
   await waitFor('[...document.querySelectorAll("iframe")].some((frame) => frame.contentDocument?.body?.textContent.includes("Missing block: cometcms/callout"))', 'disabled block instances preserved');
   assert(await evaluate(`[...document.querySelectorAll('button')].every((el) => el.textContent.trim() !== 'Callout')`), 'Disabled extension is absent from the palette');
   await command('Page.navigate', { url: `${origin}/admin/website/extensions` });
-  await waitFor(`!!document.querySelector('button[aria-label="Enable extension: Comet Essentials"]')`, 'disabled status survives navigation');
-  await click('Enable');
+  await waitFor(`!!document.querySelector('[role="switch"][aria-label="Comet Essentials"][aria-checked="false"]')`, 'disabled status survives navigation');
+  await evaluate(`document.querySelector('[role="switch"][aria-label="Comet Essentials"][aria-checked="false"]').click()`);
   await waitFor('document.body.innerText.includes("Comet Essentials enabled.")', 'extension enabled');
   assert(await evaluate(`fetch('/').then((res) => res.text()).then((html) => html.includes('Extensions work') && html.includes('data-comet-block='))`), 'Re-enabling restores published blocks and scripts');
 
@@ -445,9 +445,9 @@ try {
   await waitFor(`document.body.innerText.includes('Comet Portfolio installed.')`, 'seed install');
   assert(await evaluate(`document.body.innerText.includes('Projects')`), 'Seeded type appears in admin navigation immediately');
   assert(await evaluate(`document.body.innerText.includes('Requires: cometcms/essentials')`), 'Inventory shows declared dependency');
-  await evaluate(`document.querySelector('button[aria-label="Disable extension: Comet Essentials"]').click()`);
+  await evaluate(`document.querySelector('[role="switch"][aria-label="Comet Essentials"][aria-checked="true"]').click()`);
   await waitFor(`document.body.innerText.includes('Required by cometcms/portfolio.')`, 'disabling a required dependency is blocked');
-  assert(await evaluate(`!!document.querySelector('button[aria-label="Disable extension: Comet Essentials"]')`), 'Required extension remains enabled');
+  assert(await evaluate(`!!document.querySelector('[role="switch"][aria-label="Comet Essentials"][aria-checked="true"]')`), 'Required extension remains enabled');
   await evaluate(`document.querySelector('button[aria-label="Delete extension: Comet Essentials"]').click()`);
   await waitFor(`[...document.querySelectorAll('[role="alertdialog"] button')].some((el) => !el.disabled && el.textContent.trim() === 'Delete')`, 'dependency deletion confirmation');
   await click('Delete', '[role="alertdialog"] button');
@@ -455,7 +455,7 @@ try {
 
   const projectEntry = await evaluate(`fetch('/admin/api/content/project', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content, 'X-Comet-Workspace': ${JSON.stringify(workspace)} }, body: JSON.stringify({ title: 'Project to restore', status: 'published' }) }).then(async (res) => ({ status: res.status, body: await res.json() }))`);
   assert(projectEntry.status === 201, 'Create an entry in the imported type: ' + JSON.stringify(projectEntry));
-  await evaluate(`document.querySelector('button[aria-label="Disable extension: Comet Portfolio"]').click()`);
+  await evaluate(`document.querySelector('[role="switch"][aria-label="Comet Portfolio"][aria-checked="true"]').click()`);
   await waitFor(`document.body.innerText.includes('Comet Portfolio disabled.') && !document.querySelector('a[href$="/content/project"]')`, 'disabling immediately removes imported type from navigation');
   assert(await evaluate(`fetch('/admin/api/content/project', { headers: { 'X-Comet-Workspace': ${JSON.stringify(workspace)} } }).then((res) => res.status === 404)`), 'Disabled imported entries cannot be accessed by API');
   assert(await evaluate(`fetch('/admin/api/content-types/project', { headers: { 'X-Comet-Workspace': ${JSON.stringify(workspace)} } }).then((res) => res.status === 404)`), 'Disabled imported type cannot be accessed by API');
@@ -463,8 +463,8 @@ try {
   await waitFor(`!!document.querySelector('table')`, 'content type list while extension is disabled');
   assert(await evaluate(`!document.body.innerText.includes('Projects')`), 'Disabled imported type is absent from the type list');
   await command('Page.navigate', { url: `${origin}/admin/website/extensions` });
-  await waitFor(`!!document.querySelector('button[aria-label="Enable extension: Comet Portfolio"]')`, 'enable portfolio action');
-  await evaluate(`document.querySelector('button[aria-label="Enable extension: Comet Portfolio"]').click()`);
+  await waitFor(`!!document.querySelector('[role="switch"][aria-label="Comet Portfolio"][aria-checked="false"]')`, 'enable portfolio action');
+  await evaluate(`document.querySelector('[role="switch"][aria-label="Comet Portfolio"][aria-checked="false"]').click()`);
   await waitFor(`document.body.innerText.includes('Comet Portfolio enabled.') && !!document.querySelector('a[href$="/content/project"]')`, 'enabling immediately restores imported navigation');
   assert(await evaluate(`fetch('/admin/api/content/project', { headers: { 'X-Comet-Workspace': ${JSON.stringify(workspace)} } }).then((res) => res.json()).then((res) => res.data.some((entry) => entry.title === 'Project to restore'))`), 'Enabling restores imported entries');
   const themeAfter = await evaluate(`fetch('/admin/api/site', { headers: { 'X-Comet-Workspace': ${JSON.stringify(workspace)} } }).then((res) => res.json()).then((res) => JSON.stringify(res.data.theme))`);

@@ -4,6 +4,7 @@ import { createRenderer, nextTick, ssrContextKey } from 'vue'
 import { readFileSync } from 'node:fs'
 import { parse, compileScript, compileTemplate } from '@vue/compiler-sfc'
 import ExtensionLibrary from './ExtensionLibrary.vue'
+import ToggleSwitch from '../ToggleSwitch.vue'
 import { api } from '../../api/index.js'
 
 vi.mock('../../api/index.js', () => ({ getActiveWorkspace: () => 'default', api: { extensions: { list: vi.fn(), setEnabled: vi.fn(), install: vi.fn(), get: vi.fn(), delete: vi.fn() } } }))
@@ -28,6 +29,10 @@ const { descriptor } = parse(readFileSync(new URL('./ExtensionLibrary.vue', impo
 const { bindings } = compileScript(descriptor, { id: 'extensions-test' })
 const { code } = compileTemplate({ source: descriptor.template.content, filename: 'ExtensionLibrary.vue', id: 'extensions-test', compilerOptions: { bindingMetadata: bindings, mode: 'function' } })
 const render = new Function('Vue', code)(Vue)
+const { descriptor: switchDescriptor } = parse(readFileSync(new URL('../ToggleSwitch.vue', import.meta.url), 'utf8'))
+const { bindings: switchBindings } = compileScript(switchDescriptor, { id: 'extension-switch-test' })
+const { code: switchCode } = compileTemplate({ source: switchDescriptor.template.content, filename: 'ToggleSwitch.vue', id: 'extension-switch-test', compilerOptions: { bindingMetadata: switchBindings, mode: 'function' } })
+ToggleSwitch.render = new Function('Vue', switchCode)(Vue)
 const findAll = (el, predicate) => [...(predicate(el) ? [el] : []), ...el.children.flatMap((child) => findAll(child, predicate))]
 const find = (el, predicate) => findAll(el, predicate)[0]
 const text = (el) => el.text + el.children.map(text).join(' ')
@@ -64,24 +69,37 @@ describe('extension confirmations', () => {
   it('disables and re-enables an extension and reports failed changes without changing its status', async () => {
     api.extensions.setEnabled.mockResolvedValue({ data: { name: pkg.name, enabled: false } })
     const root = await mount()
-    find(root, (el) => el.props['aria-label'] === 'Disable extension: Portfolio').props.onClick()
+    const toggle = () => find(root, (el) => el.props.role === 'switch' && el.props['aria-label'] === 'Portfolio')
+    expect(toggle().props['aria-checked']).toBe(true)
+    expect(text(root)).not.toContain('Enabled')
+    toggle().props.onClick()
+    await nextTick()
+    expect(toggle().props.disabled).toBe(true)
     await vi.waitFor(() => expect(api.extensions.setEnabled).toHaveBeenCalledWith(pkg.name, false))
     await vi.waitFor(() => expect(text(root)).toContain('Portfolio disabled.'))
-    expect(find(root, (el) => el.props['aria-label'] === 'Enable extension: Portfolio')).toBeTruthy()
+    expect(toggle().props['aria-checked']).toBe(false)
+    expect(toggle().props.disabled).toBe(false)
     api.extensions.setEnabled.mockRejectedValueOnce({ message: 'Unable to update' })
-    find(root, (el) => el.props['aria-label'] === 'Enable extension: Portfolio').props.onClick()
+    toggle().props.onClick()
     await vi.waitFor(() => expect(text(root)).toContain('Unable to update'))
-    expect(find(root, (el) => el.props['aria-label'] === 'Enable extension: Portfolio')).toBeTruthy()
-    find(root, (el) => el.props['aria-label'] === 'Enable extension: Portfolio').props.onClick()
+    expect(toggle().props['aria-checked']).toBe(false)
+    expect(toggle().props.disabled).toBe(false)
+    toggle().props.onClick()
     await vi.waitFor(() => expect(text(root)).toContain('Portfolio enabled.'))
     expect(api.extensions.setEnabled).toHaveBeenLastCalledWith(pkg.name, true)
+    expect(toggle().props['aria-checked']).toBe(true)
   })
 
-  it('hides extension status controls from users who cannot install extensions', async () => {
+  it('shows a read-only switch for users who cannot install extensions', async () => {
     api.extensions.list.mockResolvedValue({ data: { can_install: false, extensions: [{ ...pkg, enabled: false }], errors: [] } })
     const root = await mount()
-    expect(text(root)).toContain('Disabled')
-    expect(find(root, (el) => el.props['aria-label'] === 'Enable extension: Portfolio')).toBeUndefined()
+    const toggle = find(root, (el) => el.props.role === 'switch')
+    expect(toggle.props['aria-checked']).toBe(false)
+    expect(toggle.props.disabled).toBe(true)
+    expect(text(root)).not.toContain('Disabled')
+    expect(find(root, (el) => el.props['aria-label'] === 'Delete extension: Portfolio')).toBeUndefined()
+    toggle.props.onClick()
+    expect(api.extensions.setEnabled).not.toHaveBeenCalled()
   })
 
   it('reviews breaking changes scripts and seed choices together and confirms in one retry', async () => {

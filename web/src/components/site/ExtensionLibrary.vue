@@ -49,7 +49,6 @@
           <div class="min-w-0 space-y-1">
             <p class="font-medium text-slate-800">
               {{ pkg.title }} <span class="text-xs text-slate-500">{{ pkg.version }}</span>
-              <span class="ml-2 rounded px-1.5 py-0.5 text-xs font-medium" :class="pkg.enabled === false ? 'bg-slate-100 text-slate-600' : 'bg-emerald-50 text-emerald-700'">{{ t(pkg.enabled === false ? 'site.extensions.disabled' : 'site.extensions.enabled') }}</span>
               <span v-if="pkg.scripts" class="ml-1 inline-flex items-center gap-1 rounded bg-amber-100 px-1.5 py-0.5 align-middle text-[10px] font-semibold text-amber-800" :title="t('site.extensions.scriptsBadgeHint')">
                 <Icon icon="mdi:language-javascript" class="h-3 w-3" aria-hidden="true" />{{ t("site.extensions.scriptsBadge") }}
               </span>
@@ -67,12 +66,9 @@
             </ul>
           </div>
         </div>
-        <div v-if="data.can_install" class="flex shrink-0 flex-wrap items-center justify-end gap-2">
-          <button type="button" class="btn-secondary btn-sm" :disabled="busy" :aria-label="t(pkg.enabled === false ? 'site.extensions.enableLabel' : 'site.extensions.disableLabel', { name: pkg.title })" @click="toggleEnabled(pkg)">
-            <Icon :icon="pkg.enabled === false ? 'mdi:play-circle-outline' : 'mdi:pause-circle-outline'" class="h-4 w-4" aria-hidden="true" />
-            {{ t(pkg.enabled === false ? 'site.extensions.enable' : 'site.extensions.disable') }}
-          </button>
-          <button type="button" class="btn-secondary btn-sm shrink-0 text-red-600" :disabled="busy" :aria-label="t('site.extensions.deleteLabel', { name: pkg.title })" @click="previewRemove(pkg)">
+        <div class="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          <ToggleSwitch :model-value="pkg.enabled !== false" :disabled="busy || !data.can_install" :aria-label="pkg.title" @update:model-value="toggleEnabled(pkg)" />
+          <button v-if="data.can_install" type="button" class="btn-secondary btn-sm shrink-0 text-red-600" :disabled="busy" :aria-label="t('site.extensions.deleteLabel', { name: pkg.title })" @click="previewRemove(pkg)">
             <Icon icon="mdi:trash-can-outline" class="h-4 w-4" aria-hidden="true" />
             {{ t("common.delete") }}
           </button>
@@ -171,6 +167,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { Icon } from "@iconify/vue";
 import ConfirmModal from "../ConfirmModal.vue";
+import ToggleSwitch from "../ToggleSwitch.vue";
 import KindIcon from "./builder/KindIcon.vue";
 import { kindIcon } from "./builder/kindIcons.js";
 import { api, getActiveWorkspace } from "../../api/index.js";
