@@ -65,18 +65,19 @@
                 <Icon v-if="block.script" icon="mdi:language-javascript" class="h-3.5 w-3.5 text-amber-700" :aria-label="t('site.extensions.scriptsBadge')" />
               </li>
             </ul>
+            <div v-if="data.can_install" class="flex flex-wrap items-center gap-4 pt-2 text-sm">
+              <button v-if="Object.keys(pkg.settings ?? {}).length" type="button" class="inline-flex items-center gap-1 text-theme-600 underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-50" :disabled="busy" aria-haspopup="dialog" :aria-label="t('site.extensions.settingsLabel', { name: extensionText(pkg, 'title', locale) })" @click="openSettings(pkg)">
+                <Icon icon="mdi:cog-outline" class="h-4 w-4" aria-hidden="true" />
+                {{ t("site.extensions.settings") }}
+              </button>
+              <button type="button" class="inline-flex items-center gap-1 text-red-600 underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-50" :disabled="busy" :aria-label="t('site.extensions.deleteLabel', { name: pkg.title })" @click="previewRemove(pkg)">
+                <Icon icon="mdi:trash-can-outline" class="h-4 w-4" aria-hidden="true" />
+                {{ t("common.delete") }}
+              </button>
+            </div>
           </div>
         </div>
-        <div class="flex shrink-0 flex-wrap items-center justify-end gap-2">
-          <ToggleSwitch :model-value="pkg.enabled !== false" :disabled="busy || !data.can_install" :aria-label="pkg.title" @update:model-value="toggleEnabled(pkg)" />
-          <button v-if="data.can_install && Object.keys(pkg.settings ?? {}).length" type="button" class="btn-secondary btn-sm shrink-0" :disabled="busy" aria-haspopup="dialog" :aria-label="t('site.extensions.settingsLabel', { name: extensionText(pkg, 'title', locale) })" @click="openSettings(pkg)">
-            <Icon icon="mdi:cog-outline" class="h-4 w-4" aria-hidden="true" />
-          </button>
-          <button v-if="data.can_install" type="button" class="btn-secondary btn-sm shrink-0 text-red-600" :disabled="busy" :aria-label="t('site.extensions.deleteLabel', { name: pkg.title })" @click="previewRemove(pkg)">
-            <Icon icon="mdi:trash-can-outline" class="h-4 w-4" aria-hidden="true" />
-            {{ t("common.delete") }}
-          </button>
-        </div>
+        <ToggleSwitch class="mt-1 shrink-0" :model-value="pkg.enabled !== false" :disabled="busy || !data.can_install" :aria-label="pkg.title" @update:model-value="toggleEnabled(pkg)" />
       </li>
     </ul>
     <p v-else-if="data" class="text-sm text-slate-500">{{ t("site.extensions.empty") }}</p>
