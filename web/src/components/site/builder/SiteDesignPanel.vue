@@ -34,12 +34,12 @@
           </div>
         </div>
         <p v-if="modified && activeTheme" class="mt-2 text-xs text-slate-500">{{ t(activeTheme.editable ? "site.theme.modifiedEditableHint" : "site.theme.modifiedHint") }}</p>
-        <div class="mt-3 flex flex-wrap gap-2">
-          <button v-if="modified && activeTheme?.editable" type="button" class="btn-primary btn-sm" :disabled="busy" @click="updateActiveTheme()">
+        <div v-if="modified" class="mt-3 flex flex-wrap gap-2">
+          <button v-if="activeTheme?.editable" type="button" class="btn-primary btn-sm" :disabled="busy" @click="updateActiveTheme()">
             <Icon icon="mdi:content-save-outline" class="h-4 w-4" />
             {{ t("site.theme.saveToTheme") }}
           </button>
-          <button v-if="modified && activeTheme" type="button" class="btn-secondary btn-sm" :disabled="busy" @click="resetOpen = true">
+          <button v-if="activeTheme" type="button" class="btn-secondary btn-sm" :disabled="busy" @click="resetOpen = true">
             <Icon icon="mdi:restore" class="h-4 w-4" />
             {{ t("site.theme.reset") }}
           </button>
@@ -373,7 +373,7 @@ const paddingBoxClasses = {
 };
 const deleteTarget = ref(null);
 const busy = ref(false);
-const expanded = ref({ presets: true, colors: false, typography: false, headings: false, links: false, layout: false, spacing: false, corners: false, shadows: false, motion: false });
+const expanded = ref({ presets: false, colors: false, typography: false, headings: false, links: false, layout: false, spacing: false, corners: false, shadows: false, motion: false });
 
 const palettes = computed(() => {
   if (theme.value.mode === "dark") return [{ key: "dark_colors" }];

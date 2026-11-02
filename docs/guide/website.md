@@ -378,11 +378,13 @@ Open **Website → Design & layout → Website design** (or **Design** in the bu
 
 ### Themes
 
-A **theme** is a complete design: colors, fonts, spacing, corners, shadows and animations. **Themes** at the top of the design panel lists the built-in themes, your own and those installed by [extensions](extensions.md). The card above it shows the **active theme**. Every change in the panel customizes it and marks it **Modified**.
+A **theme** is a complete design: colors, fonts, spacing, corners, shadows and animations. **Themes** at the top of the design panel lists the built-in themes, your own and those installed by [extensions](extensions.md). The card at the top shows the **active theme**. Every change in the panel customizes it and marks it **Modified**.
 
 - **Reset** discards the changes and brings back the active theme's design.
 - **Save to theme**, available for your own themes, makes the current design that theme's new definition. Themes from extensions change only when their extension is updated.
-- **Save as new theme** keeps the current design under a name and makes it the active theme.
+- **Save as new theme** keeps the changed design under a name and makes it the active theme.
+
+These actions appear once the theme is modified. **Themes** starts collapsed; expand it to choose another theme.
 
 Choosing another theme applies it exactly as designed, so changes made to the current one are reset. When that would lose changes, a dialog asks first. It offers to save them to the current theme (or as a new theme) before switching, or to discard them. Custom CSS is never part of a theme and stays. Custom colors and shadows that only the current design has also stay, so elements using them keep working. As with every design change, save the website design to publish the switch.
 

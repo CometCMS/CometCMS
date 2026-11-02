@@ -56,11 +56,16 @@ describe('site themes', () => {
     expect(themeModified({ ...applied, radius: 'sm' }, warm)).toBe(true)
     expect(themeModified({ ...applied, custom_colors: { ...applied.custom_colors, brand: { ...warm.custom_colors.brand, color: '#999999' } } }, warm)).toBe(true)
     expect(themeModified(applied, null)).toBe(true)
+    // As the server returns it after saving: empty maps arrive as lists.
+    const empty = { ...warm, custom_colors: [], shadows: [] }
+    expect(themeModified({ ...applyTheme(empty, { ...site, custom_colors: [], shadows: [] }, 'builtin:warm'), custom_colors: [], shadows: [] }, empty)).toBe(false)
   })
 
   it('compares designs regardless of key order and empty value spelling', () => {
     expect(sameDesign({ a: 1, b: { c: null } }, { b: { c: '' }, a: 1 })).toBe(true)
     expect(sameDesign({ a: [1, 2] }, { a: [2, 1] })).toBe(false)
     expect(sameDesign({ a: 0 }, { a: '' })).toBe(false)
+    expect(sameDesign({ custom_colors: [] }, { custom_colors: {} })).toBe(true)
+    expect(sameDesign({ a: [] }, { a: { b: 1 } })).toBe(false)
   })
 })

@@ -72,10 +72,16 @@ export function themeModified(current, definition) {
   return !sameDesign(current, applyTheme(definition, current, current.active_theme))
 }
 
-/** Deep equality regardless of key order; empty values (null, '', missing) all inherit and match. */
+/**
+ * Deep equality regardless of key order; empty values (null, '', missing) all
+ * inherit and match. PHP sends empty maps such as custom_colors as [], so an
+ * empty list equals an empty object.
+ */
 export function sameDesign(a, b) {
   const empty = (value) => value === null || value === undefined || value === ''
   if (empty(a) && empty(b)) return true
+  if (Array.isArray(a) && a.length === 0) a = {}
+  if (Array.isArray(b) && b.length === 0) b = {}
   if (Array.isArray(a) || Array.isArray(b)) {
     return Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((value, index) => sameDesign(value, b[index]))
   }
