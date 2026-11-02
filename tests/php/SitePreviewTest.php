@@ -387,7 +387,7 @@ PHP .
             assert_true(str_contains($html, 'preview-site Deutscher Entwurf'));
             assert_false(str_contains($html, 'default Deutscher Entwurf'));
             assert_true(str_contains($html, '<html lang="de">'));
-            assert_same('private, no-store', $headers['cache-control'] ?? null);
+            assert_same('private, no-store, no-transform', $headers['cache-control'] ?? null);
             assert_same('noindex, nofollow', $headers['x-robots-tag'] ?? null);
 
             assert_true(str_contains($html, 'Back to admin'));
@@ -504,7 +504,7 @@ PHP .
         assert_false(str_contains($html, 'class="c-admin-status c-admin-status-published"'));
         assert_false(str_contains($html, 'c-admin-mode'));
         assert_true(str_contains($html, 'snapshot=' . $token . '&amp;locale=de') || str_contains($html, 'locale=de&amp;snapshot=' . $token));
-        assert_same('private, no-store', $headers['cache-control']);
+        assert_same('private, no-store, no-transform', $headers['cache-control']);
         assert_same('noindex, nofollow', $headers['x-robots-tag']);
         assert_false(str_contains($html, 'data-node='), 'Full-page previews have no builder overlays.');
         [$status, $translated] = $request('/admin/site-preview/posts/first?workspace=default&snapshot=' . $token . '&locale=de');

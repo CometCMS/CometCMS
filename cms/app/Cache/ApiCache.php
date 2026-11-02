@@ -68,10 +68,16 @@ final class ApiCache
             mkdir($this->path, 0775, true);
         }
 
-        file_put_contents($this->file($key), json_encode([
+        // Write then rename, so a concurrent request never reads a half-written entry.
+        $file = $this->file($key);
+        $tmp = $file . '.' . bin2hex(random_bytes(4)) . '.tmp';
+        $json = json_encode([
             'expires_at' => min(time() + $this->ttl, $expiresAt ?? PHP_INT_MAX),
             'body' => $body,
-        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL, LOCK_EX);
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL;
+        if (file_put_contents($tmp, $json) !== strlen($json) || !rename($tmp, $file)) {
+            @unlink($tmp);
+        }
     }
 
     public function clear(): void

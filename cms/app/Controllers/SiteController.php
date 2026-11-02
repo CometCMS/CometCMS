@@ -292,7 +292,9 @@ final class SiteController
         header('X-Content-Type-Options: nosniff');
         header('Referrer-Policy: strict-origin-when-cross-origin');
         header('X-CometCMS-Cache: ' . $cacheStatus);
-        header('Cache-Control: public, max-age=0, must-revalidate');
+        // no-transform keeps proxies and host optimizers (Cloudflare, mod_pagespeed)
+        // from rewriting inline scripts, which the hash-based CSP would then block.
+        header('Cache-Control: public, max-age=0, must-revalidate, no-transform');
         header('ETag: ' . $etag);
         if ($response['status'] === 503) {
             header('Retry-After: 3600');

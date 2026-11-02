@@ -1230,7 +1230,7 @@ final class SiteController extends BaseController
         $query = is_string($_GET['q'] ?? null) ? $_GET['q'] : '';
         $hits = (new SiteSearch($context))->search($query, $keys($_GET['types'] ?? ''), $keys($_GET['fields'] ?? ''),
             (int) ($_GET['limit'] ?? SiteSearch::MAX_RESULTS));
-        header('Cache-Control: private, no-store');
+        header('Cache-Control: private, no-store, no-transform');
         $this->json(['data' => $hits]);
     }
 
@@ -1251,7 +1251,7 @@ final class SiteController extends BaseController
     {
         http_response_code($status);
         header('Content-Type: text/html; charset=utf-8');
-        header('Cache-Control: private, no-store');
+        header('Cache-Control: private, no-store, no-transform');
         header('X-Robots-Tag: noindex, nofollow');
         header('Content-Security-Policy: ' . \CometCMS\Site\Blocks\BlockScripts::extendPolicy("default-src 'self'; img-src 'self' data: https:; media-src 'self' https:; frame-src 'self' https://www.youtube-nocookie.com https://player.vimeo.com; style-src 'self' 'unsafe-inline' https:; font-src 'self' data: https:; "
             . SiteScripts::cspDirective($html, $this->context()) . "; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'self'", $html, $this->context()));
