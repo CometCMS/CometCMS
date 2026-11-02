@@ -252,6 +252,13 @@ export const useSiteStore = defineStore('site', () => {
     return response.data
   }
 
+  /** Make the design as currently edited the definition of a site-owned theme. */
+  async function updateThemePreset(id) {
+    const response = await api.site.updateThemePreset(id, draft.value.theme)
+    data.value.theme_presets = (data.value.theme_presets ?? []).map((preset) => preset.id === id ? response.data : preset)
+    return response.data
+  }
+
   async function deleteThemePreset(id) {
     await api.site.deleteThemePreset(id)
     data.value.theme_presets = (data.value.theme_presets ?? []).filter((preset) => preset.id !== id)
@@ -284,5 +291,5 @@ export const useSiteStore = defineStore('site', () => {
     statusWorkspace = ''
   }
 
-  return { data, draft, loading, error, saving, fieldErrors, dirtyParts, isDirty, live, pageBuilderActive, homepagePreview, load, loadStatus, applyFonts, refreshFonts, refreshExtensions, save, saveRoute, resetDraft, markCustomized, createTemplate, createThemePreset, deleteThemePreset, applyRestoredTheme, discardTheme, invalidate }
+  return { data, draft, loading, error, saving, fieldErrors, dirtyParts, isDirty, live, pageBuilderActive, homepagePreview, load, loadStatus, applyFonts, refreshFonts, refreshExtensions, save, saveRoute, resetDraft, markCustomized, createTemplate, createThemePreset, updateThemePreset, deleteThemePreset, applyRestoredTheme, discardTheme, invalidate }
 })

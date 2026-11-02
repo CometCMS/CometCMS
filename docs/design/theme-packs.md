@@ -1,12 +1,14 @@
 # Theme packs and website design
 
-Status: multi-preset packs are implemented; theme-owned CSS and the theme selection model below are proposed.
+Status: multi-preset packs and theme selection (step 3, without theme CSS) are implemented; theme-owned CSS is proposed.
 
 ## Current scope
 
 Website Design edits the site's active design: tokens, custom CSS, reusable components, regions, templates and layouts. A named preset captures only the tokens, including custom colors and shadow definitions. Applying it preserves the site's custom CSS and does not replace page structures or element styles.
 
 Extensions can now seed several presets through `presets/<id>.json`, alongside the legacy single `theme.json`. Comet ThemePack provides Neo-Brutalism, Industrial, Material-inspired and Orbital. Each imported preset has independent update and uninstall tracking. The pack retains the former Neo-Brutalism extension's internal name for upgrades.
+
+Website Design now treats built-in designs (`Theme::BUILT_IN_THEMES`) and site presets as **themes**. `theme.json` records the active one as `active_theme` (`builtin:{id}` or `preset:{id}`). Edits customize it; the designer shows it as modified when resetting or switching would discard them. Resetting or switching applies a theme's definition and keeps custom CSS, plus custom colors and shadows the theme lacks. Site-owned presets can be overwritten with the current design (`PUT /admin/api/site/theme/presets/{id}`). Extension presets cannot be overwritten, so their ledger hash stays valid for updates.
 
 A preset is enough for a coordinated palette and typography, but it cannot define glass surfaces, backdrop blur, decorative backgrounds or global button treatments. Today those require element styles or site custom CSS. The root extension `style.css` serves custom blocks and is included when their blocks render; it does not establish a selectable site theme.
 
@@ -41,7 +43,7 @@ Keep the existing administrator-only rule for writing custom CSS. Installing the
 
 1. Multi-preset extension packages and distinct preset tracking — implemented with Comet ThemePack.
 2. A theme bundle schema and site-owned storage for its stylesheet and assets, with previews, revisions and cache handling.
-3. Theme selection and customization in Website Design, with accurate preview metadata and switch behavior.
+3. Theme selection and customization in Website Design, with accurate preview metadata and switch behavior — implemented for token themes.
 4. CSS-enhanced Glass and Orbital variants, and optional starter components per theme.
 
 This keeps current presets and `theme.json` extensions compatible while giving richer themes a defined scope.

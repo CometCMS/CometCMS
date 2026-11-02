@@ -110,3 +110,47 @@ test('theme presets keep a design by name without custom CSS', function (): void
     assert_same(null, $site->themePreset('mein-design'));
     assert_same(['mein-design-2'], array_column($site->themePresets(), 'id'));
 });
+
+test('the active theme is tracked and resolves to its definition', function (): void {
+    $site = comet_site_test_setup();
+    assert_same(Theme::DEFAULT_THEME, $site->theme()['active_theme']);
+    assert_same('builtin:clean', Theme::normalize(['active_theme' => '../etc'])['active_theme']);
+    assert_same('preset:mein-design', $site->saveTheme(['active_theme' => 'preset:mein-design'])['active_theme']);
+    assert_same('preset:mein-design', (new SiteRepository())->theme()['active_theme']);
+
+    $builtIn = array_column(Theme::builtInThemes(), 'theme', 'id');
+    assert_same(array_keys(Theme::BUILT_IN_THEMES), array_keys($builtIn));
+    assert_same(array_diff_key(Theme::defaults(), ['custom_css' => true, 'active_theme' => true]), $builtIn['clean']);
+    assert_same('#c2410c', $site->themeDefinition('builtin:warm')['colors']['primary']);
+    assert_same(120, $site->themeDefinition('builtin:editorial')['space']['2xl']);
+    assert_false(array_key_exists('active_theme', $builtIn['midnight']), 'Definitions hold design tokens only.');
+    assert_same(null, $site->themeDefinition('builtin:missing'));
+    assert_same(null, $site->themeDefinition('preset:mein-design'));
+
+    $site->createThemePreset('Mein Design', ['radius' => 'lg', 'active_theme' => 'builtin:warm']);
+    assert_same('lg', $site->themeDefinition('preset:mein-design')['radius']);
+    assert_false(array_key_exists('active_theme', $site->themePreset('mein-design')['theme']), 'A preset does not reference another theme.');
+});
+
+test('site themes can be updated in place, extension themes cannot', function (): void {
+    $site = comet_site_test_setup();
+    $own = $site->createThemePreset('Own', ['radius' => 'lg']);
+    assert_same('', $own['extension']);
+    $updated = $site->updateThemePreset('own', ['radius' => 'sm', 'custom_css' => 'body{}', 'active_theme' => 'preset:own']);
+    assert_same('sm', $updated['theme']['radius']);
+    assert_same('Own', $updated['name']);
+    assert_same($own['created_at'], $updated['created_at']);
+    assert_true($updated['updated_at'] !== '');
+    assert_false(array_key_exists('custom_css', $updated['theme']));
+    assert_same(null, $site->updateThemePreset('missing', []));
+    assert_throws(\CometCMS\Core\ValidationException::class, fn() => $site->updateThemePreset('own', 'red'));
+
+    $site->createThemePreset('Pack', ['radius' => 'none']);
+    (new \CometCMS\Storage\JsonStore($site->workspace()->path('site')))->write(['acme/pack' => [['kind' => 'presets', 'id' => 'pack', 'hash' => '']]], 'extensions-seeded');
+    $site = new SiteRepository();
+    assert_same('acme/pack', $site->themePreset('pack')['extension']);
+    assert_same('acme/pack', $site->themePreset('pack')['extension_title'], 'An uninstalled owner shows by name.');
+    assert_same(['', 'acme/pack'], array_column($site->themePresets(), 'extension'));
+    assert_throws(\CometCMS\Core\ValidationException::class, fn() => $site->updateThemePreset('pack', ['radius' => 'lg']));
+    assert_same('none', $site->themePreset('pack')['theme']['radius']);
+});

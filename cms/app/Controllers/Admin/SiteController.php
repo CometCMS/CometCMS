@@ -58,6 +58,7 @@ final class SiteController extends BaseController
             'form_settings' => (new FormCaptchaSettings($this->site->workspace()))->admin(),
             'theme' => $this->site->theme(),
             'theme_presets' => $this->site->themePresets(),
+            'builtin_themes' => Theme::builtInThemes(),
             'menus' => $this->site->menus(),
             'menus_revision' => \CometCMS\Localization\LocalizedValue::hash($this->site->menus()),
             'menu_limits' => SiteRepository::MENU_LIMITS,
@@ -328,6 +329,20 @@ final class SiteController extends BaseController
         $preset = $this->validated(fn() => $this->site->createThemePreset($input['name'] ?? '', $input['theme'] ?? null));
         $this->logger->info('site.theme_preset_created', ['preset' => $preset['id']]);
         $this->json(['data' => $preset], 201);
+    }
+
+    /** Body: {theme}: the design that replaces a site-owned theme's definition. */
+    public function updateThemePreset(string $id): never
+    {
+        $this->requirePermission('site.manage', ['resource' => 'site:*']);
+        $this->verifyCsrf();
+        $input = $this->requestJson();
+        $preset = $this->validated(fn() => $this->site->updateThemePreset($id, $input['theme'] ?? null));
+        if ($preset === null) {
+            $this->json(['error' => ['code' => 'not_found', 'message' => 'Preset not found.']], 404);
+        }
+        $this->logger->info('site.theme_preset_updated', ['preset' => $id]);
+        $this->json(['data' => $preset]);
     }
 
     public function deleteThemePreset(string $id): never

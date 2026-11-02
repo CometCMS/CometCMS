@@ -224,15 +224,16 @@ final class SiteRepository
     }
 
     /**
-     * Designs saved under a name, so a customized theme can be brought back
-     * after trying another preset. Custom CSS stays out: it is admin-only
-     * and kept when a preset is applied.
+     * Themes saved under a name by users or seeded by extensions ("extension"
+     * names the owner, '' for the site's own). Custom CSS stays out: it is
+     * admin-only and kept when a theme is applied.
      *
-     * @return list<array{id: string, name: string, theme: array, created_at: string}>
+     * @return list<array{id: string, name: string, theme: array, extension: string, extension_title: string, created_at: string, updated_at: string}>
      */
     public function themePresets(): array
     {
-        $list = array_values(array_filter(array_map(fn(array $stored): ?array => $this->readThemePreset($stored), $this->themeStore->all('presets')),
+        $owners = $this->presetOwners();
+        $list = array_values(array_filter(array_map(fn(array $stored): ?array => $this->readThemePreset($stored, $owners), $this->themeStore->all('presets')),
             fn(?array $preset): bool => $preset !== null && !$this->hidden('presets', $preset['id'])));
         usort($list, static fn(array $a, array $b): int => strcasecmp($a['name'], $b['name']));
 
@@ -245,7 +246,7 @@ final class SiteRepository
             return null;
         }
 
-        return $this->readThemePreset($this->themeStore->read('presets', $id));
+        return $this->readThemePreset($this->themeStore->read('presets', $id), $this->presetOwners());
     }
 
     public function createThemePreset(mixed $name, mixed $theme): array
@@ -270,7 +271,33 @@ final class SiteRepository
             ];
             $this->themeStore->write($preset, 'presets', $preset['id']);
 
-            return $preset;
+            return $this->readThemePreset($preset, $this->presetOwners());
+        }, 'presets');
+    }
+
+    /**
+     * Replace a site-owned theme's design with $theme, e.g. the customized
+     * design while it is active. Extension themes are their extension's
+     * definition and change only through its updates.
+     */
+    public function updateThemePreset(string $id, mixed $theme): ?array
+    {
+        if (!is_array($theme)) {
+            throw new ValidationException(['theme' => 'A preset needs a theme.']);
+        }
+
+        return $this->themeStore->synchronized(function () use ($id, $theme): ?array {
+            $preset = $this->themePreset($id);
+            if ($preset === null) {
+                return null;
+            }
+            if ($preset['extension'] !== '') {
+                throw new ValidationException(['theme' => 'This theme comes from an extension and cannot be changed. Save the design as a new theme instead.']);
+            }
+            $stored = $this->themeStore->read('presets', $id) ?? [];
+            $this->themeStore->write(['theme' => self::presetTheme($theme), 'updated_at' => Security::now()] + $stored, 'presets', $id);
+
+            return $this->themePreset($id);
         }, 'presets');
     }
 
@@ -279,7 +306,35 @@ final class SiteRepository
         $this->themeStore->delete('presets', $id);
     }
 
-    private function readThemePreset(?array $stored): ?array
+    /**
+     * The design tokens of a theme reference ("builtin:{id}" or "preset:{id}"),
+     * or null when it no longer exists, e.g. after its preset was deleted.
+     */
+    public function themeDefinition(string $reference): ?array
+    {
+        [$source, $id] = explode(':', Theme::themeReference($reference), 2);
+        if ($source === 'builtin') {
+            return isset(Theme::BUILT_IN_THEMES[$id]) ? Theme::definition(Theme::BUILT_IN_THEMES[$id]) : null;
+        }
+
+        return $this->themePreset($id)['theme'] ?? null;
+    }
+
+    /** @return array<string, string> preset id => name of the extension that seeded it */
+    private function presetOwners(): array
+    {
+        $owners = [];
+        foreach ($this->store->read('extensions-seeded') ?? [] as $extension => $items) {
+            foreach (is_array($items) ? $items : [] as $item) {
+                if (($item['kind'] ?? null) === 'presets' && is_string($item['id'] ?? null)) $owners[$item['id']] = (string) $extension;
+            }
+        }
+
+        return $owners;
+    }
+
+    /** @param array<string, string> $owners see presetOwners() */
+    private function readThemePreset(?array $stored, array $owners): ?array
     {
         $id = $stored['id'] ?? null;
         if (!is_string($id) || LayoutSchema::key($id) !== $id || !is_array($stored['theme'] ?? null)) {
@@ -290,13 +345,16 @@ final class SiteRepository
             'id' => $id,
             'name' => self::line($stored['name'] ?? '', 120) ?: $id,
             'theme' => self::presetTheme($stored['theme']),
+            'extension' => $owners[$id] ?? '',
+            'extension_title' => isset($owners[$id]) ? (string) ($this->extensions()->extension($owners[$id])['title'] ?? $owners[$id]) : '',
             'created_at' => (string) ($stored['created_at'] ?? ''),
+            'updated_at' => (string) ($stored['updated_at'] ?? ''),
         ];
     }
 
     private static function presetTheme(array $theme): array
     {
-        return array_diff_key(Theme::normalize($theme), ['custom_css' => true]);
+        return Theme::definition($theme);
     }
 
     /** When the newest of the given files changed, formatted like Security::now(); '' if none exists. */

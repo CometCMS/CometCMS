@@ -49,6 +49,48 @@ final class Theme
 
     public const MAX_SHADOWS = 32;
 
+    /** The theme a site starts with; its definition is the defaults. */
+    public const DEFAULT_THEME = 'builtin:clean';
+
+    /**
+     * Shipped themes, as differences from the defaults. The active theme is
+     * referenced as "builtin:{id}" or "preset:{id}" (a site preset, saved by
+     * a user or seeded by an extension); see SiteRepository::themeDefinition().
+     */
+    public const BUILT_IN_THEMES = [
+        'clean' => [],
+        'warm' => [
+            'colors' => ['primary' => '#c2410c', 'secondary' => '#292524', 'accent' => '#0d9488', 'background' => '#fffbf5', 'surface' => '#f5efe6', 'text' => '#1c1917', 'muted' => '#78716c', 'border' => '#e7e0d6'],
+            'fonts' => ['heading' => 'old-style', 'body' => 'humanist'],
+            'radius' => 'lg',
+        ],
+        'editorial' => [
+            'colors' => ['primary' => '#b91c1c', 'secondary' => '#111827', 'accent' => '#1d4ed8', 'background' => '#ffffff', 'surface' => '#f6f6f4', 'text' => '#111111', 'muted' => '#6b6b6b', 'border' => '#e5e5e5'],
+            'fonts' => ['heading' => 'didone', 'body' => 'transitional'],
+            'radius' => 'none',
+            'space' => ['xs' => 5, 'sm' => 10, 'md' => 20, 'lg' => 40, 'xl' => 70, '2xl' => 120],
+            'type_scale' => '1.333',
+        ],
+        'forest' => [
+            'colors' => ['primary' => '#15803d', 'secondary' => '#14532d', 'accent' => '#ca8a04', 'background' => '#fbfdf9', 'surface' => '#eef5ea', 'text' => '#10200f', 'muted' => '#5b6b58', 'border' => '#dbe7d4'],
+            'fonts' => ['heading' => 'slab', 'body' => 'humanist'],
+        ],
+        'midnight' => [
+            'mode' => 'dark',
+            'dark_colors' => ['primary' => '#a78bfa', 'secondary' => '#e9e5ff', 'accent' => '#f472b6', 'background' => '#0f0d1a', 'surface' => '#1a1730', 'text' => '#ede9fe', 'muted' => '#a1a1c2', 'border' => '#2a2545'],
+            'fonts' => ['heading' => 'geometric', 'body' => 'system'],
+            'radius' => 'lg',
+            'radii' => ['sm' => 6, 'md' => 12, 'lg' => 20],
+        ],
+        'studio' => [
+            'mode' => 'auto',
+            'colors' => ['primary' => '#0f172a', 'secondary' => '#334155', 'accent' => '#06b6d4', 'background' => '#ffffff', 'surface' => '#f8fafc', 'text' => '#0f172a', 'muted' => '#64748b', 'border' => '#e2e8f0'],
+            'fonts' => ['heading' => 'neo-grotesque', 'body' => 'neo-grotesque'],
+            'heading_weight' => 800,
+            'radius' => 'sm',
+        ],
+    ];
+
     /**
      * Local font stacks only: nothing is fetched from third-party font CDNs,
      * so visitors' IP addresses never leave the site.
@@ -132,7 +174,31 @@ final class Theme
             // Animation speeds, the extra delay per stagger step and the hover state transition, in ms.
             'motion' => ['fast' => 400, 'normal' => 700, 'slow' => 1100, 'stagger' => 120, 'hover' => 200],
             'custom_css' => '',
+            'active_theme' => self::DEFAULT_THEME,
         ];
+    }
+
+    /**
+     * The shipped themes in display order, as complete designs without the
+     * site-owned custom CSS and active theme reference.
+     *
+     * @return list<array{id: string, theme: array}>
+     */
+    public static function builtInThemes(): array
+    {
+        return array_map(static fn(string $id): array => ['id' => $id, 'theme' => self::definition(self::BUILT_IN_THEMES[$id])], array_keys(self::BUILT_IN_THEMES));
+    }
+
+    /** A theme's design tokens: everything the site's design holds apart from custom CSS and the active theme. */
+    public static function definition(array $theme): array
+    {
+        return array_diff_key(self::normalize($theme), ['custom_css' => true, 'active_theme' => true]);
+    }
+
+    /** "builtin:{id}" or "preset:{id}"; anything else falls back to the default theme. */
+    public static function themeReference(mixed $value): string
+    {
+        return is_string($value) && preg_match('/^(builtin|preset):[a-z0-9][a-z0-9_-]{0,119}$/D', $value) === 1 ? $value : self::DEFAULT_THEME;
     }
 
     private static function fontChoice(mixed $value, string $default): string
@@ -177,6 +243,7 @@ final class Theme
             'links' => self::links($theme, $customColors, $defaults['links']),
             'motion' => self::motion($theme['motion'] ?? [], $defaults['motion']),
             'custom_css' => self::customCss((string) ($theme['custom_css'] ?? '')),
+            'active_theme' => self::themeReference($theme['active_theme'] ?? null),
         ];
     }
 

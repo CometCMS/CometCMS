@@ -274,6 +274,7 @@ $routes = [
     ['DELETE', '#^/admin/api/site/fonts/(' . SEG . ')$#', [FontsController::class, 'destroy']],
     ['PUT',    '#^/admin/api/site/theme$#',                                   [AdminSiteController::class, 'updateTheme']],
     ['POST',   '#^/admin/api/site/theme/presets$#',                           [AdminSiteController::class, 'createThemePreset']],
+    ['PUT',    '#^/admin/api/site/theme/presets/(' . SEG . ')$#',             [AdminSiteController::class, 'updateThemePreset']],
     ['DELETE', '#^/admin/api/site/theme/presets/(' . SEG . ')$#',             [AdminSiteController::class, 'deleteThemePreset']],
     ['GET',    '#^/admin/api/site/theme/revisions$#',                         [AdminSiteController::class, 'themeRevisions']],
     ['GET',    '#^/admin/api/site/theme/revisions/(' . SEG . ')$#',    [AdminSiteController::class, 'themeRevision']],

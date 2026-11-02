@@ -435,6 +435,7 @@ export const api = {
     saveFormSettings: (data)             => request('PUT',    '/site/form-settings', data),
     saveTheme:    (data, workspace)      => request('PUT',    '/site/theme', data, workspace),
     createThemePreset: (name, theme) => request('POST', '/site/theme/presets', { name, theme }),
+    updateThemePreset: (id, theme) => request('PUT', `/site/theme/presets/${encodeURIComponent(id)}`, { theme }),
     deleteThemePreset: (id) => request('DELETE', `/site/theme/presets/${encodeURIComponent(id)}`),
     themeRevisions: () => request('GET', '/site/theme/revisions'),
     themeRevision: (id) => request('GET', `/site/theme/revisions/${encodeURIComponent(id)}`),
