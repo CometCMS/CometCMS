@@ -1,4 +1,5 @@
 {
+  "$schema": "../../../../../schemas/block.schema.json",
   "title": "Futuristic Grid",
   "description": "An industrial grid with a scanning light, glowing horizon and technical corner marks.",
   "icon": "mdi:grid",
@@ -10,80 +11,35 @@
         "perspective",
         "flat"
       ],
-      "default": "perspective"
+      "default": "perspective",
+      "option_labels": {
+        "perspective": "Perspective floor",
+        "flat": "Flat grid"
+      }
     },
     "accent": {
-      "type": "color",
-      "label": "Primary effect color",
-      "default": "primary"
+      "use": "accent"
     },
     "secondary": {
-      "type": "color",
-      "label": "Secondary effect color",
-      "default": "accent"
+      "use": "secondary"
     },
     "intensity": {
-      "type": "enum",
-      "label": "Effect intensity",
-      "options": [
-        "subtle",
-        "balanced",
-        "vivid"
-      ],
-      "default": "balanced"
+      "use": "intensity"
     },
     "motion": {
-      "type": "enum",
-      "label": "Motion",
-      "options": [
-        "still",
-        "drift",
-        "gentle",
-        "lively"
-      ],
-      "default": "gentle"
+      "use": "motion"
     },
     "scale": {
-      "type": "enum",
-      "label": "Effect scale",
-      "options": [
-        "small",
-        "medium",
-        "large"
-      ],
-      "default": "medium"
+      "use": "scale"
     },
     "padding": {
-      "type": "enum",
-      "label": "Content padding",
-      "options": [
-        "none",
-        "compact",
-        "comfortable",
-        "spacious"
-      ],
-      "default": "comfortable"
+      "use": "padding"
     },
     "height": {
-      "type": "enum",
-      "label": "Minimum height",
-      "options": [
-        "content",
-        "compact",
-        "hero",
-        "screen"
-      ],
-      "default": "compact"
+      "use": "height"
     },
     "align": {
-      "type": "enum",
-      "label": "Vertical content alignment",
-      "options": [
-        "top",
-        "center",
-        "bottom"
-      ],
-      "default": "center"
+      "use": "align"
     }
   }
 }

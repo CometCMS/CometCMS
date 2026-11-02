@@ -39,12 +39,12 @@ test('theme pack installs four independent designs without applying one and pres
     assert_same(24, $site->themePreset('material-inspired')['theme']['radii']['lg']);
     assert_same('dark', $site->themePreset('orbital')['theme']['mode']);
     $applied = $site->saveTheme($site->themePreset('orbital')['theme']);
-    $registry->setEnabled('cometcms/neo-brutalism', false);
+    $registry->setEnabled('cometcms/theme-pack', false);
     assert_same([], $site->themePresets());
     assert_same($applied, $site->theme());
-    $registry->setEnabled('cometcms/neo-brutalism', true);
+    $registry->setEnabled('cometcms/theme-pack', true);
     assert_same(4, count($site->themePresets()));
-    $registry->delete('cometcms/neo-brutalism');
+    $registry->delete('cometcms/theme-pack');
     assert_same(4, count($site->themePresets()));
     assert_same(3, count($site->components()));
     assert_same($applied, $site->theme());
@@ -62,7 +62,7 @@ test('theme pack upgrades legacy neo brutalism and tracks renamed presets separa
     // Reproduce the ledger format from before per-preset source tracking.
     $store = new JsonStore($registry->workspace->path('site'));
     $ledger = $store->read('extensions-seeded');
-    foreach ($ledger['cometcms/neo-brutalism'] as &$entry) unset($entry['source']);
+    foreach ($ledger['cometcms/theme-pack'] as &$entry) unset($entry['source']);
     unset($entry);
     $store->write($ledger, 'extensions-seeded');
     $themeStore = new JsonStore($registry->workspace->path('site') . '/theme');
@@ -114,7 +114,7 @@ test('theme pack rejects duplicate preset identities and reports the preset sour
     } catch (ExtensionException $e) {
         assert_same('presets/industrial.json', $e->errors()[0]['file']);
     }
-    assert_null(ExtensionRegistry::active()->extension('cometcms/neo-brutalism'));
+    assert_null(ExtensionRegistry::active()->extension('cometcms/theme-pack'));
     assert_same([], (new SiteRepository())->themePresets());
 });
 
@@ -124,7 +124,7 @@ test('theme pack checks the combined preset limit after skip choices before writ
     $files = comet_theme_pack_files();
     $registry = ExtensionRegistry::active();
     assert_throws(ExtensionException::class, fn() => $registry->installFiles($files, seeds: []));
-    assert_null($registry->extension('cometcms/neo-brutalism'));
+    assert_null($registry->extension('cometcms/theme-pack'));
     assert_same([], $site->components());
     $registry->installFiles($files, seeds: ['presets/industrial' => 'skip', 'presets/material-inspired' => 'skip', 'presets/orbital' => 'skip']);
     assert_same(SiteRepository::MAX_THEME_PRESETS, count($site->themePresets()));
@@ -150,17 +150,17 @@ test('theme pack bundles inter into the font library for its preset and keeps it
     assert_true(str_contains($fonts->css(), '"comet-' . $id . '"'));
     assert_true($fonts->asset($family['faces'][0]['hash']) !== null);
     // Disabling keeps the font so applied themes keep rendering; an update refreshes the same family.
-    $registry->setEnabled('cometcms/neo-brutalism', false);
+    $registry->setEnabled('cometcms/theme-pack', false);
     assert_true(isset($fonts->families()[$id]));
-    $registry->setEnabled('cometcms/neo-brutalism', true);
+    $registry->setEnabled('cometcms/theme-pack', true);
     $registry->installFiles($files, seeds: []);
     assert_same(1, count(array_filter($fonts->families(), static fn(array $font): bool => $font['source'] === 'custom')));
     $site->saveTheme($site->themePreset('material-inspired')['theme']);
-    $registry->delete('cometcms/neo-brutalism', ['fonts/' . $id]);
+    $registry->delete('cometcms/theme-pack', ['fonts/' . $id]);
     assert_true(isset($fonts->families()[$id]));
     $site->saveTheme($site->themePreset('orbital')['theme']);
     // The kept font is now ordinary site data; overwriting brings it back under the extension.
     $registry->installFiles($files, seeds: ['fonts/' . $id => 'overwrite', 'presets/material-inspired' => 'overwrite']);
-    $registry->delete('cometcms/neo-brutalism', ['fonts/' . $id, 'presets/material-inspired']);
+    $registry->delete('cometcms/theme-pack', ['fonts/' . $id, 'presets/material-inspired']);
     assert_false(isset($fonts->families()[$id]));
 });

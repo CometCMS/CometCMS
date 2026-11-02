@@ -360,10 +360,11 @@ final class ExtensionRegistry
             $next = $new[$key] ?? (isset($renamed[$key]) ? $new[$renamed[$key]] : null);
             if ($next === null) {
                 $changes[] = $prefix . $key . '" is removed. Its saved values are dropped the next time a layout is saved.';
-            } elseif ($next['type'] !== $spec['type']) {
+            } elseif ($next['type'] !== $spec['type'] && !($spec['type'] === 'enum' && in_array($next['type'], ['space', 'radius'], true))) {
                 $changes[] = $prefix . $key . '" changes from ' . $spec['type'] . ' to ' . $next['type'] . '. Saved values that do not fit fall back to the default.';
-            } elseif ($spec['type'] === 'enum' && array_diff($spec['options'], $next['options'], array_keys($next['option_aliases'] ?? [])) !== []) {
-                $changes[] = $prefix . $key . '" no longer offers ' . implode(', ', array_diff($spec['options'], $next['options'], array_keys($next['option_aliases'] ?? []))) . '. Instances using them fall back to the default.';
+            } elseif ($spec['type'] === 'enum' && array_diff($spec['options'], Extension::options($next), array_keys($next['option_aliases'] ?? [])) !== []) {
+                // An enum may become a space or radius prop when option_aliases map each of its options.
+                $changes[] = $prefix . $key . '" no longer offers ' . implode(', ', array_diff($spec['options'], Extension::options($next), array_keys($next['option_aliases'] ?? []))) . '. Instances using them fall back to the default.';
             } else {
                 if ($spec['type'] === 'int' && ($next['min'] > $spec['min'] || $next['max'] < $spec['max'])) {
                     $changes[] = $prefix . $key . '" narrows its range to ' . $next['min'] . '–' . $next['max'] . '. Saved values outside it are clamped.';

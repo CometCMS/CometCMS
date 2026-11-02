@@ -23,7 +23,7 @@ use CometCMS\Workspaces\WorkspaceContext;
 /** Shared-layout tools; transport and authorization belong to McpServer. */
 final class PageBuilderTools
 {
-    public const NAMES = ['get_builder_schema', 'get_layout', 'get_section', 'get_element', 'set_layout', 'update_section', 'update_element', 'list_templates', 'set_template_parts'];
+    public const NAMES = ['get_builder_schema', 'list_extensions', 'get_layout', 'get_section', 'get_element', 'set_layout', 'update_section', 'update_element', 'list_templates', 'set_template_parts'];
 
     public static function schemas(): array
     {
@@ -53,6 +53,7 @@ final class PageBuilderTools
         ], ['kind'])];
         $contracts = [
             'get_builder_schema' => ['Discover builder vocabulary', 'Without kind: kinds, allowed children, every style key\'s values and limits; call this first. With kind (one or a list): props with defaults and the style keys each kind takes.', ['kind' => ['anyOf' => [$string, ['type' => 'array', 'items' => $string, 'minItems' => 1]]]], []],
+            'list_extensions' => ['List installed extensions', 'Installed extensions with their status, settings and blocks: each block\'s kind for layouts, what it is for, its palette category, whether it holds child elements (slot) and its variations. Disabled extensions\' blocks do not render. Use get_builder_schema with a kind for its props.', [], []],
             'get_layout' => ['Read layout overview or scoped tree', 'Read ordered section IDs, kinds, counts and revision. Use section_ids to select top-level sections; depth or mode opts into a tree. Summary mode omits props. Reads always return the whole layout revision. Start here before reading or writing sections.', $target + $read + ['section_ids' => ['type' => 'array', 'items' => $string, 'minItems' => 1, 'uniqueItems' => true, 'description' => 'Only these top-level section IDs, returned in layout order. Unknown IDs fail with 404; call get_layout without selectors to discover IDs.']], ['collection', 'variant']],
             'get_section' => ['Read one section', 'Read one top-level section subtree and whole layout revision. Limit child levels with depth or use mode: summary for IDs, kinds, names and styles without props. Default props are omitted in full mode; use get_builder_schema(kind) for defaults.', $target + ['section_id' => $string] + $read, ['collection', 'variant', 'section_id']],
             'get_element' => ['Read one element', 'Read a node by ID, its props/style and immediate child summaries, enclosing section and layout revision.', $target + ['element_id' => $string], ['collection', 'variant', 'element_id']],
@@ -92,6 +93,7 @@ final class PageBuilderTools
         $contract = self::schemas()[$tool]['inputSchema'];
         ToolArguments::validate($tool, $args, $contract);
         if ($tool === 'get_builder_schema') return ['data' => $this->vocabulary($args)];
+        if ($tool === 'list_extensions') return ['data' => $this->extensions()];
 
         $collection = $this->identifier($args['collection'], 'collection');
         $variant = $args['variant'];
@@ -323,6 +325,32 @@ final class PageBuilderTools
             'max_nodes' => LayoutSchema::MAX_NODES, 'max_row_depth' => $spec['max_row_depth'],
             'next' => 'Call get_builder_schema with kind (one or a list) for props and style keys, then get_layout for section IDs and revision. Writes take effect immediately.',
         ];
+    }
+
+    /** Installed extensions as agents choose blocks from them; install and settings stay in the admin. */
+    private function extensions(): array
+    {
+        $registry = new ExtensionRegistry($this->workspace);
+        $metadata = $registry->metadata();
+        $extensions = array_map(static function (array $extension) use ($registry): array {
+            $blocks = array_map(static function (array $block) use ($registry): array {
+                $spec = $registry->get('block:' . $block['name']) ?? [];
+                return [
+                    'kind' => 'block:' . $block['name'], 'title' => $block['title'], 'description' => $block['description'],
+                    'category' => $spec['category'] ?? '', 'slot' => $spec['slot'] ?? false,
+                    'variations' => array_map(static fn(array $variation): array => ['name' => $variation['name'], 'title' => $variation['title'], 'props' => $variation['props']], $spec['variations'] ?? []),
+                    'script' => $block['script'], 'deprecated' => $block['deprecated'] !== null,
+                ];
+            }, $extension['blocks']);
+            return [
+                'name' => $extension['name'], 'title' => $extension['title'], 'description' => $extension['description'], 'version' => $extension['version'],
+                'enabled' => $extension['enabled'] && $extension['dependency_errors'] === [], 'requires' => (object) $extension['requires'],
+                'settings' => (object) $extension['settings_values'], 'blocks' => array_values($blocks),
+            ];
+        }, $metadata['extensions']);
+
+        // Folder extensions that failed validation, as file:line problems.
+        return ['extensions' => $extensions, 'failed' => $metadata['errors']];
     }
 
     /** The icon names icon props take. */

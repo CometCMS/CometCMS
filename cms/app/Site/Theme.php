@@ -227,6 +227,14 @@ final class Theme
             $root['--radius-' . $token] = $px . 'px';
         }
 
+        // Shadows as variables too, for extension blocks' shadow props (see BlockTemplate::themeValue).
+        foreach ($theme['shadow_scale'] as $token => $shadow) {
+            $root['--shadow-' . $token] = Shadow::scaleCss($token, $shadow);
+        }
+        foreach ($theme['shadows'] as $token => $shadow) {
+            $root['--shadow-' . $token] = Shadow::css($shadow);
+        }
+
         // Unitless ms, so the stylesheet can turn them into times and scroll distances.
         foreach ($theme['motion'] as $key => $ms) {
             $root['--motion-' . $key] = (string) $ms;

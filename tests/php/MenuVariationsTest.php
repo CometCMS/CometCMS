@@ -41,7 +41,9 @@ test('menu variations install alongside essentials and expose persistent menu se
     foreach ($installed['blocks'] as $name) {
         $kind = 'block:' . $name;
         $spec = LayoutSchema::spec(blocks: $site->blocks())['kinds'][$kind]['props']['navigation'];
-        assert_same(['type' => 'menu', 'label' => 'Menu', 'default' => 'main'], $spec);
+        // Every variation reuses the extension's shared menu prop, with its translations.
+        assert_same(['type' => 'menu', 'label' => 'Menu', 'default' => 'main', 'use' => 'navigation', 'l10n' => ['de' => ['label' => 'Menü']]], $spec);
+        assert_same('Navigation', $site->blocks()->get($kind)['category']);
         $node = LayoutSchema::node($kind, ['navigation' => 'footer']);
         comet_block_page($site, [$node]);
         $saved = (new SiteRepository())->layout('about', 'detail');

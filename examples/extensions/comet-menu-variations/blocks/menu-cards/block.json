@@ -1,12 +1,17 @@
 {
+  "$schema": "../../../../../schemas/block.schema.json",
   "title": "Navigation Cards",
   "description": "A responsive grid of clickable navigation cards with icons, numbers and nested links.",
   "icon": "mdi:view-grid-outline",
+  "category": "Navigation",
+  "keywords": [
+    "menu",
+    "tiles",
+    "grid"
+  ],
   "props": {
     "navigation": {
-      "type": "menu",
-      "label": "Menu",
-      "default": "main"
+      "use": "navigation"
     },
     "style": {
       "type": "enum",
@@ -17,7 +22,13 @@
         "elevated",
         "stripe"
       ],
-      "default": "outline"
+      "default": "outline",
+      "option_labels": {
+        "outline": "Outline",
+        "filled": "Filled",
+        "elevated": "Elevated",
+        "stripe": "Stripe"
+      }
     },
     "columns": {
       "type": "enum",
@@ -28,7 +39,14 @@
         "three",
         "four"
       ],
-      "default": "three"
+      "default": "three",
+      "option_labels": {
+        "auto": "Auto-fit",
+        "two": "2",
+        "three": "3",
+        "four": "4"
+      },
+      "group": "Layout"
     },
     "height": {
       "type": "enum",
@@ -37,7 +55,12 @@
         "auto",
         "tall"
       ],
-      "default": "auto"
+      "default": "auto",
+      "option_labels": {
+        "auto": "Fit content",
+        "tall": "Tall"
+      },
+      "group": "Layout"
     },
     "alignment": {
       "type": "enum",
@@ -46,46 +69,35 @@
         "start",
         "center"
       ],
-      "default": "start"
+      "default": "start",
+      "option_labels": {
+        "start": "Start",
+        "center": "Center"
+      },
+      "group": "Layout"
     },
     "arrows": {
       "type": "bool",
       "label": "Show arrows",
-      "default": true
+      "default": true,
+      "group": "Layout"
     },
     "numbers": {
       "type": "bool",
-      "label": "Show numbers"
+      "label": "Show numbers",
+      "group": "Layout"
     },
     "accent": {
-      "type": "color",
-      "label": "Accent color",
-      "default": "primary"
+      "use": "accent"
     },
     "surface": {
-      "type": "color",
-      "label": "Surface color"
+      "use": "surface"
     },
     "corners": {
-      "type": "enum",
-      "label": "Corners",
-      "options": [
-        "rounded",
-        "large",
-        "square",
-        "theme"
-      ],
-      "default": "rounded"
+      "use": "corners"
     },
     "density": {
-      "type": "enum",
-      "label": "Spacing",
-      "options": [
-        "compact",
-        "comfortable",
-        "spacious"
-      ],
-      "default": "comfortable"
+      "use": "density"
     }
   }
 }

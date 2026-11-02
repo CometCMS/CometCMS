@@ -1,12 +1,17 @@
 {
+  "$schema": "../../../../../schemas/block.schema.json",
   "title": "Pill Navigation",
   "description": "Rounded navigation chips in soft, outline, solid or ghost styles.",
   "icon": "mdi:dots-horizontal",
+  "category": "Navigation",
+  "keywords": [
+    "menu",
+    "chips",
+    "tags"
+  ],
   "props": {
     "navigation": {
-      "type": "menu",
-      "label": "Menu",
-      "default": "main"
+      "use": "navigation"
     },
     "style": {
       "type": "enum",
@@ -17,7 +22,13 @@
         "solid",
         "ghost"
       ],
-      "default": "soft"
+      "default": "soft",
+      "option_labels": {
+        "soft": "Soft",
+        "outline": "Outline",
+        "solid": "Solid",
+        "ghost": "Ghost"
+      }
     },
     "alignment": {
       "type": "enum",
@@ -28,41 +39,30 @@
         "end",
         "stretch"
       ],
-      "default": "start"
+      "default": "start",
+      "option_labels": {
+        "start": "Start",
+        "center": "Center",
+        "end": "End",
+        "stretch": "Stretch"
+      },
+      "group": "Layout"
     },
     "accent": {
-      "type": "color",
-      "label": "Accent color",
-      "default": "primary"
+      "use": "accent"
     },
     "surface": {
-      "type": "color",
-      "label": "Surface color"
+      "use": "surface"
     },
     "corners": {
-      "type": "enum",
-      "label": "Corners",
-      "options": [
-        "round",
-        "rounded",
-        "square",
-        "theme"
-      ],
-      "default": "round"
+      "use": "corners",
+      "default": "full"
     },
     "density": {
-      "type": "enum",
-      "label": "Spacing",
-      "options": [
-        "compact",
-        "comfortable",
-        "spacious"
-      ],
-      "default": "comfortable"
+      "use": "density"
     },
     "uppercase": {
-      "type": "bool",
-      "label": "Uppercase labels"
+      "use": "uppercase"
     }
   }
 }

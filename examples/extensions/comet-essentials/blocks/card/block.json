@@ -26,7 +26,8 @@
       "type": "string",
       "label": "Link label",
       "max": 80,
-      "default": "Read more"
+      "default": "Read more",
+      "visible_when": { "link": true }
     }
   }
 }

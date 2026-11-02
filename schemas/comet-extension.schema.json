@@ -1,0 +1,151 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CometCMS extension manifest (comet-extension.json)",
+  "type": "object",
+  "required": [
+    "api_version",
+    "name",
+    "title",
+    "version"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "api_version": {
+      "const": 1
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{0,39}/[a-z][a-z0-9-]{0,39}$",
+      "description": "vendor/extension. The vendors comet and core are reserved. Changing it makes a different extension."
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120,
+      "description": ""
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 500
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d{1,5}\\.\\d{1,5}\\.\\d{1,5}(?:-[a-zA-Z0-9.-]{1,40})?$"
+    },
+    "author": {
+      "type": "string",
+      "maxLength": 200
+    },
+    "license": {
+      "type": "string",
+      "maxLength": 100
+    },
+    "homepage": {
+      "type": "string",
+      "pattern": "^https?://",
+      "maxLength": 2000
+    },
+    "requires": {
+      "type": "object",
+      "maxProperties": 32,
+      "propertyNames": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9-]{0,39}/[a-z][a-z0-9-]{0,39}$"
+      },
+      "additionalProperties": {
+        "type": "string",
+        "description": "Version constraint such as ^1.7, ~1.2.0, >=1.2 <2 or *."
+      }
+    },
+    "cms": {
+      "type": "string",
+      "description": "Version constraint for the CometCMS release, such as >=2.0."
+    },
+    "permissions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "connect": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "items": {
+            "type": "string",
+            "pattern": "^https://(?:\\*\\.)?[a-z0-9.-]+(?::\\d{1,5})?$"
+          }
+        }
+      }
+    },
+    "settings": {
+      "type": "object",
+      "maxProperties": 32,
+      "propertyNames": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_]{0,63}$"
+      },
+      "additionalProperties": {
+        "allOf": [
+          {
+            "$ref": "block.schema.json#/definitions/prop"
+          }
+        ],
+        "properties": {
+          "type": {
+            "enum": [
+              "string",
+              "text",
+              "url",
+              "bool",
+              "int",
+              "enum",
+              "color"
+            ]
+          }
+        },
+        "not": {
+          "required": [
+            "use"
+          ]
+        }
+      },
+      "description": "Workspace-wide values, read in templates as {{@name}} and in scripts as ctx.settings."
+    },
+    "shared_props": {
+      "type": "object",
+      "maxProperties": 32,
+      "propertyNames": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_]{0,63}$"
+      },
+      "description": "Prop definitions blocks reuse with {\"use\": \"name\"}. No visible_when here; set it where the prop is used.",
+      "additionalProperties": {
+        "allOf": [
+          {
+            "$ref": "block.schema.json#/definitions/prop"
+          }
+        ],
+        "required": [
+          "type",
+          "label"
+        ],
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "use"
+              ]
+            },
+            {
+              "required": [
+                "visible_when"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  }
+}

@@ -138,6 +138,7 @@ tool group; choosing which header and footer a template shows is not.
 | Tool | Required inputs | Result |
 | --- | --- | --- |
 | `get_builder_schema` | none; optional `kind` (one or a list) | Without kind: kinds and their children, every style key's values (keys with equal values listed together), icon names and limits. With kind: props with defaults, the names of the style keys it takes, responsive/state keys and bindings. |
+| `list_extensions` | none | Installed extensions with version, status and settings, and per block its `kind`, title, description, palette `category`, whether it has a `slot`, its variations and whether it runs a script. `failed` lists folder extensions that did not load. Installing and configuring extensions stay in the admin. |
 | `get_layout` | target; optional `section_ids`, `depth`, `mode` | Ordered section summaries by default; opt into scoped full or summary trees. Always includes the whole layout revision. |
 | `get_section` | target + `section_id`; optional `depth`, `mode` | One subtree with default props omitted, or a bounded/summary tree, and whole layout revision. |
 | `get_element` | target + `element_id` | One node's props/style, immediate child summaries, section ID and revision. |

@@ -524,15 +524,19 @@ const flagSample = computed(() => {
   return { country: localeFlagCountry(locale), text };
 });
 
+// Space and radius props of blocks offer the Style panel's theme tokens, worded and drawn like it.
+const themeStyle = computed(() => ({ space: "padding_top", radius: "radius" })[props.def.theme] ?? null);
+
 function optionLabel(option) {
-  if (props.group === "props" && props.node.kind.startsWith("block:")) return optionText(props.def, option, locale.value);
-  if (option === "") return t(props.group === "style" ? "site.option.default" : "site.option.auto");
+  if (props.group === "props" && props.node.kind.startsWith("block:") && !themeStyle.value) return optionText(props.def, option, locale.value);
+  if (option === "") return t(props.group === "style" || themeStyle.value ? "site.option.default" : "site.option.auto");
   if (/^h[1-6]$/.test(option)) return option.toUpperCase();
   if (/^\d+:\d+$/.test(option)) return option;
   if (props.name === "opacity") return `${option}%`;
   // A property can word a shared option its own way.
-  const scoped = t(`site.option.${props.name}.${option}`);
-  if (scoped !== `site.option.${props.name}.${option}`) return scoped;
+  const name = themeStyle.value ?? props.name;
+  const scoped = t(`site.option.${name}.${option}`);
+  if (scoped !== `site.option.${name}.${option}`) return scoped;
   const key = `site.${isHoverAnimation.value ? "hoverEffect" : "option"}.${option}`;
   const translated = t(key);
   return translated === key ? option : translated;
@@ -553,8 +557,8 @@ const enumOptions = computed(() => {
 const colorOptions = computed(() => themeColorOptions(siteTheme.value, props.def.options ?? [], optionLabel));
 
 const enumBar = computed(() =>
-  props.def.type === "enum" && !(props.group === "props" && props.node.kind.startsWith("block:"))
-    ? barOptions(props.group, props.name, props.def.options ?? [], {
+  props.def.type === "enum" && (themeStyle.value || !(props.group === "props" && props.node.kind.startsWith("block:")))
+    ? barOptions(themeStyle.value ? "style" : props.group, themeStyle.value ?? props.name, props.def.options ?? [], {
         title: optionLabel,
         theme: siteTheme.value,
         kind: props.node.kind,

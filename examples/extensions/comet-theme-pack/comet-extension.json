@@ -1,9 +1,10 @@
 {
+  "$schema": "../../../schemas/comet-extension.schema.json",
   "api_version": 1,
-  "name": "cometcms/neo-brutalism",
+  "name": "cometcms/theme-pack",
   "title": "Comet ThemePack",
   "description": "Four coordinated design presets: Neo-Brutalism, Industrial, Material-inspired and Orbital. Includes editable Neo-Brutalism sections and the bundled Inter font.",
-  "version": "1.2.0",
+  "version": "2.0.0",
   "author": "CometCMS",
   "license": "MIT"
 }

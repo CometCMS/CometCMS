@@ -32,6 +32,8 @@ Starfields drift at half the chosen speed. Minimum heights expand to fit longer 
 
 Only decorative layers are clipped, so content and focus outlines remain visible. Backgrounds ignore pointer events and are hidden from assistive technology. The **Still** option stops all background animations in that container; a visitor's reduced-motion preference stops them in every container, while forced-colors mode hides the decoration. Nested containers retain their own settings.
 
+Apart from the background style, the controls are declared once under `shared_props` in `comet-extension.json` and reused by all four blocks, which group them as **Effect** and **Layout**. Editor texts are available in German.
+
 Blocks are stored as `block:cometcms/fancy-geometry`, `block:cometcms/fancy-lights`, `block:cometcms/fancy-space` and `block:cometcms/fancy-grid`. The extension imports no theme, content types or starter content.
 
 ## Validate and package

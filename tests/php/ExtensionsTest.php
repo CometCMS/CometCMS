@@ -118,7 +118,7 @@ function comet_block_errors(callable $callback): array
 test('extensions register their blocks without changing built-ins or crossing workspaces', function (): void {
     $blocks = ExtensionRegistry::active();
     $result = $blocks->installFiles(comet_block_files(), allowScripts: true);
-    assert_same(['name' => 'cometcms/essentials', 'title' => 'Comet Essentials', 'version' => '1.8.0', 'previous_version' => null,
+    assert_same(['name' => 'cometcms/essentials', 'title' => 'Comet Essentials', 'version' => '1.8.1', 'previous_version' => null,
         'blocks' => ['cometcms/before-after', 'cometcms/callout', 'cometcms/card', 'cometcms/feature', 'cometcms/logo-bar', 'cometcms/maps', 'cometcms/pricing', 'cometcms/slideshow', 'cometcms/stats', 'cometcms/testimonial', 'cometcms/vertical-text'], 'changes' => [], 'scripts' => ['cometcms/before-after', 'cometcms/logo-bar', 'cometcms/maps', 'cometcms/slideshow', 'cometcms/stats'], 'permissions' => []], $result);
     $spec = LayoutSchema::spec(blocks: $blocks);
     assert_true(in_array('heading', $spec['elements'], true));
@@ -188,7 +188,7 @@ test('extension validation reports every problem with its file and line', functi
         'blocks/empty/style.css' => '',
     ])));
     assert_same([
-        'comet-extension.json: Unknown field "scripts". Allowed: api_version, name, title, description, version, author, license, homepage, requires, cms, permissions, settings.',
+        'comet-extension.json: Unknown field "scripts". Allowed: $schema, api_version, name, title, description, version, author, license, homepage, requires, cms, permissions, settings, shared_props.',
         'comet-extension.json: api_version must be 1.',
         'blocks/callout/block.json: Remove "name": a block is named after its extension vendor and folder, for example blocks/callout becomes cometcms/callout.',
         'blocks/empty/block.json: Every block needs block.json.',
@@ -196,7 +196,7 @@ test('extension validation reports every problem with its file and line', functi
         'blocks/feature/style.css:1: The relative URL "images/bg.png" would resolve against each page\'s address. Reference extension files as url(assets/…).',
         'blocks/logo-bar/template.html:3: {{{answer}}}: unknown prop "answer". Declared props and settings: label, logos, direction, speed, height, gap, pause_on_hover, fade_edges, grayscale, empty_label, @tile_url, @attribution, @attribution_url.',
     ], $errors);
-    assert_same(['blocks/logo-bar/template.html:2: The style attribute may only set CSS custom properties from color props, as in style="--accent: {{accent}}". Put other CSS in style.css.'], comet_block_errors(fn() => Extension::compile(comet_block_files([
+    assert_same(['blocks/logo-bar/template.html:2: The style attribute may only set CSS custom properties from color, space, radius, shadow props, as in style="--accent: {{accent}}". Put other CSS in style.css.'], comet_block_errors(fn() => Extension::compile(comet_block_files([
         'blocks/logo-bar/template.html' => "<details>\n  <summary style=\"color: red\">{{label}}</summary>\n</details>",
     ]))));
     foreach ([
@@ -330,11 +330,11 @@ test('extension updates that break placed blocks need confirmation', function ()
         assert_same(['cometcms/callout: the prop "tone" no longer offers success. Instances using them fall back to the default.',
             'cometcms/callout: the prop "link_label" is removed. Its saved values are dropped the next time a layout is saved.',
             'cometcms/feature is removed. Placed instances will show as missing blocks.'], $e->changes);
-        assert_same('1.8.0', $e->installedVersion);
+        assert_same('1.8.1', $e->installedVersion);
     }
-    assert_same('1.8.0', ExtensionRegistry::active()->extension('cometcms/essentials')['version']);
+    assert_same('1.8.1', ExtensionRegistry::active()->extension('cometcms/essentials')['version']);
     $result = ExtensionRegistry::active()->installFiles($update, true, true);
-    assert_same('1.8.0', $result['previous_version']);
+    assert_same('1.8.1', $result['previous_version']);
     assert_same(3, count($result['changes']));
     assert_null(ExtensionRegistry::active()->get('block:cometcms/feature'));
     $pricing = comet_block_manifest('blocks/pricing/block.json', []);

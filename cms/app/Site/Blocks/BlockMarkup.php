@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CometCMS\Site\Blocks;
 
+use CometCMS\Extensions\Extension;
 use CometCMS\Core\HtmlSanitizer;
 
 /**
@@ -277,14 +278,14 @@ final class BlockMarkup
         return sprintf(self::TAG, $open) . ' ' . $section['attribute'] . sprintf(self::TAG, $section['pair']);
     }
 
-    /** Inline styles may only set custom properties from color props: style="--accent: {{accent}}". */
+    /** Inline styles may only set custom properties from theme value props: style="--accent: {{accent}}; --gap: {{gap}}". */
     private function style(string $value, ?int $line, string $location): ?string
     {
         $declaration = '(--[a-z][a-z0-9-]{0,40})\s*:\s*(\x{E000}(\d+)\x{E001})\s*';
         preg_match_all('/' . $declaration . '/u', $value, $declarations, PREG_SET_ORDER);
-        $colors = array_filter($declarations, fn(array $match): bool => $this->tags[(int) $match[3]]['type'] === 'value' && ($this->tags[(int) $match[3]]['spec']['type'] ?? '') === 'color');
-        if (preg_match('/^\s*(?:' . $declaration . '(?:;\s*|$))+$/uD', $value) !== 1 || count($colors) !== count($declarations)) {
-            $this->error($line, 'The style attribute may only set CSS custom properties from color props, as in style="--accent: {{accent}}". Put other CSS in style.css.');
+        $themed = array_filter($declarations, fn(array $match): bool => $this->tags[(int) $match[3]]['type'] === 'value' && in_array($this->tags[(int) $match[3]]['spec']['type'] ?? '', Extension::THEME_TYPES, true));
+        if (preg_match('/^\s*(?:' . $declaration . '(?:;\s*|$))+$/uD', $value) !== 1 || count($themed) !== count($declarations)) {
+            $this->error($line, 'The style attribute may only set CSS custom properties from ' . implode(', ', Extension::THEME_TYPES) . ' props, as in style="--accent: {{accent}}". Put other CSS in style.css.');
             $this->mark($value, 'removed');
             return null;
         }

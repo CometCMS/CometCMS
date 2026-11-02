@@ -1,0 +1,523 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CometCMS block (blocks/<name>/block.json)",
+  "description": "One block of an extension. Its name is the extension vendor plus the folder name; do not add \"name\".",
+  "type": "object",
+  "required": [
+    "title"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120,
+      "description": "Palette label."
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 500
+    },
+    "icon": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*:[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "description": "Iconify name such as mdi:tag-outline, unless the folder has icon.svg or icon.png."
+    },
+    "category": {
+      "type": "string",
+      "maxLength": 40,
+      "description": "Own palette group under this title."
+    },
+    "keywords": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 40
+      },
+      "maxItems": 12
+    },
+    "deprecated": {
+      "type": [
+        "boolean",
+        "string"
+      ],
+      "maxLength": 300
+    },
+    "aliases": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9-]{0,39}/[a-z][a-z0-9-]{0,39}$"
+      },
+      "maxItems": 8,
+      "uniqueItems": true,
+      "description": "Earlier names of this block, from the same vendor."
+    },
+    "allowed_children": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {
+        "type": "string"
+      },
+      "description": "For blocks with a <slot>: built-in element names and block names allowed inside."
+    },
+    "variations": {
+      "type": "array",
+      "maxItems": 16,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "title",
+          "props"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,39}$"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120,
+            "description": ""
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "icon": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*:[a-z0-9]+(?:-[a-z0-9]+)*$"
+          },
+          "props": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "props": {
+      "type": "object",
+      "maxProperties": 32,
+      "propertyNames": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_]{0,63}$"
+      },
+      "additionalProperties": {
+        "$ref": "#/definitions/prop"
+      }
+    }
+  },
+  "definitions": {
+    "prop": {
+      "type": "object",
+      "description": "A prop: a value editors set in the inspector. Give \"type\" and \"label\", or \"use\" a shared prop from comet-extension.json and override what differs.",
+      "properties": {
+        "use": {
+          "type": "string",
+          "description": "Name of a shared prop in comet-extension.json under shared_props. Fields given here replace its own; type cannot change."
+        },
+        "type": {
+          "enum": [
+            "string",
+            "text",
+            "richtext",
+            "url",
+            "link",
+            "bool",
+            "int",
+            "enum",
+            "icon",
+            "color",
+            "space",
+            "radius",
+            "shadow",
+            "media",
+            "menu",
+            "list"
+          ],
+          "description": "string, text, richtext, url, link, bool, int, enum, icon, color (theme color), space/radius/shadow (theme values, printed as CSS in style custom properties), media, menu or list."
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120,
+          "description": "Inspector label."
+        },
+        "default": {
+          "description": "Checked against the type: an option for enum, a theme token for color, space, radius and shadow (built-in sm/md/lg for shadow), a URL string for link."
+        },
+        "max": {
+          "type": "integer",
+          "description": "Length limit for string (1–5000, 500), text (1–20000, 2000) and url (1–5000, 2000); item limit for list (1–100, 20); upper bound for int."
+        },
+        "min": {
+          "type": "integer",
+          "minimum": -1000000,
+          "maximum": 1000000,
+          "description": "Lower bound for int."
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,120}$"
+          },
+          "minItems": 1,
+          "maxItems": 50,
+          "uniqueItems": true,
+          "description": "enum values, stored in layouts."
+        },
+        "fields": {
+          "type": "object",
+          "description": "list item fields: 1–16 props of any type except list.",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,63}$"
+          },
+          "additionalProperties": {
+            "$ref": "#/definitions/prop"
+          },
+          "minProperties": 1,
+          "maxProperties": 16
+        },
+        "control": {
+          "enum": [
+            "number",
+            "slider"
+          ],
+          "description": "int only."
+        },
+        "group": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40,
+          "description": "Collapsible inspector section; top-level props and settings only."
+        },
+        "help": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300,
+          "description": "Shown below the control."
+        },
+        "placeholder": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120,
+          "description": "string, text and url only."
+        },
+        "visible_when": {
+          "type": "object",
+          "minProperties": 1,
+          "maxProperties": 4,
+          "description": "Conditions on sibling props that must all hold: true/false for has a value/is empty, or accepted enum, space, radius or int values.",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": [
+                    "string",
+                    "integer"
+                  ]
+                },
+                "minItems": 1,
+                "maxItems": 50
+              }
+            ]
+          }
+        },
+        "option_labels": {
+          "type": "object",
+          "description": "enum only: labels editors see, keyed by option.",
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120,
+            "description": ""
+          }
+        },
+        "option_aliases": {
+          "type": "object",
+          "description": "enum, space and radius: earlier values mapped to current options, so saved layouts keep their meaning.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "renamed_from": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,63}$"
+          },
+          "minItems": 1,
+          "maxItems": 8,
+          "uniqueItems": true,
+          "description": "Earlier names of this prop."
+        },
+        "deprecated": {
+          "type": [
+            "boolean",
+            "string"
+          ],
+          "maxLength": 300,
+          "description": "Hidden in the inspector, still rendered; a string is a note for editors."
+        }
+      },
+      "additionalProperties": false,
+      "anyOf": [
+        {
+          "required": [
+            "use"
+          ]
+        },
+        {
+          "required": [
+            "type",
+            "label"
+          ]
+        }
+      ],
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "use"
+            ]
+          },
+          "then": {
+            "not": {
+              "required": [
+                "type"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "enum"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "required": [
+              "options"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "list"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "required": [
+              "fields"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "color"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "default": {
+                "enum": [
+                  "",
+                  "primary",
+                  "secondary",
+                  "accent",
+                  "background",
+                  "surface",
+                  "text",
+                  "muted",
+                  "border"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "space"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "default": {
+                "enum": [
+                  "",
+                  "none",
+                  "xs",
+                  "sm",
+                  "md",
+                  "lg",
+                  "xl",
+                  "2xl"
+                ]
+              },
+              "option_aliases": {
+                "additionalProperties": {
+                  "enum": [
+                    "none",
+                    "xs",
+                    "sm",
+                    "md",
+                    "lg",
+                    "xl",
+                    "2xl"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "radius"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "default": {
+                "enum": [
+                  "",
+                  "none",
+                  "theme",
+                  "sm",
+                  "md",
+                  "lg",
+                  "full"
+                ]
+              },
+              "option_aliases": {
+                "additionalProperties": {
+                  "enum": [
+                    "none",
+                    "theme",
+                    "sm",
+                    "md",
+                    "lg",
+                    "full"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "shadow"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "default": {
+                "enum": [
+                  "",
+                  "none",
+                  "sm",
+                  "md",
+                  "lg"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": [
+                  "bool"
+                ]
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "default": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": [
+                  "int"
+                ]
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "default": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

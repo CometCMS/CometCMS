@@ -9,6 +9,7 @@ use CometCMS\Core\Security;
 use CometCMS\Site\FontFiles;
 use CometCMS\Site\LayoutSchema;
 use CometCMS\Site\Icons;
+use CometCMS\Site\Shadow;
 use CometCMS\Site\SiteRepository;
 use CometCMS\Site\Theme;
 use CometCMS\Site\Blocks\BlockScripts;
@@ -38,9 +39,13 @@ final class Extension
     private const DOCUMENTS = ['README.md', 'LICENSE', 'LICENSE.md', 'LICENSE.txt', 'CHANGELOG.md'];
     private const SEED_LIMIT = 1048576;
     private const DOCUMENT_LIMIT = 262144;
-    private const EXTENSION_FIELDS = ['api_version', 'name', 'title', 'description', 'version', 'author', 'license', 'homepage', 'requires', 'cms', 'permissions', 'settings'];
-    private const BLOCK_FIELDS = ['title', 'description', 'icon', 'category', 'keywords', 'deprecated', 'aliases', 'allowed_children', 'variations', 'props'];
-    private const PROP_FIELDS = ['type', 'label', 'default', 'max', 'min', 'options', 'fields', 'control', 'group', 'help', 'placeholder', 'visible_when', 'option_labels', 'option_aliases', 'renamed_from', 'deprecated'];
+    // "$schema" lets editors and agents validate the JSON while writing it; CometCMS ignores it.
+    public const EXTENSION_FIELDS = ['$schema', 'api_version', 'name', 'title', 'description', 'version', 'author', 'license', 'homepage', 'requires', 'cms', 'permissions', 'settings', 'shared_props'];
+    public const BLOCK_FIELDS = ['$schema', 'title', 'description', 'icon', 'category', 'keywords', 'deprecated', 'aliases', 'allowed_children', 'variations', 'props'];
+    public const PROP_FIELDS = ['use', 'type', 'label', 'default', 'max', 'min', 'options', 'fields', 'control', 'group', 'help', 'placeholder', 'visible_when', 'option_labels', 'option_aliases', 'renamed_from', 'deprecated'];
+    /** Prop fields a block may set on top of a shared prop it uses. */
+    private const OVERRIDABLE_TEXTS = ['label', 'help', 'placeholder', 'group'];
+    public const MAX_SHARED_PROPS = 32;
     /** Prop types an extension setting can have: plain values an administrator sets once per workspace. */
     public const SETTING_TYPES = ['string', 'text', 'url', 'bool', 'int', 'enum', 'color'];
     public const MAX_SETTINGS = 32;
@@ -48,13 +53,36 @@ final class Extension
     public const PERMISSIONS = ['connect'];
     /** Editor texts translations may replace, per prop. */
     private const PROP_TEXTS = ['label', 'help', 'placeholder', 'group'];
-    public const PROP_TYPES = ['string', 'text', 'richtext', 'url', 'link', 'bool', 'int', 'enum', 'icon', 'color', 'media', 'menu', 'list'];
+    public const PROP_TYPES = ['string', 'text', 'richtext', 'url', 'link', 'bool', 'int', 'enum', 'icon', 'color', 'space', 'radius', 'shadow', 'media', 'menu', 'list'];
+    /** Prop types that hold a theme value and print its CSS in style custom properties. */
+    public const THEME_TYPES = ['color', 'space', 'radius', 'shadow'];
     /** Theme colors a color prop may default to; workspaces add their own custom colors. */
     public const COLOR_KEYS = ['primary', 'secondary', 'accent', 'background', 'surface', 'text', 'muted', 'border'];
     public const ICONS = ['icon.svg' => 'image/svg+xml', 'icon.png' => 'image/png'];
     /** What the asset route serves: assets, plus block scripts. */
     public const SERVED_TYPES = self::ASSET_TYPES + ['js' => 'text/javascript'];
     private const ICON_LIMIT = 65536;
+
+    /**
+     * The values a space or radius prop offers: the theme tokens of the matching
+     * Style control, so blocks and the builder stay in step. '' is "not set".
+     */
+    public static function themeOptions(string $type): array
+    {
+        $style = LayoutSchema::styleSpec();
+
+        return match ($type) {
+            'space' => $style['padding_top']['options'],
+            'radius' => $style['radius']['options'],
+            default => [],
+        };
+    }
+
+    /** The options a prop can be compared with: an enum's own, or the theme tokens of space and radius props. */
+    public static function options(array $spec): array
+    {
+        return $spec['type'] === 'enum' ? $spec['options'] : self::themeOptions($spec['type']);
+    }
 
     /** The running CometCMS release, which a manifest's "cms" constraint is checked against. */
     public static function cmsVersion(): string
@@ -308,7 +336,7 @@ final class Extension
                 if (!isset($parts[$required])) $errors[] = ['file' => $folder . $required, 'line' => null, 'message' => 'Every block needs ' . $required . '.'];
             }
             if (!isset($parts['block.json'], $parts['template.html'])) continue;
-            $block = self::blockManifest($parts['block.json'], $folder . 'block.json', $errors);
+            $block = self::blockManifest($parts['block.json'], $folder . 'block.json', $errors, $extension['shared_props'] ?? []);
             if ($block === null) continue;
             if (isset($icons[$slug]) && $block['icon'] !== '') {
                 $errors[] = ['file' => $folder . 'block.json', 'line' => null, 'message' => 'The block has both an "icon" name and an icon file. Keep one.'];
@@ -347,6 +375,11 @@ final class Extension
             $errors[] = ['file' => self::MANIFEST, 'line' => null, 'message' => 'permissions only apply to block scripts (blocks/<name>/view.js), and this extension has none. Remove permissions.'];
         }
         self::translations($translations, $extension, $compiled, $vendor, $errors);
+        foreach ($compiled as &$block) {
+            $block['props'] = self::withoutOwnTexts($block['props']);
+        }
+        unset($block);
+        unset($extension['shared_props']);
         foreach (array_diff_key($scripts, $blocks) as $slug => $_) {
             $errors[] = ['file' => 'blocks/' . $slug . '/view.js', 'line' => null, 'message' => 'There is no block "' . $slug . '" for this script. Add block.json and template.html next to it.'];
         }
@@ -525,6 +558,26 @@ final class Extension
             if ($setting !== null) $settings[$key] = $setting;
         }
         self::relations($settings, static fn(string $message) => $error('settings.' . $message));
+        // Shared props are checked on their own here, and again in each block that uses them.
+        $shared = [];
+        $declared = $manifest['shared_props'] ?? [];
+        if (!is_array($declared) || ($declared !== [] && array_is_list($declared)) || count($declared) > self::MAX_SHARED_PROPS) {
+            $error('shared_props must be an object of at most ' . self::MAX_SHARED_PROPS . ' prop definitions keyed by name, for example {"corners": {"type": "radius", "label": "Corners"}}.');
+            $declared = [];
+        }
+        foreach ($declared as $key => $spec) {
+            $fail = static fn(string $message) => $error('shared_props.' . $key . ': ' . $message);
+            if (is_array($spec) && array_key_exists('use', $spec)) {
+                $fail('a shared prop cannot use another shared prop.');
+                continue;
+            }
+            if (is_array($spec) && array_key_exists('visible_when', $spec)) {
+                $fail('visible_when depends on the block, so set it where the block uses the prop.');
+                continue;
+            }
+            // Invalid ones stay known, so blocks using them are not told the prop is missing.
+            $shared[(string) $key] = self::prop((string) $key, $spec, $fail) !== null ? $spec : null;
+        }
         self::text($manifest, 'title', 120, true, $error);
         foreach (['description' => 500, 'author' => 200, 'license' => 100] as $field => $max) {
             self::text($manifest, $field, $max, false, $error);
@@ -546,6 +599,8 @@ final class Extension
             'cms' => $cms,
             'permissions' => $permissions,
             'settings' => $settings,
+            // The declarations as written; blocks merge them before compiling (see blockManifest).
+            'shared_props' => $shared,
         ];
     }
 
@@ -579,7 +634,7 @@ final class Extension
         return $permissions;
     }
 
-    private static function blockManifest(string $json, string $file, array &$errors): ?array
+    private static function blockManifest(string $json, string $file, array &$errors, array $shared = []): ?array
     {
         $before = count($errors);
         $manifest = self::json($json, $file, $errors);
@@ -607,7 +662,7 @@ final class Extension
             $error('Blocks have at most ' . self::MAX_PROPS . ' props.');
         }
         foreach ($declared as $key => $spec) {
-            $prop = self::prop((string) $key, $spec, static fn(string $message) => $error('props.' . $key . ': ' . $message));
+            $prop = self::prop((string) $key, $spec, static fn(string $message) => $error('props.' . $key . ': ' . $message), shared: $shared);
             if ($prop !== null) $props[$key] = $prop;
         }
         self::relations($props, static fn(string $message) => $error('props.' . $message));
@@ -663,8 +718,8 @@ final class Extension
             $error = static function (string $message) use ($file, &$errors): void {
                 $errors[] = ['file' => $file, 'line' => null, 'message' => $message];
             };
-            foreach (array_diff(array_keys($data), ['title', 'description', 'settings', 'blocks']) as $unknown) {
-                $error('Unknown field "' . $unknown . '". Allowed: title, description, settings, blocks.');
+            foreach (array_diff(array_keys($data), ['$schema', 'title', 'description', 'settings', 'shared_props', 'blocks']) as $unknown) {
+                $error('Unknown field "' . $unknown . '". Allowed: title, description, settings, shared_props, blocks.');
             }
             $texts = self::texts($data, ['title' => 120, 'description' => 500], '', $error);
             if ($texts !== []) $extension['l10n'][$locale] = $texts;
@@ -674,6 +729,27 @@ final class Extension
                     continue;
                 }
                 self::propTexts($extension['settings'][$key], $entry, $locale, 'settings.' . $key, $error);
+            }
+            // A shared prop's translation applies wherever a block uses it; block entries below can still reword it.
+            foreach (self::entries($data, 'shared_props', '', $error) as $key => $entry) {
+                $spec = $extension['shared_props'][$key] ?? null;
+                if (!array_key_exists($key, $extension['shared_props'] ?? [])) {
+                    $error('shared_props.' . $key . ': the extension has no shared prop "' . $key . '".');
+                    continue;
+                }
+                if ($spec === null) continue;
+                $checked = false;
+                foreach ($blocks as &$block) {
+                    foreach ($block['props'] as &$prop) {
+                        if (($prop['use'] ?? null) !== $key) continue;
+                        // Report problems once, not for every block using the prop.
+                        $texts = is_array($entry) && !array_is_list($entry) ? array_diff_key($entry, array_flip($prop['own_texts'] ?? [])) : $entry;
+                        self::propTexts($prop, $texts, $locale, 'shared_props.' . $key, $checked ? static fn() => null : $error);
+                        $checked = true;
+                    }
+                    unset($prop);
+                }
+                unset($block);
             }
             foreach (self::entries($data, 'blocks', '', $error) as $slug => $entry) {
                 $kind = 'block:' . $vendor . '/' . $slug;
@@ -723,6 +799,17 @@ final class Extension
         }
     }
 
+    /** Props without the bookkeeping translations needed. */
+    private static function withoutOwnTexts(array $props): array
+    {
+        foreach ($props as &$prop) {
+            unset($prop['own_texts']);
+            if ($prop['type'] === 'list') $prop['fields'] = self::withoutOwnTexts($prop['fields']);
+        }
+
+        return $props;
+    }
+
     /** One prop's translated editor texts, option labels and, for lists, item fields. */
     private static function propTexts(array &$prop, mixed $entry, string $locale, string $path, callable $error): void
     {
@@ -744,7 +831,8 @@ final class Extension
                 $texts['option_labels'][(string) $option] = trim($label);
             }
         }
-        if ($texts !== []) $prop['l10n'][$locale] = $texts;
+        // Merged, so a block's own translation keeps what its shared prop's translation did not change.
+        if ($texts !== []) $prop['l10n'][$locale] = array_replace_recursive($prop['l10n'][$locale] ?? [], $texts);
         foreach (self::entries($entry, 'fields', $path . '.', $error) as $name => $fieldEntry) {
             if (!isset($prop['fields'][$name])) {
                 $error($path . '.fields.' . $name . ': the list has no field "' . $name . '".');
@@ -878,7 +966,7 @@ final class Extension
                 $problem = match (true) {
                     $other === $key => 'a prop cannot depend on itself.',
                     $target === null => 'there is no prop "' . $other . '" here. Conditions refer to props of the same block, or to fields of the same list item.',
-                    $target['type'] === 'enum' => array_diff($values, $target['options']) !== [] ? 'must be one or more of the options ' . implode(', ', $target['options']) . '.' : null,
+                    in_array($target['type'], ['enum', 'space', 'radius'], true) => array_diff($values, self::options($target)) !== [] ? 'must be one or more of the options ' . implode(', ', self::options($target)) . '.' : null,
                     $target['type'] === 'int' => array_filter($values, static fn(mixed $value): bool => !is_int($value)) !== [] ? 'must be one or more integers.' : null,
                     default => array_filter($values, static fn(mixed $value): bool => !is_bool($value)) !== [] || count($values) > 1
                         ? 'must be true (has a value) or false (is empty).' : null,
@@ -890,7 +978,7 @@ final class Extension
     }
 
     /** A complete prop spec, with the documented defaults filled in. List fields use the same rules, minus lists. */
-    private static function prop(string $key, mixed $spec, callable $error, bool $field = false, ?array $types = null): ?array
+    private static function prop(string $key, mixed $spec, callable $error, bool $field = false, ?array $types = null, array $shared = []): ?array
     {
         if (!preg_match('/^[a-z][a-z0-9_]{0,63}$/D', $key) || in_array($key, ['constructor', 'prototype'], true)) {
             $error('prop names start with a lowercase letter and use lowercase letters, digits and underscores (up to 64).');
@@ -899,6 +987,28 @@ final class Extension
         if (!is_array($spec) || array_is_list($spec)) {
             $error('each prop is an object with at least "type" and "label".');
             return null;
+        }
+        // {"use": "corners"} starts from the extension's shared prop; other fields here replace its own.
+        $use = null;
+        if (array_key_exists('use', $spec)) {
+            $use = $spec['use'];
+            if (is_string($use) && array_key_exists($use, $shared) && $shared[$use] === null) {
+                $error('use: the shared prop "' . $use . '" has errors, reported for comet-extension.json.');
+                return null;
+            }
+            if (!is_string($use) || !isset($shared[$use])) {
+                $error('use: there is no shared prop ' . json_encode($use, JSON_UNESCAPED_SLASHES) . '. Declare it in comet-extension.json under shared_props'
+                    . ($shared === [] ? '.' : ', which has: ' . implode(', ', array_keys($shared)) . '.'));
+                return null;
+            }
+            if (array_key_exists('type', $spec)) {
+                $error('type comes from the shared prop "' . $use . '". Remove it here, or declare a separate prop.');
+                return null;
+            }
+            $own = array_diff_key($spec, ['use' => true]);
+            $spec = array_replace($shared[$use], $own);
+            // List item fields have no groups; the shared prop's group only applies at the top level.
+            if ($field && !array_key_exists('group', $own)) unset($spec['group']);
         }
         $valid = true;
         $fail = static function (string $message) use ($error, &$valid): void {
@@ -967,7 +1077,20 @@ final class Extension
         $int = static fn(string $name, int $min, int $max, int $fallback) => !array_key_exists($name, $spec) ? $fallback
             : (is_int($spec[$name]) && $spec[$name] >= $min && $spec[$name] <= $max ? $spec[$name] : $fail(sprintf('%s must be an integer from %d to %d.', $name, $min, $max)));
         $allowed = match ($type) {
-            'string', 'url', 'text' => ['max'], 'int' => ['min', 'max'], 'enum' => ['options', 'option_labels', 'option_aliases'], 'list' => ['fields', 'max'], default => [],
+            'string', 'url', 'text' => ['max'], 'int' => ['min', 'max'], 'enum' => ['options', 'option_labels', 'option_aliases'], 'space', 'radius' => ['option_aliases'], 'list' => ['fields', 'max'], default => [],
+        };
+        // Earlier values mapped to current options, so renamed options (or an enum that became a
+        // space or radius prop) keep their meaning in saved layouts.
+        $optionAliases = static function (array $options) use ($spec, &$prop, $fail): void {
+            if (!array_key_exists('option_aliases', $spec)) return;
+            $aliases = $spec['option_aliases'];
+            if (!is_array($aliases) || $aliases === [] || array_is_list($aliases)
+                || array_filter(array_keys($aliases), static fn(mixed $old): bool => in_array((string) $old, $options, true) || !preg_match('/^[A-Za-z0-9_-]{1,120}$/D', (string) $old)) !== []
+                || array_filter($aliases, static fn(mixed $new): bool => !in_array($new, $options, true)) !== []) {
+                $fail('option_aliases must map earlier option values to current options, for example {"danger": "error"}. Earlier values cannot still be options.');
+            } else {
+                $prop['option_aliases'] = array_combine(array_map('strval', array_keys($aliases)), array_values($aliases));
+            }
         };
         foreach (['min', 'max', 'options', 'fields', 'option_labels', 'option_aliases'] as $name) {
             if (array_key_exists($name, $spec) && !in_array($name, $allowed, true)) $fail($name . ' does not apply to ' . $type . ' props.');
@@ -1014,17 +1137,14 @@ final class Extension
                         $prop['option_labels'] = array_map('trim', $labels);
                     }
                 }
-                if (array_key_exists('option_aliases', $spec)) {
-                    $aliases = $spec['option_aliases'];
-                    if (!is_array($aliases) || $aliases === [] || array_is_list($aliases)
-                        || array_filter(array_keys($aliases), static fn(mixed $old): bool => in_array((string) $old, $options, true) || !preg_match('/^[A-Za-z0-9_-]{1,120}$/D', (string) $old)) !== []
-                        || array_filter($aliases, static fn(mixed $new): bool => !in_array($new, $options, true)) !== []) {
-                        $fail('option_aliases must map earlier option values to current options, for example {"danger": "error"}. Earlier values cannot still be options.');
-                    } else {
-                        $prop['option_aliases'] = array_combine(array_map('strval', array_keys($aliases)), array_values($aliases));
-                    }
-                }
+                $optionAliases($options);
                 break;
+            case 'space':
+            case 'radius':
+                $prop['default'] = $default ?? '';
+                $optionAliases(self::themeOptions($type));
+                break;
+            case 'shadow':
             case 'color':
             case 'icon':
             case 'media':
@@ -1040,7 +1160,7 @@ final class Extension
                 $prop['max'] = $int('max', 1, 100, 20);
                 $prop['fields'] = [];
                 foreach ($fields as $name => $fieldSpec) {
-                    $compiled = self::prop((string) $name, $fieldSpec, static fn(string $message) => $fail('fields.' . $name . ': ' . $message), true);
+                    $compiled = self::prop((string) $name, $fieldSpec, static fn(string $message) => $fail('fields.' . $name . ': ' . $message), true, shared: $shared);
                     if ($compiled !== null) $prop['fields'][$name] = $compiled;
                 }
                 if (!$valid) return null;
@@ -1054,6 +1174,12 @@ final class Extension
                 unset($item['_unknown']);
                 return $item;
             }, $prop['default']);
+        }
+
+        if ($use !== null) {
+            $prop['use'] = $use;
+            // Translations of the shared prop apply to the texts this block did not reword.
+            $prop['own_texts'] = array_values(array_intersect(self::OVERRIDABLE_TEXTS, array_keys($own)));
         }
 
         return $valid ? $prop : null;
@@ -1095,6 +1221,9 @@ final class Extension
             'int' => is_int($value) && $value >= (int) $prop['min'] && $value <= (int) $prop['max'] ? null : 'must be an integer between min and max.',
             'enum' => in_array($value, $prop['options'], true) ? null : 'must be one of the options.',
             'color' => $value === '' || in_array($value, self::COLOR_KEYS, true) ? null : 'must be empty or a theme color: ' . implode(', ', self::COLOR_KEYS) . '.',
+            'space', 'radius' => in_array($value, self::themeOptions($prop['type']), true) ? null : 'must be empty or one of the theme ' . ($prop['type'] === 'space' ? 'spacing' : 'radius') . ' values: ' . implode(', ', array_filter(self::themeOptions($prop['type']))) . '.',
+            // Theme presets differ per workspace, so defaults use the built-in scale.
+            'shadow' => in_array($value, Shadow::FIXED, true) ? null : 'must be empty or one of the built-in shadows: ' . implode(', ', array_filter(Shadow::FIXED)) . '.',
             'icon' => is_string($value) && ($value === '' || isset(Icons::catalog()[$value])) ? null : 'must be empty or a bundled site icon name.',
             'media' => $value === '' ? null : 'is not supported: media comes from the library. Show a fallback with {{^name}}…{{/name}}.',
             'menu' => is_string($value) && ($value === '' || preg_match('/^[A-Za-z0-9_-]{1,80}$/D', $value)) ? null : 'must be empty or a menu name of up to 80 letters, digits, hyphens or underscores.',

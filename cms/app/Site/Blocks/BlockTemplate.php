@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace CometCMS\Site\Blocks;
 
 use CometCMS\Core\Security;
+use CometCMS\Extensions\Extension;
 use CometCMS\Site\Icons;
+use CometCMS\Site\Shadow;
 
 /**
  * Mustache-style block templates: escaped values, rich text, conditional and list
@@ -21,6 +23,31 @@ final class BlockTemplate
     public const MAX_DEPTH = 16;
     /** Sub-values a dotted tag may read, by prop type. */
     private const FIELDS = ['media' => ['url', 'alt']];
+
+    /**
+     * A color, space, radius or shadow value as templates and scripts receive it: "_" is
+     * the stored token (custom shadows are "custom"), "css" the value it stands for, which
+     * follows the theme. Unset values are "initial", so var(--x, fallback) uses the fallback.
+     *
+     * @return array{_: string, css: string}
+     */
+    public static function themeValue(string $type, mixed $value): array
+    {
+        if ($type === 'shadow' && is_array($value) && $value !== []) {
+            $css = Shadow::css($value);
+            return $css === '' ? ['_' => '', 'css' => 'initial'] : ['_' => 'custom', 'css' => $css];
+        }
+        if (!is_string($value) || $value === '') return ['_' => '', 'css' => 'initial'];
+        $css = match ($type) {
+            'color' => 'var(--c-' . $value . ')',
+            'space' => $value === 'none' ? '0px' : 'var(--space-' . $value . ')',
+            'radius' => match ($value) { 'none' => '0px', 'full' => '9999px', 'theme' => 'var(--radius-box)', default => 'var(--radius-' . $value . ')' },
+            'shadow' => $value === 'none' ? 'none' : 'var(--shadow-' . $value . ',none)',
+            default => $value,
+        };
+
+        return ['_' => $value, 'css' => $css];
+    }
 
     /**
      * @param array<string, array> $props declared prop specs
@@ -159,7 +186,7 @@ final class BlockTemplate
     {
         return match ($tag['spec']['type']) {
             'media' => $tag['field'] ?? 'url',
-            'color' => $context === 'css' ? 'css' : null,
+            'color', 'space', 'radius', 'shadow' => $context === 'css' ? 'css' : null,
             'text' => $context === 'text' ? 'lines' : null,
             'icon' => $context === 'text' ? 'icon' : null,
             default => null,
@@ -205,8 +232,8 @@ final class BlockTemplate
                 !$rawOutput && $type === '' && $spec['type'] === 'menu' => $key . ' is a menu: output its navigation with {{{' . $key . '}}}.',
                 $type === '' && $spec['type'] === 'list' => $key . ' is a list: repeat content for each item with {{#' . $key . '}}…{{/' . $key . '}}.',
                 $option !== null && $type === '' => 'comparisons only work in sections, like {{#' . $key . '=' . $option . '}}…{{/' . $key . '}}.',
-                $option !== null && $spec['type'] !== 'enum' => 'only enum props can be compared with =.',
-                $option !== null && !in_array($option, $spec['options'], true) => '"' . $option . '" is not an option of ' . $key . '. Options: ' . implode(', ', $spec['options']) . '.',
+                $option !== null && !in_array($spec['type'], ['enum', 'space', 'radius'], true) => 'only enum, space and radius props can be compared with =.',
+                $option !== null && !in_array($option, Extension::options($spec), true) => '"' . $option . '" is not an option of ' . $key . '. Options: ' . implode(', ', array_filter(Extension::options($spec))) . '.',
                 default => null,
             };
             if ($problem !== null) {

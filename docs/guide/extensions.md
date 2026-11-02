@@ -2,11 +2,21 @@
 
 <div v-pre>
 
-Extensions bring reusable blocks and optional starter content to a workspace. An extension is a ZIP with `comet-extension.json`; everything else is optional. Blocks stay installed with the extension. Content types, components, template lists with their layouts, and a theme preset are copied into normal site storage once, then belong to your site.
+Extensions bring reusable blocks and optional starter content to a workspace. An extension is a ZIP with `comet-extension.json`; everything else is optional. Blocks stay installed with the extension. Content types, components, template lists with their layouts, theme presets and fonts are copied into normal site storage once, then belong to your site.
 
 One install preview shows breaking changes, blocks with JavaScript, and every site item being copied. Confirming it submits these decisions together. Existing items default to **Skip**; choose **Overwrite** per item when you want to replace them. Reinstalling or updating an extension asks again. Installing a theme preset adds it to the designer without applying it.
 
 ## Quick start
+
+Create a working extension with one block, then check and preview it:
+
+```sh
+npm run extensions -- new my-extension acme/my-extension --block hello
+npm run extensions -- validate my-extension
+npm run extensions -- render my-extension hello
+```
+
+The new files reference the [JSON schemas](#tools-for-editors-and-agents) in `schemas/`, so editors complete and check them while you type. Pack the folder with `npm run extensions -- pack my-extension` and upload the ZIP as described below.
 
 The official **Comet Essentials** builder extension is developed in `examples/extensions/comet-essentials/`:
 
@@ -40,25 +50,13 @@ comet-essentials/
 ```
 
 1. Check the extension: `npm run extensions -- validate examples/extensions/comet-essentials`
-2. Pack it: `npm run extensions -- pack examples/extensions/comet-essentials` (writes `comet-essentials-1.8.0.zip`)
+2. Pack it: `npm run extensions -- pack examples/extensions/comet-essentials` (writes `cometcms-essentials-1.8.1.zip`, from the extension name and version)
 3. As an administrator, open **Website Settings → Extensions** and drop the ZIP on the upload area.
 4. Open a layout. **Before / after**, **Callout**, **Card**, **Logo bar**, **Feature**, **Pricing plan**, **Maps**, **Slideshow**, **Stats**, **Testimonial** and **Vertical Text** are in the elements palette.
 
-**Before / after** compares two media images with editable labels, an initial split from 0 to 100%, an optional caption and landscape (4:3), wide (16:9), square or portrait (3:4) crops. Use similarly framed images for the closest match. The published comparison supports dragging with a mouse or touch and keyboard navigation with arrow keys and Home/End after tabbing to the divider. A visually hidden, labeled native range control provides keyboard and screen-reader support, with a visible focus ring on the divider. Images use media-library alt text. Pages without JavaScript show both images side by side; missing or failed images do not enable the slider.
-
-**Testimonial** displays a translatable quote and attribution (name, role and company), an optional media portrait and an optional one-to-five-star rating. Choose left or centered alignment. The rating has a translatable accessible label; main text and surface styling respect the standard Style controls. It needs no JavaScript.
-
-**Vertical Text** displays a heading rotated 90° clockwise (top to bottom), 90° counterclockwise (bottom to top), or stacked with upright letters. Choose H1–H6 and left, center or right alignment. It uses the theme’s heading typography and the standard Style controls. Text is translatable and bindable, and stays intact for screen readers, copying and search. Spaces create gaps between words in stacked mode. No JavaScript is needed.
-
-**Maps** takes coordinates in `latitude, longitude` order, such as `52.520008, 13.404954`, and an initial zoom level from 1 (world) to 19 (street). The accessible location name labels the map for assistive technology; it is not geocoded. Use decimal degrees with a dot as the decimal separator. Latitude is limited to ±85.05112878 (the Web Mercator map extent), longitude to ±180. The map shows a pin with zoom buttons inside the bottom-left corner, and the full-map link and attribution at the bottom-right. There is no title or coordinates bar. It loads visible [OpenStreetMap tiles](https://operations.osmfoundation.org/policies/tiles/) when scrolled into view, with browser caching and attribution; it needs no API key or external JavaScript library. Pages without JavaScript show a placeholder and the OpenStreetMap links. Invalid coordinates and tile failures show an editable message. For high-traffic deployments, use a suitable tile provider under its terms.
-
-**Slideshow** accepts up to 12 slides with a media image, title, caption and optional link. Edit the slides in the inspector; image alt text comes from the media library. On the published website, use the arrows, numbered selectors or Left/Right and Home/End keys to change slides. Optional autoplay uses a configurable interval and a play/pause button, pauses while hovered or the page is hidden, and stops after focus or manual navigation. Reduced motion disables automatic playback. All button labels and slide content are translatable. Without JavaScript, the slides stay readable in a horizontally scrollable list.
+`examples/extensions/comet-essentials/README.md` describes how each Essentials block behaves. [Example extensions](#example-extensions) lists the other examples and the parts of the API each one shows.
 
 Zipping the folder yourself works too. A single top-level folder inside the ZIP is unwrapped, and `.DS_Store`, `__MACOSX/` and other dotfiles are ignored. The CLI runs the compiler checks without a running CMS; full seed schema validation happens during installation. It needs only PHP with the zip extension.
-
-The **CometCMS - Menu Variations** extension in `examples/extensions/comet-menu-variations/` adds **Pill Navigation**, **Segmented Navigation**, **Numbered Navigation**, **Navigation Cards**, **Sidebar Navigation** and **Inline Links**. Each uses the site's existing menus through a `menu` property and offers several styles plus accent color, corner, alignment and spacing options. Nested menus expand in place and links remain visible on mobile. Validate and pack it with the same CLI commands, replacing the source folder; a ready-to-upload package is at `examples/extensions/comet-menu-variations.zip`.
-
-**Comet Weather** (`examples/extensions/comet-weather/`, packed as `comet-weather.zip`) is the reference for the features beyond plain blocks: [settings](#settings), [network permissions](#network-permissions), [translations](#translations), the [script lifecycle](#javascript), a palette [category and variation](#palette-categories-keywords-and-variations), inspector [groups and conditions](#inspector-options) and [migrations](#migrations). It shows the current weather from the free Open-Meteo service. Essentials also uses them: map tiles and attribution are settings, the callout has variations and grouped, conditional link options, and every block has German editor texts.
 
 ## comet-extension.json
 
@@ -68,7 +66,7 @@ The **CometCMS - Menu Variations** extension in `examples/extensions/comet-menu-
   "name": "cometcms/essentials",
   "title": "Comet Essentials",
   "description": "Essential builder blocks that work with any theme.",
-  "version": "1.8.0",
+  "version": "1.8.1",
   "author": "CometCMS",
   "license": "MIT",
   "cms": ">=2.0",
@@ -81,7 +79,7 @@ The **CometCMS - Menu Variations** extension in `examples/extensions/comet-menu-
 | Field | Rules |
 | --- | --- |
 | `api_version` | Required. Always `1`. |
-| `name` | Required. `vendor/extension`, each part starting with a lowercase letter, up to 40 lowercase letters, digits or hyphens. The vendors `comet` and `core` are reserved. Uploading an extension with an installed name updates it. |
+| `name` | Required. `vendor/extension`, each part starting with a lowercase letter, up to 40 lowercase letters, digits or hyphens. The vendors `comet` and `core` are reserved. Uploading an extension with an installed name updates it; a different name is a different extension, so choose it once. |
 | `title` | Required. Up to 120 bytes. |
 | `version` | Required. Semantic version such as `1.0.0` or `1.1.0-beta.1`. |
 | `description`, `author`, `license`, `homepage` | Optional text. `homepage` is an http(s) URL. |
@@ -89,6 +87,8 @@ The **CometCMS - Menu Variations** extension in `examples/extensions/comet-menu-
 | `cms` | Optional version constraint for the CometCMS release, such as `">=2.0"`. Installation and enabling are refused on other releases. |
 | `settings` | Optional object of up to 32 workspace-wide [settings](#settings). |
 | `permissions` | Optional [network permissions](#network-permissions) for block scripts: `{"connect": ["https://api.example.com"]}`. |
+| `shared_props` | Optional object of up to 32 [shared props](#shared-props) that blocks reuse with `{"use": "name"}`. |
+| `$schema` | Optional path or URL of the [JSON schema](#tools-for-editors-and-agents), for editors. Ignored by CometCMS. `block.json` and translation files accept it too. |
 
 Other fields are rejected, so a typo cannot go unnoticed.
 
@@ -130,6 +130,7 @@ Every folder `blocks/<name>/` is one block. Its name combines the extension vend
 | `deprecated` | `true` or a note of up to 300 bytes. The block leaves the palette; placed instances keep working, and the inspector shows the note. |
 | `aliases` | Earlier names of this block. See [Migrations](#migrations). |
 | `allowed_children` | For blocks with a `<slot>`: the only elements editors may drop into it, as built-in element names (`heading`, `text`, `button`, …) and block names (`cometcms/card`). Other children are dropped when a layout is saved. |
+| `$schema` | Ignored; see [Tools for editors and agents](#tools-for-editors-and-agents). |
 
 #### Palette categories, keywords and variations
 
@@ -181,7 +182,10 @@ Every prop needs `type` and `label` (up to 120 bytes); `default` is optional.
 | `int` | `min`, `max` within ±1,000,000; optional `control: "slider"` | 0, clamped | Number, or a slider with an exact number field | The number |
 | `enum` | `options` (required): 1–50 values of letters, digits, `-` and `_` | the first option | Select | The option |
 | `icon` | none; the default is a bundled site icon name or `""` | no icon | Searchable site icon picker | `{{name}}` renders a decorative SVG in element content; in attributes it prints the icon name |
-| `color` | none; the default is a theme color or `""` | `""` | Theme color picker, including the workspace's custom colors | The color key, such as `primary` |
+| `color` | none; the default is a theme color or `""` | `""` | Theme color picker, including the workspace's custom colors | The color key, such as `primary`; its CSS in style properties |
+| `space` | optional `option_aliases`; the default is `""`, `none`, `xs`, `sm`, `md`, `lg`, `xl` or `2xl` | `""` | The Style panel's spacing scale, with the theme's sizes | The token; `var(--space-md)` in style properties, `0px` for `none` |
+| `radius` | optional `option_aliases`; the default is `""`, `none`, `theme`, `sm`, `md`, `lg` or `full` | `""` | The Style panel's corner choices | The token; `var(--radius-md)` in style properties, `var(--radius-box)` for `theme`, `9999px` for `full` |
+| `shadow` | none; the default is `""`, `none`, `sm`, `md` or `lg` | `""` | The Style panel's shadow picker: the S–L scale, the theme's shadow presets and custom shadows | The token, or `custom`; its `box-shadow` value in style properties |
 | `media` | none; no default | no image | Media library; can be bound to fields | The image URL; `{{name.alt}}` is its alternative text |
 | `menu` | none; default may be a menu name | `""` | Select from the site's menus, or None | `{{{name}}}` renders localized navigation with nested disclosures, icons and active-page states |
 | `list` | `fields` (required, 1–16 item fields of any other type), `max` 1–100 (20) | `[]` | Items to add, reorder and remove | Repeated by `{{#name}}…{{/name}}` |
@@ -211,9 +215,42 @@ Elsewhere inside a start tag, tags may only appear in quoted attribute values: `
 
 **Links.** Declare a `link` prop to use the builder's shared destination picker, then put it in an `<a href="{{cta}}">`. Keep the visible label in a separate text prop. When the editor chooses "open in new tab", CometCMS adds `target="_blank" rel="noopener noreferrer"` itself, unless the template sets its own `target`. For internal page destinations, "open in modal" adds `data-link-modal` and `aria-haspopup="dialog"` and uses the site's modal template. These options also work on links inside list items. A plain `url` prop only provides a URL input.
 
-**Colors.** A `color` prop prints its theme key, which fits theme classes such as `c-bg-{{tint}}` or your own class names. To use it in your CSS, set a custom property: `style="--cometcms-tint: {{tint}}"` becomes `--cometcms-tint: var(--c-accent)`, which follows the theme and dark mode. An empty color becomes `initial`, so `var(--cometcms-tint, fallback)` uses the fallback. The `style` attribute accepts nothing else.
+**Theme values.** `color`, `space`, `radius` and `shadow` props store a theme token and offer the same choices as the builder's Style panel, so blocks follow the design system instead of inventing their own scales such as compact/comfortable/spacious. In text and class names they print the token, which fits theme classes such as `c-bg-{{tint}}` or your own: `{{#corners=full}}…{{/corners}}` compares space and radius props like enums. In the `style` attribute they become the CSS value the token stands for: `style="--cometcms-tint: {{tint}}; --cometcms-gap: {{gap}}; --cometcms-radius: {{corners}}"` becomes `--cometcms-tint: var(--c-accent); --cometcms-gap: var(--space-md); --cometcms-radius: var(--radius-box)`, which follows the theme, its edits and dark mode. An empty value becomes `initial`, so `var(--cometcms-gap, 1rem)` uses the fallback. The `style` attribute accepts only custom properties set from these props.
+
+```css
+.c-block-cometcms__panel .cometcms-panel {
+  padding: var(--cometcms-gap, 1rem);
+  border-radius: var(--cometcms-radius, 0);
+  box-shadow: var(--cometcms-shadow, none);
+}
+```
+
+Use theme values for a single spacing, corner or shadow choice. Keep an `enum` when one option sets several related values at once, such as the gap, padding and font size of a density setting.
 
 **Menus.** Declare `"navigation": { "type": "menu", "label": "Menu", "default": "main" }` and place `<div>{{{navigation}}}</div>` in the template. The saved value references a site-owned menu; its labels and destinations follow the current language and subsequent menu edits. The renderer supplies a labeled `<nav class="c-menu c-menu-vertical c-menu-active-bold" data-menu>` with the shared `.c-menu-list`, `.c-menu-label`, `.c-submenu` and native disclosure markup. Scope styles to your own wrapper to create custom navigation layouts. Submenus expand in place by default, and repeated instances have independent disclosure groups. Menu props are not translated or bound separately, and also work as list item fields. Empty or missing menus render no navigation publicly and show a placeholder in the builder. Like rich text, menu HTML requires triple braces inside a block container; it cannot appear in attributes or paragraphs. Sections such as `{{#navigation}}` and `{{^navigation}}` test whether navigation was rendered.
+
+#### Shared props
+
+When several blocks offer the same control, declare it once in `comet-extension.json` and reuse it:
+
+```json
+"shared_props": {
+  "accent": { "type": "color", "label": "Accent color", "default": "primary", "group": "Colors" },
+  "corners": { "type": "radius", "label": "Corners", "default": "md", "group": "Shape" }
+}
+```
+
+```json
+"props": {
+  "accent": { "use": "accent" },
+  "corners": { "use": "corners", "label": "Card corners", "default": "lg" },
+  "show_more": { "type": "bool", "label": "Show more" }
+}
+```
+
+A prop with `use` starts from the shared definition; any other field given here replaces the shared one, except `type`. The prop name in the block is free, and the same shared prop can be used several times or in list item fields (where its `group` is left out). Shared props cannot use other shared props or have `visible_when`, because conditions depend on the block's other props; add `visible_when` where the prop is used. Each block still stores its own values, and the inspector and MCP see an ordinary prop with an extra `use` field. A translation of a shared prop under `shared_props` in `i18n/<locale>.json` applies wherever a top-level prop uses it, except for texts the block rewords itself; a block's own translation entry can still reword it.
+
+Changing a shared prop changes every block that uses it, and the install review reports breaking changes per block.
 
 #### Slots
 
@@ -344,7 +381,7 @@ Editor texts can be translated in `i18n/<locale>.json`, named after a lowercase 
 }
 ```
 
-Every key is optional. Props accept `label`, `help`, `placeholder`, `group`, enum `options` and list `fields`. Blocks, props, fields, options, settings and variations that do not exist are reported as errors, like typos elsewhere. Translations only change what editors see; translating content for visitors uses the site's languages, as before.
+Every key is optional. A `shared_props` object translates [shared props](#shared-props) like props. Props accept `label`, `help`, `placeholder`, `group`, enum `options` and list `fields`. Blocks, props, fields, options, settings and variations that do not exist are reported as errors, like typos elsewhere. Translations only change what editors see; translating content for visitors uses the site's languages, as before.
 
 ### Migrations
 
@@ -362,7 +399,7 @@ Renaming a block, prop or option would orphan saved values. Declare the earlier 
 
 - `aliases` (block.json): up to 8 earlier names of the block, from the same vendor. Placed `block:cometcms/forecast` instances become `block:cometcms/weather`. An installed block with that name takes precedence.
 - `renamed_from` (props and list fields): up to 8 earlier names. A saved value under an earlier name is used when the prop itself has none.
-- `option_aliases` (enum props): earlier values mapped to current options. Earlier values cannot still be options.
+- `option_aliases` (enum, space and radius props): earlier values mapped to current options. Earlier values cannot still be options. With aliases for all of its options, an enum can become a `space` or `radius` prop without a breaking change: `"corners": {"type": "radius", "label": "Corners", "option_aliases": {"round": "full", "square": "none"}}`. Update CSS that relied on the old option classes.
 
 Updates that only rename this way are not breaking changes, so the install review does not ask about them. Keep migrations for as long as older layouts may exist.
 
@@ -400,11 +437,12 @@ templates/<type>/<variant>.json
                               # {templates: [...], layouts: {area: nodes}}
 presets/<id>.json             # {name, theme}; multiple design presets
 theme.json                    # legacy single preset, also {name, theme}
+fonts/<name>.json             # {name, category, license, faces}; a font family from assets/
 ```
 
 Seed JSON files are limited to 1 MiB each. File names must be safe site names; component ids follow the builder's key rules. A content type's `name`, if present, must match its filename. The compiler checks paths, JSON and sizes. Installation also validates schemas against the current site, the content types and components being seeded, and installed blocks plus this extension's blocks. Validation finishes before any extension or seed files are written. Skipping a dependency that does not exist rejects the install.
 
-Content types are copied first, then components with their declared ids, template lists and layouts, and finally the theme presets. A template seed replaces one type/variant's list as a unit; its `layouts` object contains node lists keyed by template id, including `default`. For example:
+Fonts are copied first, then content types, components with their declared ids, template lists and layouts, and finally the theme presets. A template seed replaces one type/variant's list as a unit; its `layouts` object contains node lists keyed by template id, including `default`. For example:
 
 ```json
 {
@@ -417,17 +455,41 @@ Content types are copied first, then components with their declared ids, templat
 
 A component contains one structure root (`section`, `row` or `column`) in `nodes`, its `name`, `root`, and a `type` (empty for a component shared between types). Theme presets use a display `name` and a normal theme object. An extension can ship several under `presets/`; the legacy root `theme.json` can coexist with them. Preset names must produce distinct site ids. On first import, presets match existing designs by name; subsequent updates track each source file separately, including presets renamed in the site. Keep preset file paths stable between versions. Custom CSS is excluded from presets and stays unchanged when applying one.
 
-Try **Comet Portfolio** (`examples/extensions/comet-portfolio/`): install Essentials first, then upload `examples/extensions/comet-portfolio.zip`. The preview lists **Projects**, **Portfolio hero**, **project/detail** and **Portfolio dusk**. The project schema and field-bound case-study template demonstrate media, Markdown, selects, dates, numbers, booleans, a range meter, a color swatch, result repeaters and related-project cards. After installing, Projects appears in the admin and Portfolio dusk appears in the designer. Upload it again to try the per-item conflict choices.
+A font seed bundles a family with the extension, so presets can use it without an external service:
 
-For a collection of designs, upload **Comet ThemePack** (`examples/extensions/comet-theme-pack.zip`). It imports **Neo-Brutalism**, **Industrial**, **Material-inspired** and **Orbital**, plus three editable Neo-Brutalism section components. The presets coordinate light and dark palettes, typography, spacing, corners and shadows; Orbital starts in dark mode. Choose a preset in the designer and save to apply it. The Neo-Brutalism components use built-in elements with their own outlines and button styling; replace their sample copy and button destinations before publishing. The pack needs no other extension, scripts or external fonts. It keeps the internal extension name `cometcms/neo-brutalism` so it updates existing Neo-Brutalism installations. Imported presets and components can be kept after uninstalling.
+```json
+{
+  "name": "Inter",
+  "category": "sans-serif",
+  "license": "SIL Open Font License 1.1 …",
+  "faces": [
+    { "file": "assets/fonts/inter-latin-normal.woff2", "weight": [100, 900], "style": "normal", "subset": "latin", "unicode_range": "U+0000-00FF" }
+  ]
+}
+```
 
-For decorative content wrappers, upload **Fancy BG Containers** (`examples/extensions/comet-fancy-bg-containers.zip`). It adds **Geometric Forms**, **Soft Lights**, **Deep Space** and **Futuristic Grid**, each with a slot for normal builder elements. Choose background variants, theme-aware effect colors, intensity, motion, scale, padding, minimum height and vertical alignment. The normal Style controls set the surface, text and corners. Place one in a single-column full-width section to use it as a section background. These blocks need no JavaScript or external assets, respect reduced motion, and also offer a per-container **Still** option. They import no starter content or theme.
+`category` is `serif`, `sans-serif`, `monospace`, `cursive` or `fantasy`; `license` is text of up to 128 KiB. Each of 1 to 64 faces names a `.woff2` file under `assets/`, a weight range, `normal` or `italic`, and an optional subset and Unicode range. The file name may not be a built-in font stack such as `system`. Presets of the same extension refer to the family by its file name, `"fonts": {"body": "inter"}`; installation turns that into the site's font id, which depends on the extension name and file name.
 
 The ledger at `site/extensions-seeded.json` records each installed seed's kind, id, SHA-256 hash and installation time, grouped by extension name. Hashes describe the final stored JSON, including all layouts for a template seed. Skipping an item keeps its original ledger record. Creating or explicitly overwriting an item transfers its tracking to the installing extension; an older importer can no longer hide it on disable or offer it for deletion. Updates refresh seeds by default only when this extension seeded them and their hash still matches, meaning nobody edited them since; the review shows them as *From earlier version*. Edited items (*Edited since install*) and existing items the extension does not track are kept unless you choose overwrite. Seeds a newer version no longer ships stay in the site and remain tracked for uninstall. Uninstalling while keeping an item drops that tracking and leaves it independent of extension status.
 
 On uninstall, the dialog lists seeded items. Items unchanged since installation are checked, so by default they are removed with the extension; items edited since installation and types containing entries start unchecked and display warnings when selected. Removing a content type also removes its entries and its site layouts, just as deleting the type in the admin does. Unchecked items remain normal site content. Blocks and assets are always removed, and the extension's ledger entry is dropped. Presets are tracked by their site id, so renaming one does not detach it from the uninstall preview.
 
 A failed seed write restores the previous extension directory and the seeded destinations changed during that attempt. The index cache is `cache/extensions.json` within the workspace.
+
+## Example extensions
+
+The extensions in `examples/extensions/` are working references, each packed next to its folder as a ZIP. Copy the parts you need.
+
+| Extension | Shows |
+| --- | --- |
+| **Comet Essentials** (`cometcms/essentials`) | Eleven blocks: media, link, list, rich-text, icon and color props, a slot (Card), [scripts](#javascript), [settings](#settings), [variations](#palette-categories-keywords-and-variations), grouped and conditional [inspector options](#inspector-options) and German [translations](#translations). |
+| **Comet Weather** (`cometcms/weather`) | Everything beyond plain blocks in one block: settings, [network permissions](#network-permissions), translations, the script lifecycle, a palette category and variation, inspector groups and conditions, and [migrations](#migrations). It shows the current weather from the free Open-Meteo service. |
+| **Menu Variations** (`cometcms/menu-variations`) | Six navigation blocks in a **Navigation** palette category, built on `menu` props. They reuse [shared props](#shared-props) for the menu, colors, corners and spacing, and `radius` [theme values](#template-html) for corners, migrated from an earlier enum with `option_aliases`. |
+| **Fancy BG Containers** (`cometcms/fancy-bg-containers`) | Four decorative containers with a slot and CSS-only motion that respects reduced motion. Apart from the background style, all their controls are shared props. Place one in a single-column full-width section to use it as a section background. |
+| **Comet Portfolio** (`cometcms/portfolio`) | Seeded site content: a content type, a component, a template list and a preset, plus a [dependency](#dependencies) on Essentials. Install Essentials first. The project schema and field-bound case-study template demonstrate media, Markdown, selects, dates, numbers, booleans, a range meter, a color swatch, result repeaters and related-project cards. Upload it again to try the per-item conflict choices. |
+| **Comet ThemePack** (`cometcms/theme-pack`) | Four design presets (Neo-Brutalism, Industrial, Material-inspired and Orbital) with a bundled [font](#seeded-site-content) and three editable Neo-Brutalism section components. Choose a preset in the designer and save to apply it. No blocks or scripts. |
+
+Version 2.0 of the ThemePack renamed it from `cometcms/neo-brutalism`, its name while it held one design. A renamed extension does not update the old one: uninstall Neo-Brutalism and keep its items, then install the ThemePack and choose **Overwrite** for the kept items it should track.
 
 ## Install, update and delete
 
@@ -443,7 +505,7 @@ Extensions belong to one workspace and are independent of its theme. Workspace b
 
 Copied folders register their blocks on the next request. They do not seed site content; upload the ZIP through the admin to preview and copy seeds. CometCMS keeps a compiled index of all extensions and rebuilds it whenever an extension file's size, modification time or inode changes. Extensions in the folder that fail validation are listed with their errors and a **Delete** action in **Extensions**, without affecting the other extensions. The folder name must match the extension `name`. Reload an open builder after installing or updating an extension.
 
-Keep your extensions in version control. Versions are informational: dependencies are checked by extension name, without version constraints, automatic downloads or rollback beyond reinstalling an older ZIP.
+Keep your extensions in version control. Versions are compared only by [dependency constraints](#dependencies) and the `cms` field; there are no automatic downloads, and rolling back means reinstalling an older ZIP.
 
 ## Dependencies
 
@@ -468,7 +530,20 @@ blocks/testimonial/template.html:6: {{quote}}: quote is rich text: output its HT
 blocks/feature/style.css:1: The relative URL "images/bg.png" would resolve against each page's address. Reference extension files as url(assets/…).
 ```
 
-For coding agents, the loop is: edit the extension, run `npm run extensions -- validate <folder>`, and fix what it reports.
+## Tools for editors and agents
+
+| Command | Does |
+| --- | --- |
+| `npm run extensions -- new <folder> [vendor/name] [--block <name>]` | Creates a valid extension with one block that uses a shared prop and theme values. Never overwrites a non-empty folder. |
+| `npm run extensions -- validate <folder-or-zip> [--json]` | Runs every compiler check. With `--json`, prints `{"ok": true, "name", "version", "blocks", "scripts", "seeds"}` or `{"ok": false, "errors": [{file, line, message}]}`; the exit code is 0 or 1 either way. |
+| `npm run extensions -- render <folder-or-zip> <block> [props.json] [--json]` | Prints a block's HTML with its defaults, or with the prop values in `props.json`. Theme values become their CSS, and media, links and menus get placeholders, so you can check markup and classes without a site. Scripts do not run. |
+| `npm run extensions -- pack <folder> [output.zip]` | Validates, then writes the ZIP. |
+
+The loop for coding agents: edit the extension, run `validate --json`, fix what it reports, and `render` the blocks you changed.
+
+**JSON schemas.** `schemas/comet-extension.schema.json`, `schemas/block.schema.json` and `schemas/i18n.schema.json` (JSON Schema draft-07) describe the manifest, `block.json` and translation files. Reference them with a `$schema` path, as the examples and `new` do, so editors complete fields and flag mistakes while you type. The compiler remains the authority: it also checks templates, CSS, assets, defaults against limits, and how files refer to each other.
+
+**MCP.** Agents with builder access call `list_extensions` to see the installed extensions and what each block is for, then `get_builder_schema` with a block's kind for its props. Space and radius props appear there as enums of the theme tokens. Installing extensions and changing their settings stay in the admin, because scripts need an administrator's confirmation.
 
 ## Trust and permissions
 

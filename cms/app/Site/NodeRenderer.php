@@ -313,7 +313,7 @@ final class NodeRenderer
             $value = $props[$key] ?? $spec['default'];
             $values[$key] = match ($spec['type']) {
                 'media' => $this->blockMedia(is_string($value) ? $value : ''),
-                'color' => is_string($value) && $value !== '' ? ['_' => $value, 'css' => 'var(--c-' . $value . ')'] : ['_' => '', 'css' => 'initial'],
+                'color', 'space', 'radius', 'shadow' => BlockTemplate::themeValue($spec['type'], $value),
                 'link' => ($link = is_array($value) ? $this->resolveLink($value, $state) : null) !== null ? ['_' => $link['href'], 'new_tab' => $link['new_tab'], 'open_modal' => $link['open_modal']] : ['_' => ''],
                 'url' => is_string($value) && HtmlSanitizer::isSafeUrl(trim($value)) ? trim($value) : '',
                 // Saved layouts are sanitized already; like the text element, render does it again.

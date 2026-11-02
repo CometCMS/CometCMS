@@ -1,0 +1,266 @@
+{
+  "$schema": "../../../../schemas/i18n.schema.json",
+  "title": "CometCMS - Menü-Varianten",
+  "description": "Pills, segmentierte Tabs, ein nummerierter Index, Karten, eine Seitenleiste und Inline-Links aus deinen Website-Menüs, jeweils mit Stilen, Formen und Abständen.",
+  "shared_props": {
+    "navigation": {
+      "label": "Menü"
+    },
+    "accent": {
+      "label": "Akzentfarbe",
+      "group": "Farben"
+    },
+    "surface": {
+      "label": "Flächenfarbe",
+      "group": "Farben",
+      "help": "Hintergrund der Links. Leer lassen, um den des Stils zu verwenden."
+    },
+    "corners": {
+      "label": "Ecken",
+      "group": "Form und Abstände",
+      "help": "Verwendet die Eckenradien des Themes."
+    },
+    "density": {
+      "label": "Abstände",
+      "group": "Form und Abstände",
+      "options": {
+        "compact": "Kompakt",
+        "comfortable": "Angenehm",
+        "spacious": "Großzügig"
+      }
+    },
+    "uppercase": {
+      "label": "Beschriftungen in Großbuchstaben",
+      "group": "Form und Abstände"
+    }
+  },
+  "blocks": {
+    "menu-cards": {
+      "title": "Navigationskarten",
+      "description": "Ein responsives Raster klickbarer Navigationskarten mit Icons, Nummern und verschachtelten Links.",
+      "category": "Navigation",
+      "keywords": [
+        "menü",
+        "kacheln",
+        "raster"
+      ],
+      "props": {
+        "style": {
+          "label": "Stil",
+          "options": {
+            "outline": "Kontur",
+            "filled": "Gefüllt",
+            "elevated": "Erhöht",
+            "stripe": "Streifen"
+          }
+        },
+        "columns": {
+          "label": "Spalten (Desktop)",
+          "group": "Layout",
+          "options": {
+            "auto": "Automatisch"
+          }
+        },
+        "height": {
+          "label": "Kartenhöhe",
+          "group": "Layout",
+          "options": {
+            "auto": "Inhalt",
+            "tall": "Hoch"
+          }
+        },
+        "alignment": {
+          "label": "Textausrichtung",
+          "group": "Layout",
+          "options": {
+            "start": "Anfang",
+            "center": "Mitte"
+          }
+        },
+        "arrows": {
+          "label": "Pfeile anzeigen",
+          "group": "Layout"
+        },
+        "numbers": {
+          "label": "Nummern anzeigen",
+          "group": "Layout"
+        }
+      }
+    },
+    "menu-index": {
+      "title": "Nummerierte Navigation",
+      "description": "Ein redaktioneller Index mit großen Links, Nummern und Hover-Pfeilen.",
+      "category": "Navigation",
+      "keywords": [
+        "menü",
+        "nummeriert",
+        "index"
+      ],
+      "props": {
+        "numbers": {
+          "label": "Nummerierung",
+          "group": "Layout",
+          "options": {
+            "none": "Keine"
+          }
+        },
+        "size": {
+          "label": "Linkgröße",
+          "group": "Layout",
+          "options": {
+            "medium": "Mittel",
+            "large": "Groß",
+            "display": "Display"
+          }
+        },
+        "effect": {
+          "label": "Hover-Effekt",
+          "group": "Layout",
+          "options": {
+            "slide": "Verschieben",
+            "fill": "Füllen",
+            "none": "Keiner"
+          }
+        },
+        "arrows": {
+          "label": "Pfeile anzeigen",
+          "group": "Layout"
+        },
+        "dividers": {
+          "label": "Trennlinien",
+          "group": "Layout"
+        }
+      }
+    },
+    "menu-inline": {
+      "title": "Inline-Links",
+      "description": "Eine Zeile Textlinks mit Trennzeichen für Footer, Rechtliches und Schnellnavigation.",
+      "category": "Navigation",
+      "keywords": [
+        "menü",
+        "footer",
+        "impressum"
+      ],
+      "props": {
+        "separator": {
+          "label": "Trennzeichen",
+          "group": "Layout",
+          "options": {
+            "dot": "Punkt ·",
+            "slash": "Schrägstrich /",
+            "pipe": "Strich |",
+            "dash": "Gedankenstrich –",
+            "none": "Keines"
+          }
+        },
+        "hover": {
+          "label": "Hover-Effekt",
+          "group": "Layout",
+          "options": {
+            "underline": "Unterstreichen",
+            "color": "Farbe",
+            "fade": "Andere abblenden"
+          }
+        },
+        "alignment": {
+          "label": "Ausrichtung",
+          "group": "Layout",
+          "options": {
+            "start": "Anfang",
+            "center": "Mitte",
+            "end": "Ende",
+            "between": "Verteilt"
+          }
+        }
+      }
+    },
+    "menu-pills": {
+      "title": "Pill-Navigation",
+      "description": "Abgerundete Navigations-Chips in weichem, konturiertem, gefülltem oder Ghost-Stil.",
+      "category": "Navigation",
+      "keywords": [
+        "menü",
+        "chips",
+        "tags"
+      ],
+      "props": {
+        "style": {
+          "label": "Stil",
+          "options": {
+            "soft": "Weich",
+            "outline": "Kontur",
+            "solid": "Gefüllt",
+            "ghost": "Ghost"
+          }
+        },
+        "alignment": {
+          "label": "Ausrichtung",
+          "group": "Layout",
+          "options": {
+            "start": "Anfang",
+            "center": "Mitte",
+            "end": "Ende",
+            "stretch": "Strecken"
+          }
+        }
+      }
+    },
+    "menu-segmented": {
+      "title": "Segmentierte Navigation",
+      "description": "Ein Segment-Schalter, eine Tab-Leiste oder Button-Gruppe mit hervorgehobener aktueller Seite.",
+      "category": "Navigation",
+      "keywords": [
+        "menü",
+        "tabs",
+        "umschalter"
+      ],
+      "props": {
+        "style": {
+          "label": "Stil",
+          "options": {
+            "track": "Schiene",
+            "tabs": "Tabs",
+            "divided": "Geteilt"
+          }
+        },
+        "width": {
+          "label": "Breite",
+          "group": "Layout",
+          "options": {
+            "fill": "Zeile füllen",
+            "fit": "Inhalt"
+          }
+        },
+        "alignment": {
+          "label": "Ausrichtung",
+          "group": "Layout",
+          "options": {
+            "start": "Anfang",
+            "center": "Mitte",
+            "end": "Ende"
+          }
+        }
+      }
+    },
+    "menu-sidebar": {
+      "title": "Seitenleisten-Navigation",
+      "description": "Eine vertikale Liste für Seitenleisten und Dokumentation mit markierter aktueller Seite.",
+      "category": "Navigation",
+      "keywords": [
+        "menü",
+        "doku",
+        "vertikal"
+      ],
+      "props": {
+        "style": {
+          "label": "Stil",
+          "options": {
+            "rail": "Leiste",
+            "pill": "Pill",
+            "plain": "Schlicht"
+          }
+        }
+      }
+    }
+  }
+}

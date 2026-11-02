@@ -91,7 +91,7 @@ JS;
         foreach ($specs as $key => $spec) {
             $value = $values[$key] ?? $spec['default'];
             $resolved[$key] = match ($spec['type']) {
-                'color' => is_string($value) && $value !== '' ? ['_' => $value, 'css' => 'var(--c-' . $value . ')'] : ['_' => '', 'css' => 'initial'],
+                'color' => BlockTemplate::themeValue('color', $value),
                 'url' => is_string($value) && HtmlSanitizer::isSafeUrl(trim($value)) ? trim($value) : '',
                 default => is_scalar($value) ? $value : '',
             };

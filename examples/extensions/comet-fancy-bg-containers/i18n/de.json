@@ -1,0 +1,130 @@
+{
+  "$schema": "../../../../schemas/i18n.schema.json",
+  "title": "Fancy-BG-Container",
+  "description": "Inhalts-Container mit geometrischen Formen, weich bewegten Lichtern, Weltraum-Himmeln und futuristischen Rastern. Theme-Akzente, anpassbare Layouts und reine CSS-Bewegung.",
+  "shared_props": {
+    "accent": {
+      "label": "Primäre Effektfarbe",
+      "group": "Effekt"
+    },
+    "secondary": {
+      "label": "Sekundäre Effektfarbe",
+      "group": "Effekt"
+    },
+    "intensity": {
+      "label": "Effektstärke",
+      "group": "Effekt",
+      "help": "Hinter langen Texten „Dezent“ verwenden.",
+      "options": {
+        "subtle": "Dezent",
+        "balanced": "Ausgewogen",
+        "vivid": "Kräftig"
+      }
+    },
+    "motion": {
+      "label": "Bewegung",
+      "group": "Effekt",
+      "help": "Wer reduzierte Bewegung bevorzugt, sieht immer die ruhende Version.",
+      "options": {
+        "still": "Ruhend",
+        "drift": "Treibend (40 s)",
+        "gentle": "Sanft (24 s)",
+        "lively": "Lebhaft (12 s)"
+      }
+    },
+    "scale": {
+      "label": "Effektgröße",
+      "group": "Effekt",
+      "options": {
+        "small": "Klein",
+        "medium": "Mittel",
+        "large": "Groß"
+      }
+    },
+    "padding": {
+      "label": "Innenabstand",
+      "group": "Layout",
+      "options": {
+        "none": "Keiner",
+        "compact": "Kompakt",
+        "comfortable": "Angenehm",
+        "spacious": "Großzügig"
+      }
+    },
+    "height": {
+      "label": "Mindesthöhe",
+      "group": "Layout",
+      "help": "Längerer Inhalt macht den Container trotzdem höher.",
+      "options": {
+        "content": "Inhalt",
+        "compact": "Kompakt (20rem)",
+        "hero": "Hero (36rem)",
+        "screen": "Ganzer Bildschirm"
+      }
+    },
+    "align": {
+      "label": "Vertikale Ausrichtung",
+      "group": "Layout",
+      "options": {
+        "top": "Oben",
+        "center": "Mitte",
+        "bottom": "Unten"
+      }
+    }
+  },
+  "blocks": {
+    "fancy-geometry": {
+      "title": "Geometrische Formen",
+      "description": "Schwebende Ringe, kantige Flächen und geometrische Konturen hinter deinem Inhalt.",
+      "props": {
+        "variant": {
+          "label": "Hintergrundstil",
+          "options": {
+            "mixed": "Gemischte Formen",
+            "rings": "Ringe",
+            "angular": "Kantig"
+          }
+        }
+      }
+    },
+    "fancy-grid": {
+      "title": "Futuristisches Raster",
+      "description": "Ein industrielles Raster mit Scan-Licht, leuchtendem Horizont und technischen Eckmarken.",
+      "props": {
+        "variant": {
+          "label": "Hintergrundstil",
+          "options": {
+            "perspective": "Perspektivischer Boden",
+            "flat": "Flaches Raster"
+          }
+        }
+      }
+    },
+    "fancy-lights": {
+      "title": "Weiche Lichter",
+      "description": "Sanft treibende Lichtflächen oder ein Polarlicht-Band hinter deinem Inhalt.",
+      "props": {
+        "variant": {
+          "label": "Hintergrundstil",
+          "options": {
+            "orbs": "Lichtkugeln",
+            "aurora": "Polarlicht-Band"
+          }
+        }
+      }
+    },
+    "fancy-space": {
+      "title": "Weltraum",
+      "description": "Mehrschichtige Sternenfelder mit optionalem, sanft leuchtendem Nebel hinter deinem Inhalt.",
+      "props": {
+        "variant": {
+          "label": "Hintergrundstil",
+          "options": {
+            "nebula": "Nebel",
+            "starfield": "Sternenfeld"
+          }
+        }
+      }
+    }
+  }
+}

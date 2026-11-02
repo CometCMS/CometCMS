@@ -3,7 +3,7 @@
   "name": "cometcms/essentials",
   "title": "Comet Essentials",
   "description": "Before/after comparisons, testimonials, callouts, cards, logo bars, features, pricing, maps, slideshows, stats and vertical text that work with any theme.",
-  "version": "1.8.0",
+  "version": "1.8.1",
   "author": "CometCMS",
   "license": "MIT",
   "cms": ">=2.0",

@@ -1,6 +1,6 @@
 # CometCMS - Menu Variations
 
-Six navigation elements that use your existing site menus:
+Six navigation elements that use your existing site menus. They appear in their own **Navigation** group of the elements palette:
 
 - **Pill Navigation** — chips that wrap across lines. Styles: soft, outline, solid (current page filled with the accent) and ghost. Align start, center, end or stretch across the row.
 - **Segmented Navigation** — a *track* with a raised thumb on the current page, underlined *tabs*, or a *divided* button group. Fill the width with equal segments or fit the content and align it.
@@ -9,11 +9,11 @@ Six navigation elements that use your existing site menus:
 - **Sidebar Navigation** — a vertical list for sidebars and docs. The current page is marked with a rail indicator, a filled pill or plain accent text.
 - **Inline Links** — a row of text links for footers and legal links, separated by dots, slashes, pipes, dashes or nothing. Hover underlines, colors, or fades the other links. Align start, center, end or spread across the row.
 
-Every element offers an accent color from the theme, including custom colors, and compact, comfortable or spacious spacing. Pills, segments and cards also take a surface color and a corner shape (round, rounded, large, square, or the theme's radius). Pills, segments and inline links can show uppercase labels. Solid and filled current-page states pick black or white text for contrast with the accent. Cards become two columns on tablets and one on small phones unless set to auto. Use the builder's normal Style controls for typography, text color, backgrounds and outer spacing.
+Every element offers an accent color from the theme, including custom colors, and compact, comfortable or spacious spacing. Pills, segments, cards and the sidebar also take a corner radius from the theme's scale (none, S, M, L, full or the theme's own radius), and pills, segments and cards a surface color. Version 1.1 replaced the earlier corner shapes with these theme values; saved choices carry over as round → full, rounded → M, large → L and square → none, so **rounded** and **large** now follow the theme's M and L sizes. Pills, segments and inline links can show uppercase labels. Solid and filled current-page states pick black or white text for contrast with the accent. Cards become two columns on tablets and one on small phones unless set to auto. Use the builder's normal Style controls for typography, text color, backgrounds and outer spacing.
 
 Menu labels, translations, icons, destinations, new-tab choices and current-page indicators use the same renderer as built-in navigation. Parent links and submenu toggles remain separate; groups without a destination use their label as the toggle. Nested menus expand in place at every screen size. Links stay visible on mobile; these variations do not collapse into a hamburger button. Native disclosure controls support keyboard interaction without extension JavaScript. Theme motion preferences and forced colors are respected.
 
-Missing, empty or unselected menus render no navigation on the published page. The builder shows a placeholder. Decorative index numbers do not replace link labels. The extension includes no scripts, dependencies, theme preset or starter content.
+Missing, empty or unselected menus render no navigation on the published page. The builder shows a placeholder. Decorative index numbers do not replace link labels. Editor texts are available in German. The extension includes no scripts, dependencies, theme preset or starter content.
 
 The persistent block kinds are `block:cometcms/menu-pills`, `block:cometcms/menu-segmented`, `block:cometcms/menu-index`, `block:cometcms/menu-cards`, `block:cometcms/menu-sidebar` and `block:cometcms/menu-inline`.
 
@@ -26,6 +26,10 @@ node tests/browser/menu-variations.mjs
 ```
 
 The browser check renders the real extension and theme in isolated temporary storage. It checks desktop and mobile layouts, long labels, nested disclosures, repeated menu instances, keyboard interaction, accent colors and reduced motion. It requires PHP, Playwright and Chrome/Chromium; set `CHROME_BIN` to override the browser executable.
+
+## Shared props
+
+The menu, accent, surface, corners, spacing and uppercase controls are declared once under `shared_props` in `comet-extension.json` and used by each block with `{"use": "corners"}`. Their German texts live once under `shared_props` in `i18n/de.json`.
 
 ## Menu properties in other extensions
 

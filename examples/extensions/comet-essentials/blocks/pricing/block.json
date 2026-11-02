@@ -64,7 +64,8 @@
       "type": "string",
       "label": "Button label",
       "max": 60,
-      "default": "Choose plan"
+      "default": "Choose plan",
+      "visible_when": { "cta": true }
     },
     "note": {
       "type": "text",

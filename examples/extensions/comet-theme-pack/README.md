@@ -50,7 +50,9 @@ There are no custom blocks, scripts, global CSS overrides, content types, page t
 
 ## Updates and ownership
 
-The public name and ZIP are now **Comet ThemePack**, version **1.2.0**. The internal extension name remains `cometcms/neo-brutalism` so uploading this ZIP updates an existing Neo-Brutalism installation. Neo-Brutalism stays in the legacy `theme.json`; additional designs live in `presets/`.
+Version **2.0.0** renames the extension from `cometcms/neo-brutalism`, its name while it held a single design, to `cometcms/theme-pack`. CometCMS treats a new name as a different extension, so this ZIP no longer updates a Neo-Brutalism installation. To switch, uninstall **Neo-Brutalism** and keep its imported presets and components when asked, then install the ThemePack. Its review lists the kept items as existing ones; choose **Overwrite** to let the ThemePack track and update them, or **Skip** to keep them as independent site content. The bundled Inter font is installed again under the new extension.
+
+Neo-Brutalism stays in the legacy `theme.json`; additional designs live in `presets/`.
 
 Updates refresh unedited imported items by default. Edited items are kept unless you choose **Overwrite** in the review. Each preset is tracked independently, including after renaming it in the site. Imported presets and components can be kept when uninstalling and continue to work without the extension. An applied preset keeps its values when the extension is disabled or removed.
 

@@ -8,6 +8,7 @@ use CometCMS\Core\HtmlSanitizer;
 use CometCMS\Core\ValidationException;
 use CometCMS\Localization\LocalizedValue;
 use CometCMS\Localization\LanguageSettings;
+use CometCMS\Extensions\Extension;
 use CometCMS\Extensions\ExtensionRegistry;
 
 /**
@@ -331,6 +332,9 @@ final class LayoutSchema
         return match ($prop['type']) {
             'richtext' => ['type' => 'html'] + $prop,
             'color' => ['options' => ['', ...Theme::COLOR_KEYS]] + $prop,
+            // Theme values use the Style panel's own controls; "theme" tells the builder which.
+            'space', 'radius' => ['type' => 'enum', 'options' => Extension::themeOptions($prop['type']), 'theme' => $prop['type']] + $prop,
+            'shadow' => ['options' => Theme::COLOR_KEYS] + $prop,
             'icon' => ['options' => ['', ...Icons::names()]] + $prop,
             'list' => ['fields' => array_map(self::blockProp(...), $prop['fields'])] + $prop,
             default => $prop,

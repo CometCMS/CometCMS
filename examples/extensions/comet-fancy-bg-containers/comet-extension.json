@@ -1,9 +1,129 @@
 {
+  "$schema": "../../../schemas/comet-extension.schema.json",
   "api_version": 1,
   "name": "cometcms/fancy-bg-containers",
   "title": "Fancy BG Containers",
   "description": "Content containers with geometric forms, soft moving lights, deep-space skies and futuristic grids. Theme-aware accents, adjustable layouts and CSS-only motion.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "CometCMS",
-  "license": "MIT"
+  "license": "MIT",
+  "shared_props": {
+    "accent": {
+      "type": "color",
+      "label": "Primary effect color",
+      "default": "primary",
+      "group": "Effect"
+    },
+    "secondary": {
+      "type": "color",
+      "label": "Secondary effect color",
+      "default": "accent",
+      "group": "Effect"
+    },
+    "intensity": {
+      "type": "enum",
+      "label": "Effect intensity",
+      "options": [
+        "subtle",
+        "balanced",
+        "vivid"
+      ],
+      "default": "balanced",
+      "option_labels": {
+        "subtle": "Subtle",
+        "balanced": "Balanced",
+        "vivid": "Vivid"
+      },
+      "group": "Effect",
+      "help": "Use subtle behind long text."
+    },
+    "motion": {
+      "type": "enum",
+      "label": "Motion",
+      "options": [
+        "still",
+        "drift",
+        "gentle",
+        "lively"
+      ],
+      "default": "gentle",
+      "option_labels": {
+        "still": "Still",
+        "drift": "Drift (40 s)",
+        "gentle": "Gentle (24 s)",
+        "lively": "Lively (12 s)"
+      },
+      "group": "Effect",
+      "help": "Visitors who prefer reduced motion always see the still version."
+    },
+    "scale": {
+      "type": "enum",
+      "label": "Effect scale",
+      "options": [
+        "small",
+        "medium",
+        "large"
+      ],
+      "default": "medium",
+      "option_labels": {
+        "small": "Small",
+        "medium": "Medium",
+        "large": "Large"
+      },
+      "group": "Effect"
+    },
+    "padding": {
+      "type": "enum",
+      "label": "Content padding",
+      "options": [
+        "none",
+        "compact",
+        "comfortable",
+        "spacious"
+      ],
+      "default": "comfortable",
+      "option_labels": {
+        "none": "None",
+        "compact": "Compact",
+        "comfortable": "Comfortable",
+        "spacious": "Spacious"
+      },
+      "group": "Layout"
+    },
+    "height": {
+      "type": "enum",
+      "label": "Minimum height",
+      "options": [
+        "content",
+        "compact",
+        "hero",
+        "screen"
+      ],
+      "default": "compact",
+      "option_labels": {
+        "content": "Fit content",
+        "compact": "Compact (20rem)",
+        "hero": "Hero (36rem)",
+        "screen": "Full screen"
+      },
+      "group": "Layout",
+      "help": "Longer content still makes the container taller."
+    },
+    "align": {
+      "type": "enum",
+      "label": "Vertical content alignment",
+      "options": [
+        "top",
+        "center",
+        "bottom"
+      ],
+      "default": "center",
+      "option_labels": {
+        "top": "Top",
+        "center": "Center",
+        "bottom": "Bottom"
+      },
+      "group": "Layout"
+    }
+  }
 }

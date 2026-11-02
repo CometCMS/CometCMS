@@ -51,6 +51,19 @@ describe('extension menu controls', () => {
   })
 })
 
+describe('extension theme value controls', () => {
+  it('offers space and radius props as the Style panel bars, worded like it', async () => {
+    const node = { id: 'pill1', kind: 'block:cometcms/menu-pills', props: {}, style: {} }
+    const radius = await renderControl('corners', { type: 'enum', theme: 'radius', label: 'Corners', options: ['', 'none', 'theme', 'sm', 'md', 'lg', 'full'], default: 'md' }, 'full', { node, group: 'props' })
+    expect(radius).not.toContain('<select')
+    expect(radius).toContain('title="Default"')
+    expect(radius).toMatch(/title="Theme[^"]*"/)
+    const space = await renderControl('gap', { type: 'enum', theme: 'space', label: 'Gap', options: ['', 'none', 'xs', 'sm', 'md', 'lg', 'xl', '2xl'], default: 'md' }, 'md', { node, group: 'props' })
+    expect(space).not.toContain('<select')
+    expect(space).toContain('>2XL<')
+  })
+})
+
 describe('builder icon controls', () => {
   it('uses the existing picker with a label and a locally available selected icon', async () => {
     const html = await renderControl('icon', { type: 'icon', default: 'mdi:star-outline', options: SITE_ICONS }, 'mdi:heart-outline')

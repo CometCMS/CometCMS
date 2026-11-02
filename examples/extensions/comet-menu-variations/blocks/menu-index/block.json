@@ -1,12 +1,17 @@
 {
+  "$schema": "../../../../../schemas/block.schema.json",
   "title": "Numbered Navigation",
   "description": "An editorial index with oversized links, numbers and hover arrows.",
   "icon": "mdi:format-list-numbered",
+  "category": "Navigation",
+  "keywords": [
+    "menu",
+    "numbered",
+    "editorial"
+  ],
   "props": {
     "navigation": {
-      "type": "menu",
-      "label": "Menu",
-      "default": "main"
+      "use": "navigation"
     },
     "numbers": {
       "type": "enum",
@@ -18,7 +23,15 @@
         "alpha",
         "none"
       ],
-      "default": "leading-zero"
+      "default": "leading-zero",
+      "option_labels": {
+        "leading-zero": "01, 02",
+        "decimal": "1., 2.",
+        "roman": "I, II",
+        "alpha": "A, B",
+        "none": "None"
+      },
+      "group": "Layout"
     },
     "size": {
       "type": "enum",
@@ -28,7 +41,13 @@
         "large",
         "display"
       ],
-      "default": "large"
+      "default": "large",
+      "option_labels": {
+        "medium": "Medium",
+        "large": "Large",
+        "display": "Display"
+      },
+      "group": "Layout"
     },
     "effect": {
       "type": "enum",
@@ -38,32 +57,31 @@
         "fill",
         "none"
       ],
-      "default": "slide"
+      "default": "slide",
+      "option_labels": {
+        "slide": "Slide",
+        "fill": "Fill",
+        "none": "None"
+      },
+      "group": "Layout"
     },
     "arrows": {
       "type": "bool",
       "label": "Show arrows",
-      "default": true
+      "default": true,
+      "group": "Layout"
     },
     "dividers": {
       "type": "bool",
       "label": "Divider lines",
-      "default": true
+      "default": true,
+      "group": "Layout"
     },
     "accent": {
-      "type": "color",
-      "label": "Accent color",
-      "default": "primary"
+      "use": "accent"
     },
     "density": {
-      "type": "enum",
-      "label": "Spacing",
-      "options": [
-        "compact",
-        "comfortable",
-        "spacious"
-      ],
-      "default": "comfortable"
+      "use": "density"
     }
   }
 }

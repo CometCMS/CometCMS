@@ -1,12 +1,17 @@
 {
+  "$schema": "../../../../../schemas/block.schema.json",
   "title": "Sidebar Navigation",
   "description": "A vertical list for sidebars and documentation with a marked current page.",
   "icon": "mdi:view-list-outline",
+  "category": "Navigation",
+  "keywords": [
+    "menu",
+    "docs",
+    "vertical"
+  ],
   "props": {
     "navigation": {
-      "type": "menu",
-      "label": "Menu",
-      "default": "main"
+      "use": "navigation"
     },
     "style": {
       "type": "enum",
@@ -16,33 +21,21 @@
         "pill",
         "plain"
       ],
-      "default": "rail"
+      "default": "rail",
+      "option_labels": {
+        "rail": "Rail",
+        "pill": "Pill",
+        "plain": "Plain"
+      }
     },
     "accent": {
-      "type": "color",
-      "label": "Accent color",
-      "default": "primary"
+      "use": "accent"
     },
     "corners": {
-      "type": "enum",
-      "label": "Corners",
-      "options": [
-        "rounded",
-        "round",
-        "square",
-        "theme"
-      ],
-      "default": "rounded"
+      "use": "corners"
     },
     "density": {
-      "type": "enum",
-      "label": "Spacing",
-      "options": [
-        "compact",
-        "comfortable",
-        "spacious"
-      ],
-      "default": "comfortable"
+      "use": "density"
     }
   }
 }

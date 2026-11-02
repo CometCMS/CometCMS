@@ -1,12 +1,17 @@
 {
+  "$schema": "../../../../../schemas/block.schema.json",
   "title": "Inline Links",
   "description": "A row of text links with separators for footers, legal links and quick navigation.",
   "icon": "mdi:link-variant",
+  "category": "Navigation",
+  "keywords": [
+    "menu",
+    "footer",
+    "legal"
+  ],
   "props": {
     "navigation": {
-      "type": "menu",
-      "label": "Menu",
-      "default": "main"
+      "use": "navigation"
     },
     "separator": {
       "type": "enum",
@@ -18,7 +23,15 @@
         "dash",
         "none"
       ],
-      "default": "dot"
+      "default": "dot",
+      "option_labels": {
+        "dot": "Dot ·",
+        "slash": "Slash /",
+        "pipe": "Pipe |",
+        "dash": "Dash –",
+        "none": "None"
+      },
+      "group": "Layout"
     },
     "hover": {
       "type": "enum",
@@ -28,7 +41,13 @@
         "color",
         "fade"
       ],
-      "default": "underline"
+      "default": "underline",
+      "option_labels": {
+        "underline": "Underline",
+        "color": "Color",
+        "fade": "Fade others"
+      },
+      "group": "Layout"
     },
     "alignment": {
       "type": "enum",
@@ -39,26 +58,23 @@
         "end",
         "between"
       ],
-      "default": "start"
+      "default": "start",
+      "option_labels": {
+        "start": "Start",
+        "center": "Center",
+        "end": "End",
+        "between": "Spread"
+      },
+      "group": "Layout"
     },
     "accent": {
-      "type": "color",
-      "label": "Accent color",
-      "default": "primary"
+      "use": "accent"
     },
     "density": {
-      "type": "enum",
-      "label": "Spacing",
-      "options": [
-        "compact",
-        "comfortable",
-        "spacious"
-      ],
-      "default": "comfortable"
+      "use": "density"
     },
     "uppercase": {
-      "type": "bool",
-      "label": "Uppercase labels"
+      "use": "uppercase"
     }
   }
 }

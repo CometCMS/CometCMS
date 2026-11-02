@@ -1,20 +1,18 @@
 /* Shared menu markup comes from CometCMS; these selectors stay inside this extension.
-   Each element sets option classes (cometcms-mv--option-value) on its wrapper. */
+   Each element sets option classes (cometcms-mv--option-value) on its wrapper,
+   and theme values (accent, surface, corners) as custom properties. */
 .cometcms-mv {
   --mv-tint: var(--mv-accent, var(--c-primary));
   /* Black or white text, whichever reads better on the accent. */
   --mv-on-tint: oklch(from var(--mv-tint) clamp(0, (0.7 - l) * 1000, 1) 0 0);
   --mv-line: color-mix(in srgb, currentColor 16%, transparent);
-  --mv-radius: .75rem;
+  /* The corners prop holds a theme radius; --mv-corners is "initial" when unset. */
+  --mv-radius: var(--mv-corners, .75rem);
   --mv-py: .7em; --mv-px: 1.1em; --mv-gap: .55rem;
   min-width: 0;
 }
 .cometcms-mv--density-compact { --mv-py: .45em; --mv-px: .8em; --mv-gap: .3rem; }
 .cometcms-mv--density-spacious { --mv-py: 1em; --mv-px: 1.5em; --mv-gap: .9rem; }
-.cometcms-mv--corners-square { --mv-radius: 0px; }
-.cometcms-mv--corners-large { --mv-radius: 1.5rem; }
-.cometcms-mv--corners-round { --mv-radius: 999px; }
-.cometcms-mv--corners-theme { --mv-radius: var(--radius-box, var(--radius)); }
 
 .cometcms-mv > .c-menu { --c-menu-hover: var(--mv-tint); display: block; width: 100%; min-width: 0; text-align: start; }
 .cometcms-mv .c-menu-list { gap: var(--mv-gap); align-items: stretch; }
