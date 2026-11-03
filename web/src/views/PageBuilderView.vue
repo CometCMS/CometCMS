@@ -1,7 +1,8 @@
 <template>
   <div>
     <div class="editor-sticky-header flex flex-wrap items-center gap-3">
-      <div class="min-w-0 flex-1">
+      <!-- The minimum width wraps the actions below the title on phones. -->
+      <div class="min-w-[min(100%,18rem)] flex-1">
         <h1 class="page-title">{{ t("site.title") }}</h1>
         <p class="mt-0.5 text-sm text-slate-500">{{ t("site.description") }}</p>
       </div>

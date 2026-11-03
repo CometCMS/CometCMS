@@ -1,15 +1,14 @@
 <template>
   <div>
     <div
-      class="flex items-center justify-between"
+      class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
       :class="embedded ? 'mb-4' : 'mb-6'"
     >
-      <component
-        :is="embedded ? 'h2' : 'h1'"
-        class="font-bold text-slate-900"
-        :class="embedded ? 'text-lg' : 'text-2xl'"
-      >{{ t("tokens.title") }}</component>
-      <button @click="openTokenForm" class="btn-primary">
+      <!-- Embedded under the "Access tokens" tab: explain the tab instead of repeating its name. -->
+      <p v-if="embedded" class="max-w-3xl text-sm text-slate-500">{{ t("tokens.intro") }}</p>
+      <h1 v-else class="text-2xl font-bold text-slate-900">{{ t("tokens.title") }}</h1>
+      <button v-if="!showTokenForm && tokens.length > 0" @click="openTokenForm" class="btn-primary shrink-0">
+        <Icon icon="mdi:plus" class="h-4 w-4" />
         {{ t("tokens.newToken") }}
       </button>
     </div>
@@ -63,10 +62,16 @@
 
     <LoadingSpinner v-if="loading" />
 
-    <div v-else class="card p-5">
-      <div v-if="tokens.length === 0" class="text-sm text-slate-400">
-        {{ t("tokens.noTokens") }}
-      </div>
+    <div v-else-if="tokens.length === 0 && !showTokenForm" class="card">
+      <EmptyState icon="mdi:key-outline" :title="t('tokens.noTokens')" :description="t('tokens.emptyHint')">
+        <button type="button" class="btn-primary" @click="openTokenForm">
+          <Icon icon="mdi:plus" class="h-4 w-4" />
+          {{ t("tokens.newToken") }}
+        </button>
+      </EmptyState>
+    </div>
+
+    <div v-else-if="tokens.length > 0" class="card p-5">
       <TokenCard
         v-for="token in tokens"
         :key="token.id"
@@ -89,7 +94,9 @@
 
 <script setup>
 import { computed, onMounted, ref } from "vue";
+import { Icon } from "@iconify/vue";
 import ConfirmModal from "../components/ConfirmModal.vue";
+import EmptyState from "../components/EmptyState.vue";
 import LoadingSpinner from "../components/LoadingSpinner.vue";
 import PermissionGrantsEditor from "../components/PermissionGrantsEditor.vue";
 import TokenCard from "../components/TokenCard.vue";

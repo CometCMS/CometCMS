@@ -1,7 +1,8 @@
 <template>
   <div>
     <div class="editor-sticky-header flex flex-wrap items-center gap-3">
-      <div class="min-w-0 flex-1">
+      <!-- The minimum width wraps the actions below the title on phones. -->
+      <div class="min-w-[min(100%,18rem)] flex-1">
         <div class="flex items-center gap-2">
           <h1 class="page-title">{{ showsWorkspaces ? t("workspaces.title") : t("website.title") }}</h1>
           <span
@@ -13,7 +14,7 @@
             {{ !site.data.settings.enabled ? t("site.status.off") : site.data.settings.maintenance ? t("site.status.maintenance") : t("site.status.live") }}
           </span>
         </div>
-        <p v-if="!showsWorkspaces" class="mt-0.5 text-sm text-slate-500">{{ t("website.description") }}</p>
+        <p class="mt-0.5 text-sm text-slate-500">{{ t(showsWorkspaces ? "workspaces.description" : "website.description") }}</p>
       </div>
 
       <a

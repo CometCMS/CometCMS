@@ -8,9 +8,6 @@
       <template #actions>
         <nav v-if="canEditTemplates" class="flex flex-wrap items-center gap-1.5"
           :aria-label="t('site.collection.templates')">
-          <span class="mr-1 text-xs font-medium text-slate-500">
-            {{ t('site.collection.templates') }}
-          </span>
 
           <SplitButton
             v-if="hasListPage"
@@ -20,8 +17,8 @@
             @click="editCollectionTemplate('index')"
             @select="editCollectionTemplate($event.key)"
           >
-            <Icon :icon="COLLECTION_TEMPLATES[0].icon" class="h-4 w-4" />
-            {{ t('site.variant.index') }}
+            <Icon icon="mdi:palette-outline" class="h-4 w-4" />
+            {{ t('site.collection.designIndex') }}
           </SplitButton>
           <!-- Without a list page, the entry page is the only template. -->
           <button
@@ -31,8 +28,8 @@
             :title="t('site.collection.editTemplate', { template: t('site.variant.detail') })"
             @click="editCollectionTemplate('detail')"
           >
-            <Icon :icon="COLLECTION_TEMPLATES[1].icon" class="h-4 w-4" />
-            {{ t('site.variant.detail') }}
+            <Icon icon="mdi:palette-outline" class="h-4 w-4" />
+            {{ t('site.collection.designDetail') }}
           </button>
         </nav>
 
@@ -134,9 +131,6 @@
           </div>
         </div>
 
-        <button type="button" @click="applyFilters" class="btn-secondary">
-          {{ t("contentList.apply") }}
-        </button>
         <button v-if="hasActiveFilters" type="button" @click="clearFilters" class="btn-secondary">
           <Icon icon="mdi:close" class="h-4 w-4" />
           {{ t("contentList.clear") }}
@@ -277,7 +271,7 @@
                               <Icon icon="mdi:chevron-right" class="h-4 w-4 transition-transform duration-150"
                                 :class="collapsed.has(entryKey(entry)) ? '' : 'rotate-90'" />
                             </button>
-                            <span v-else class="w-5 shrink-0" aria-hidden="true"></span>
+                            <span v-else-if="treeHasBranches" class="w-5 shrink-0" aria-hidden="true"></span>
                           </template>
                           <span class="min-w-0">
                             <span class="inline-flex items-center gap-1.5">
@@ -973,6 +967,8 @@ const collapsed = ref(new Set());
 const displayRows = computed(() => treeMode.value
   ? treeRows(col.value.entries ?? [], collapsed.value)
   : sortedEntries.value.map((entry) => ({ entry, depth: 0, hasChildren: false, path: entry.slug ?? "" })));
+// Leaves line up with branches only when some entry can expand.
+const treeHasBranches = computed(() => displayRows.value.some((row) => row.hasChildren));
 const dragKey = ref("");
 // { key, zone }: the row and where the dragged page would go.
 const dropZone = ref(null);
@@ -1218,9 +1214,21 @@ async function load() {
 }
 
 function applyFilters() {
+  clearTimeout(searchTimer);
+  searchedQuery = filters.value.q.trim();
   pageOffset.value = 0;
   load();
 }
+
+// Search as you type; Enter still searches right away.
+let searchTimer;
+let searchedQuery = "";
+watch(() => filters.value.q, (q) => {
+  clearTimeout(searchTimer);
+  if (q.trim() === searchedQuery) return;
+  searchTimer = setTimeout(applyFilters, 300);
+});
+onBeforeUnmount(() => clearTimeout(searchTimer));
 
 function clearFilters() {
   filters.value = { q: "" };

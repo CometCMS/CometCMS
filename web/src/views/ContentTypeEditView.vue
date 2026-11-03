@@ -275,15 +275,23 @@
         {{ saveError }}
       </div>
 
-      <div v-if="!isNew" class="flex justify-end">
+      <!-- Kept on the general tab, apart from the settings, so it is never clicked by accident. -->
+      <section
+        v-if="!isNew && activeTab === 'base'"
+        class="card flex flex-col gap-4 border-red-200 p-6 sm:flex-row sm:items-center sm:justify-between"
+      >
+        <div>
+          <h2 class="card-title">{{ t("contentTypeEdit.dangerTitle") }}</h2>
+          <p class="mt-1 text-sm text-slate-500">{{ t("contentTypeEdit.dangerBody") }}</p>
+        </div>
         <button
           type="button"
           @click="showDeleteModal = true"
-          class="btn-danger"
+          class="btn-danger shrink-0"
         >
           {{ t("contentTypeEdit.deleteType") }}
         </button>
-      </div>
+      </section>
     </form>
 
     <ConfirmModal
