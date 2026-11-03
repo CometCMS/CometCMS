@@ -37,6 +37,7 @@ final class ContentRepository
     private function storedEntries(string $collection): array
     {
         Security::assertSafeName($collection);
+        if ($this->types->isDisabled($collection)) return [];
         if ($this->readGeneration !== JsonStore::generation()) $this->invalidateReads();
         return $this->collectionsCache[$collection] ??= $this->store->allUnsorted($collection);
     }
@@ -56,16 +57,16 @@ final class ContentRepository
         $this->revisions = new JsonStore($this->workspace->path('revisions') . '/content');
     }
 
-    public static function make(?WorkspaceContext $workspace = null): self
+    public static function make(?WorkspaceContext $workspace = null, bool $includeDisabled = false): self
     {
         $workspace ??= WorkspaceContext::active();
 
-        return new self(new ContentTypeRepository($workspace), FieldRegistry::builtins(), new Logger(), ApiCache::fromConfig($workspace), new WebhookDispatcher(), $workspace);
+        return new self(new ContentTypeRepository($workspace, $includeDisabled), FieldRegistry::builtins(), new Logger(), ApiCache::fromConfig($workspace), new WebhookDispatcher(), $workspace);
     }
 
     public function collections(): array
     {
-        return $this->store->directories();
+        return array_values(array_filter($this->store->directories(), fn(string $name): bool => !$this->types->isDisabled($name)));
     }
 
     public function all(string $collection, bool $includeDeleted = false): array
@@ -86,6 +87,7 @@ final class ContentRepository
     {
         Security::assertSafeName($collection);
         Security::assertSafeName($id);
+        if ($this->types->isDisabled($collection)) return null;
         $entry = $this->store->read($collection, $id);
 
         if ($entry === null) {
@@ -589,7 +591,7 @@ final class ContentRepository
         if (!$admin || ($params['trash'] ?? '') !== '1') {
             $entries = array_values(array_filter($entries, static fn(array $entry): bool => empty($entry['deleted_at'])));
         }
-        foreach ($overrides as $override) {
+        foreach ($this->types->isDisabled($collection) ? [] : $overrides as $override) {
             $entries = array_values(array_filter($entries, static fn(array $entry): bool =>
                 $entry['uid'] !== $override['uid']));
             $entries[] = $override;
@@ -686,6 +688,7 @@ final class ContentRepository
 
     private function normalizeAndValidate(string $collection, array $payload, array $user, ?array $existing, bool $autoResolveSlugConflicts, ?array $validateOnlyFields = null): array
     {
+        if ($this->types->isDisabled($collection)) throw new ValidationException(['collection' => 'Enable the extension before editing this collection.']);
         $schema = $this->types->find($collection);
         $default = $this->locale();
         $locale = $this->locale((string) ($payload['locale'] ?? ''));

@@ -1,0 +1,21 @@
+{
+  "title": "Weather",
+  "description": "Current temperature, conditions and wind for a place.",
+  "icon": "mdi:weather-partly-cloudy",
+  "category": "Live data",
+  "keywords": ["forecast", "temperature", "climate"],
+  "aliases": ["cometcms/forecast"],
+  "variations": [
+    { "name": "compact", "title": "Weather badge", "description": "A single line for headers and sidebars.", "icon": "mdi:thermometer", "props": { "layout": "compact", "show_wind": false } }
+  ],
+  "props": {
+    "place": { "type": "string", "label": "Place name", "max": 80, "default": "Berlin", "placeholder": "Berlin", "help": "Shown as the heading. It is not looked up; the coordinates decide the weather." },
+    "location": { "type": "string", "label": "Coordinates", "max": 60, "default": "52.520008, 13.404954", "renamed_from": ["coordinates"], "help": "Latitude, longitude in decimal degrees." },
+    "layout": { "type": "enum", "label": "Layout", "options": ["card", "compact"], "option_labels": { "card": "Card", "compact": "Badge" }, "option_aliases": { "wide": "card" }, "group": "Appearance" },
+    "accent": { "type": "color", "label": "Accent", "default": "primary", "group": "Appearance" },
+    "show_wind": { "type": "bool", "label": "Show wind", "default": true, "visible_when": { "layout": "card" }, "group": "Appearance" },
+    "loading_label": { "type": "string", "label": "Loading text", "max": 80, "default": "Loading weather…", "group": "Labels" },
+    "error_label": { "type": "string", "label": "Error text", "max": 120, "default": "The weather is unavailable right now.", "group": "Labels" },
+    "wind_label": { "type": "string", "label": "Wind label", "max": 40, "default": "Wind", "visible_when": { "show_wind": true }, "group": "Labels" }
+  }
+}

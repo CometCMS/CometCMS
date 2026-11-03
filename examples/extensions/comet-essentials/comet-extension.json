@@ -1,0 +1,35 @@
+{
+  "api_version": 1,
+  "name": "cometcms/essentials",
+  "title": "Comet Essentials",
+  "description": "Before/after comparisons, testimonials, callouts, cards, logo bars, features, pricing, maps, slideshows, stats and vertical text that work with any theme.",
+  "version": "1.8.1",
+  "author": "CometCMS",
+  "license": "MIT",
+  "cms": ">=2.0",
+  "settings": {
+    "tile_url": {
+      "type": "url",
+      "label": "Map tile server",
+      "default": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+      "max": 300,
+      "group": "Maps",
+      "help": "An https URL template with {z}, {x} and {y}. Use a commercial provider for high-traffic sites, under its terms.",
+      "placeholder": "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+    },
+    "attribution": {
+      "type": "string",
+      "label": "Map attribution",
+      "default": "© OpenStreetMap contributors",
+      "max": 200,
+      "group": "Maps",
+      "help": "Shown on every map, as the tile provider requires."
+    },
+    "attribution_url": {
+      "type": "url",
+      "label": "Attribution link",
+      "default": "https://www.openstreetmap.org/copyright",
+      "group": "Maps"
+    }
+  }
+}

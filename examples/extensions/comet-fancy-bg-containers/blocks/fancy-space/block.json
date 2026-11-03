@@ -1,0 +1,45 @@
+{
+  "$schema": "../../../../../schemas/block.schema.json",
+  "title": "Deep Space",
+  "description": "Layered starfields with an optional softly glowing nebula behind your content.",
+  "icon": "mdi:star-four-points-outline",
+  "props": {
+    "variant": {
+      "type": "enum",
+      "label": "Background style",
+      "options": [
+        "nebula",
+        "starfield"
+      ],
+      "default": "nebula",
+      "option_labels": {
+        "nebula": "Nebula",
+        "starfield": "Starfield"
+      }
+    },
+    "accent": {
+      "use": "accent"
+    },
+    "secondary": {
+      "use": "secondary"
+    },
+    "intensity": {
+      "use": "intensity"
+    },
+    "motion": {
+      "use": "motion"
+    },
+    "scale": {
+      "use": "scale"
+    },
+    "padding": {
+      "use": "padding"
+    },
+    "height": {
+      "use": "height"
+    },
+    "align": {
+      "use": "align"
+    }
+  }
+}

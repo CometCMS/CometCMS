@@ -1,0 +1,41 @@
+{
+  "$schema": "../../../../../schemas/block.schema.json",
+  "title": "Sidebar Navigation",
+  "description": "A vertical list for sidebars and documentation with a marked current page.",
+  "icon": "mdi:view-list-outline",
+  "category": "Navigation",
+  "keywords": [
+    "menu",
+    "docs",
+    "vertical"
+  ],
+  "props": {
+    "navigation": {
+      "use": "navigation"
+    },
+    "style": {
+      "type": "enum",
+      "label": "Style",
+      "options": [
+        "rail",
+        "pill",
+        "plain"
+      ],
+      "default": "rail",
+      "option_labels": {
+        "rail": "Rail",
+        "pill": "Pill",
+        "plain": "Plain"
+      }
+    },
+    "accent": {
+      "use": "accent"
+    },
+    "corners": {
+      "use": "corners"
+    },
+    "density": {
+      "use": "density"
+    }
+  }
+}

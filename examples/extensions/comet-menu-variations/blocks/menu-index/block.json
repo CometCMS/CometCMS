@@ -1,0 +1,87 @@
+{
+  "$schema": "../../../../../schemas/block.schema.json",
+  "title": "Numbered Navigation",
+  "description": "An editorial index with oversized links, numbers and hover arrows.",
+  "icon": "mdi:format-list-numbered",
+  "category": "Navigation",
+  "keywords": [
+    "menu",
+    "numbered",
+    "editorial"
+  ],
+  "props": {
+    "navigation": {
+      "use": "navigation"
+    },
+    "numbers": {
+      "type": "enum",
+      "label": "Numbering",
+      "options": [
+        "leading-zero",
+        "decimal",
+        "roman",
+        "alpha",
+        "none"
+      ],
+      "default": "leading-zero",
+      "option_labels": {
+        "leading-zero": "01, 02",
+        "decimal": "1., 2.",
+        "roman": "I, II",
+        "alpha": "A, B",
+        "none": "None"
+      },
+      "group": "Layout"
+    },
+    "size": {
+      "type": "enum",
+      "label": "Link size",
+      "options": [
+        "medium",
+        "large",
+        "display"
+      ],
+      "default": "large",
+      "option_labels": {
+        "medium": "Medium",
+        "large": "Large",
+        "display": "Display"
+      },
+      "group": "Layout"
+    },
+    "effect": {
+      "type": "enum",
+      "label": "Hover effect",
+      "options": [
+        "slide",
+        "fill",
+        "none"
+      ],
+      "default": "slide",
+      "option_labels": {
+        "slide": "Slide",
+        "fill": "Fill",
+        "none": "None"
+      },
+      "group": "Layout"
+    },
+    "arrows": {
+      "type": "bool",
+      "label": "Show arrows",
+      "default": true,
+      "group": "Layout"
+    },
+    "dividers": {
+      "type": "bool",
+      "label": "Divider lines",
+      "default": true,
+      "group": "Layout"
+    },
+    "accent": {
+      "use": "accent"
+    },
+    "density": {
+      "use": "density"
+    }
+  }
+}

@@ -8,6 +8,9 @@ use CometCMS\Core\HtmlSanitizer;
 use CometCMS\Core\Security;
 use CometCMS\Localization\LocalizedValue;
 use CometCMS\Localization\Messages;
+use CometCMS\Extensions\ExtensionRegistry;
+use CometCMS\Site\Blocks\BlockScripts;
+use CometCMS\Site\Blocks\BlockTemplate;
 
 /**
  * Turns layout trees into HTML.
@@ -108,6 +111,12 @@ final class NodeRenderer
 
     private SmartValue $smart;
 
+    private array $blockStyles = [];
+    /** @var array<string, true> */
+    private array $blockScripts = [];
+    /** @var array<string, array> extension name => its settings as template values */
+    private array $extensionSettings = [];
+
     public function __construct(private readonly SiteContext $ctx)
     {
         $this->smart = new SmartValue($ctx);
@@ -147,7 +156,7 @@ final class NodeRenderer
             $node['style']['_condition_off'] = true;
         }
         $warnings = false;
-        foreach (SmartValue::PROPERTIES[$node['kind'] ?? ''] ?? [] as $key => $target) {
+        foreach (LayoutSchema::bindings((string) ($node['kind'] ?? ''), $this->ctx->site->blocks()) as $key => $target) {
             $binding = $node['props'][$key] ?? null;
             if ($target === 'link' && ($binding['type'] ?? '') === 'dynamic') {
                 $resolved = $this->smart->resolve($binding['value'], $state);
@@ -226,7 +235,7 @@ final class NodeRenderer
             'site_title' => $this->siteTitle($node, $state),
             'language_switcher' => $this->languageSwitcher($node, $state),
             'theme_toggle' => $this->themeToggle($node),
-            default => '',
+            default => ExtensionRegistry::isKind((string) ($node['kind'] ?? '')) ? $this->block($node, $state) : '',
         };
         if ($warnings && $this->annotating()) {
             $warning = '<div class="c-placeholder c-placeholder-warning" role="status"' . $this->placeholder('unresolvedFallback') . '>Unresolved content reference (using fallback if configured)</div>';
@@ -238,6 +247,119 @@ final class NodeRenderer
         }
 
         return $html;
+    }
+
+    /** @return list<string> block kinds rendered so far whose scripts the page loads */
+    public function blockScripts(): array
+    {
+        return array_keys($this->blockScripts);
+    }
+
+    /** CSS of the extensions and blocks rendered so far: each extension's shared CSS, then its blocks'. */
+    public function blockStylesheet(): string
+    {
+        $blocks = $this->ctx->site->blocks();
+        $assetUrl = $this->ctx->blockAssetUrl(...);
+        $css = [];
+        foreach ($this->blockStyles as $name => $kinds) {
+            $parts = $blocks->extension($name)['css'] ?? [];
+            foreach (array_keys($kinds) as $kind) {
+                array_push($parts, "\n", ...($blocks->get($kind)['css'] ?? []));
+            }
+            $css[] = trim(implode('', array_map(static fn(string|array $part): string => is_array($part) ? $assetUrl($part[1]) : $part, $parts)));
+        }
+
+        return implode("\n", array_filter($css));
+    }
+
+    private function block(array $node, array $state): string
+    {
+        $blocks = $this->ctx->site->blocks();
+        $block = $blocks->get($node['kind']);
+        if ($block === null) {
+            return $this->annotating() ? $this->element($node, '<div class="c-placeholder">Missing block: ' . Security::e(substr($node['kind'], 6)) . '</div>') : '';
+        }
+        $slot = '';
+        if ($block['slot']) {
+            $slot = $this->render($node['children'] ?? [], $state);
+            if ($slot === '' && $this->annotating()) {
+                $slot = '<div class="c-placeholder c-placeholder-drop">Drop elements here</div>';
+            }
+        }
+        $values = $this->blockValues($block['props'], $node['props'] ?? [], $state);
+        // Compiled templates are well-formed allow-listed HTML; render only escapes values.
+        $html = BlockTemplate::render($block['template'], $values + $this->blockSettings($block['extension']), $this->ctx->blockAssetUrl(...), $slot);
+        $this->blockStyles[$block['extension']][$node['kind']] = true;
+        // Installed block scripts also mount in previews, using the same resolved props.
+        $attributes = '';
+        if ($block['script'] !== '') {
+            $this->blockScripts[$node['kind']] = true;
+            $attributes = ' data-comet-block="' . Security::e($block['name']) . '" data-comet-props="'
+                . Security::e(json_encode($values, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR)) . '"';
+        }
+
+        return $this->element($node, $html, [ExtensionRegistry::cssClass($block['name'])], '', $attributes);
+    }
+
+    /**
+     * Saved block props (already localized and with bindings resolved) as template
+     * values: media become URLs with alt text, colors theme keys with their CSS
+     * value, links an href with the editor's new-tab and modal choices.
+     */
+    private function blockValues(array $specs, array $props, array $state): array
+    {
+        $values = [];
+        foreach ($specs as $key => $spec) {
+            $value = $props[$key] ?? $spec['default'];
+            $values[$key] = match ($spec['type']) {
+                'media' => $this->blockMedia(is_string($value) ? $value : ''),
+                'color', 'space', 'radius', 'shadow' => BlockTemplate::themeValue($spec['type'], $value),
+                'link' => ($link = is_array($value) ? $this->resolveLink($value, $state) : null) !== null ? ['_' => $link['href'], 'new_tab' => $link['new_tab'], 'open_modal' => $link['open_modal']] : ['_' => ''],
+                'url' => is_string($value) && HtmlSanitizer::isSafeUrl(trim($value)) ? trim($value) : '',
+                // Saved layouts are sanitized already; like the text element, render does it again.
+                'richtext' => is_string($value) ? HtmlSanitizer::sanitize($value) : '',
+                'menu' => $this->blockMenu(is_string($value) ? $value : '', $state),
+                'list' => array_map(fn(mixed $item): array => $this->blockValues($spec['fields'], is_array($item) ? $item : [], $state), is_array($value) ? array_values($value) : []),
+                default => is_scalar($value) ? $value : '',
+            };
+        }
+
+        return $values;
+    }
+
+    /** An extension's settings as template values, keyed "@name" as templates read them. */
+    private function blockSettings(string $extension): array
+    {
+        if (!isset($this->extensionSettings[$extension])) {
+            $blocks = $this->ctx->site->blocks();
+            $values = BlockScripts::settingValues($blocks->extension($extension)['settings'] ?? [], $blocks->settings($extension));
+            $this->extensionSettings[$extension] = array_combine(array_map(static fn(string $key): string => '@' . $key, array_keys($values)), array_values($values));
+        }
+
+        return $this->extensionSettings[$extension];
+    }
+
+    /** Menu props resolve through the same localized links, icons and disclosures as built-in navigation. */
+    private function blockMenu(string $name, array $state): string
+    {
+        $menu = $this->ctx->menu($name);
+        if ($menu === null || $menu['items'] === []) {
+            return $this->annotating()
+                ? '<div class="c-placeholder"' . $this->placeholder('menuEmpty', ['name' => $name]) . '>Menu “' . Security::e($name) . '” has no items</div>'
+                : '';
+        }
+
+        // Sequence numbers also isolate repeated props and instances of the same component.
+        $group = 'block-menu-' . ++$this->menuSequence;
+        return '<nav class="c-menu c-menu-vertical c-menu-active-bold" data-menu aria-label="' . Security::e($menu['label']) . '">'
+            . $this->menuItems($menu['items'], $state, 'c-menu-list', $group) . '</nav>';
+    }
+
+    private function blockMedia(string $file): array
+    {
+        $item = $file !== '' ? $this->ctx->mediaItem($file) : null;
+
+        return $item === null ? ['_' => '', 'alt' => ''] : ['_' => $this->ctx->mediaUrl($item['name']), 'alt' => (string) ($item['alt'] ?? '')];
     }
 
     /**
@@ -494,7 +616,11 @@ final class NodeRenderer
         $tree = $component['nodes'][0] ?? null;
 
         if ($tree === null || $tree['kind'] !== $root || in_array($id, $stack, true) || count($stack) >= self::MAX_COMPONENT_DEPTH) {
-            return $tree === null ? $this->componentPlaceholder($node, 'missingComponent', 'Missing component') : $this->componentPlaceholder($node, 'componentLoop', 'A component cannot contain itself');
+            return match (true) {
+                $tree !== null => $this->componentPlaceholder($node, 'componentLoop', 'A component cannot contain itself'),
+                $this->annotating() && $this->ctx->site->componentDisabled($id) => $this->componentPlaceholder($node, 'disabledComponent', 'Component unavailable while its extension is disabled'),
+                default => $this->componentPlaceholder($node, 'missingComponent', 'Missing component'),
+            };
         }
 
         $tree = LayoutSchema::applyOverrides([$tree], $node['overrides'] ?? [])[0];
@@ -2144,13 +2270,14 @@ final class NodeRenderer
 
     // ─── Helpers ─────────────────────────────────────────────────────────────
 
-    private function element(array $node, string $inner, array $extraClasses = [], string $style = ''): string
+    /** @param string $attributes further escaped attributes, each with its leading space */
+    private function element(array $node, string $inner, array $extraClasses = [], string $style = '', string $attributes = ''): string
     {
         $background = $this->background($node['style']);
-        $classes = ['c-el', 'c-el-' . str_replace('_', '-', $node['kind']), ...$extraClasses, ...$background['classes'], ...$this->styleClasses($node['style'])];
+        $classes = ['c-el', 'c-el-' . preg_replace('/[^a-z0-9-]/', '-', str_replace('_', '-', $node['kind'])), ...$extraClasses, ...$background['classes'], ...$this->styleClasses($node['style'])];
         $style = implode(';', array_filter([$background['style'], $style]));
 
-        return '<div' . $this->attributes($node, $classes, $style) . '>' . $background['layer'] . $inner . '</div>';
+        return '<div' . $this->attributes($node, $classes, $style) . $attributes . '>' . $background['layer'] . $inner . '</div>';
     }
 
     private function textGradientAttributes(array $node, string $class): string

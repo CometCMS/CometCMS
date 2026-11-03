@@ -44,6 +44,8 @@ final class AdminController
 
         http_response_code(200);
         header('Content-Type: text/html; charset=utf-8');
+        // Revalidate the shell so an update never leaves it pointing at removed bundles.
+        header('Cache-Control: no-cache, no-transform');
         // The admin must never show up in search results next to the website.
         header('X-Robots-Tag: noindex, nofollow');
         echo '<!doctype html>'

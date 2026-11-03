@@ -37,7 +37,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { api } from "../../api/index.js";
 import { useI18n } from "../../i18n/index.js";
-import { patchDocument, withPreviewStyles } from "../../composables/previewDocument.js";
+import { needsPreviewReload, patchScriptedDocument, withPreviewStyles } from "../../composables/previewDocument.js";
 import { initGalleryLightbox } from "../../../../cms/app/Site/assets/gallery.js";
 import { initTabs } from "../../../../cms/app/Site/assets/tabs.js";
 import { initMenus } from "../../../../cms/app/Site/assets/menus.js";
@@ -71,6 +71,7 @@ let sequence = 0;
 let pendingScroll = 0;
 /** Whether the iframe holds a loaded document that renders can patch. */
 let documentLoaded = false;
+let renderedHtml = "";
 let resizeObserver = null;
 
 const deviceWidth = computed(() => DEVICE_WIDTHS[props.device] ?? DEVICE_WIDTHS.desktop);
@@ -109,9 +110,12 @@ async function render() {
     if (current !== sequence) return;
     const html = withPreviewStyles(res.data?.html ?? "", props.headCss);
     const doc = documentLoaded ? iframeRef.value?.contentDocument : null;
-    if (doc?.body && html) {
+    if (doc?.body && html === renderedHtml) {
+      applyScale();
+      emit("updated", doc);
+    } else if (doc?.body && html && !needsPreviewReload(doc, html)) {
       // Reloading the iframe would blank it for a frame on every edit.
-      patchDocument(doc, html);
+      patchScriptedDocument(doc, html);
       initTabs(doc);
       applyScale();
       emit("updated", doc);
@@ -120,6 +124,7 @@ async function render() {
       documentLoaded = false;
       srcdoc.value = html;
     }
+    renderedHtml = html;
     error.value = "";
     emit("rendered", res.data, body);
   } catch (err) {

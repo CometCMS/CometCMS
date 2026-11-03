@@ -8,10 +8,33 @@ export function withPreviewStyles(html, css) {
 export const PREVIEW_KEEP = "data-preview-keep";
 
 /**
+ * Scripted blocks need a fresh realm so their DOM, listeners and timers reset together,
+ * unless every mounted instance returned a cleanup function and every scripted block
+ * in the new document is already loaded: then they are unmounted, the document is
+ * patched, and they are mounted again (see remountBlocks()).
+ */
+export function needsPreviewReload(doc, html) {
+  const scripted = !!doc.querySelector('[data-comet-block]')
+    || html.includes('<script type="module">import mount from ');
+  if (!scripted) return false;
+  const blocks = doc.defaultView?.cometBlocks;
+  if (!blocks?.remountable?.()) return true;
+  return [...html.matchAll(/data-comet-block="([^"]+)"/g)].some(([, name]) => !blocks.has(name));
+}
+
+/** Unmount scripted blocks, update the document, and mount them again with their new props. */
+export function patchScriptedDocument(doc, html) {
+  const blocks = doc.defaultView?.cometBlocks;
+  blocks?.unmount();
+  patchDocument(doc, html);
+  blocks?.mount();
+}
+
+/**
  * Update a loaded preview document to a newly rendered one without reloading it.
  * Unchanged elements stay, so the page neither blanks nor loses its scroll
- * position, and images keep their decoded pixels. Previews run no scripts,
- * so moving markup over is all a reload would do.
+ * position, and images keep their decoded pixels. Scripted block previews
+ * reload instead: imported script elements do not execute during a DOM patch.
  */
 export function patchDocument(doc, html) {
   const next = new DOMParser().parseFromString(html, "text/html");

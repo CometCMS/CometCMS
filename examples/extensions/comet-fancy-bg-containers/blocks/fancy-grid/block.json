@@ -1,0 +1,45 @@
+{
+  "$schema": "../../../../../schemas/block.schema.json",
+  "title": "Futuristic Grid",
+  "description": "An industrial grid with a scanning light, glowing horizon and technical corner marks.",
+  "icon": "mdi:grid",
+  "props": {
+    "variant": {
+      "type": "enum",
+      "label": "Background style",
+      "options": [
+        "perspective",
+        "flat"
+      ],
+      "default": "perspective",
+      "option_labels": {
+        "perspective": "Perspective floor",
+        "flat": "Flat grid"
+      }
+    },
+    "accent": {
+      "use": "accent"
+    },
+    "secondary": {
+      "use": "secondary"
+    },
+    "intensity": {
+      "use": "intensity"
+    },
+    "motion": {
+      "use": "motion"
+    },
+    "scale": {
+      "use": "scale"
+    },
+    "padding": {
+      "use": "padding"
+    },
+    "height": {
+      "use": "height"
+    },
+    "align": {
+      "use": "align"
+    }
+  }
+}

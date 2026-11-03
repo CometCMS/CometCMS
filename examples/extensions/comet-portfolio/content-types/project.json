@@ -1,0 +1,153 @@
+{
+  "name": "project",
+  "label": "Projects",
+  "icon": "mdi:briefcase-outline",
+  "fields": {
+    "title": {
+      "type": "text",
+      "label": "Project title",
+      "required": true
+    },
+    "slug": {
+      "type": "slug",
+      "label": "URL slug",
+      "required": true,
+      "unique": true
+    },
+    "summary": {
+      "type": "textarea",
+      "label": "Project summary",
+      "description": "A short introduction used in the hero and project listings."
+    },
+    "client": {
+      "type": "text",
+      "label": "Client / organisation"
+    },
+    "role": {
+      "type": "text",
+      "label": "Your role",
+      "placeholder": "Design, development and delivery"
+    },
+    "project_type": {
+      "type": "select",
+      "label": "Project type",
+      "options": {
+        "website": "Website",
+        "brand": "Brand identity",
+        "product": "Digital product",
+        "campaign": "Campaign",
+        "other": "Other"
+      }
+    },
+    "services": {
+      "type": "select",
+      "label": "Services",
+      "multiple": true,
+      "options": {
+        "strategy": "Strategy",
+        "design": "Design",
+        "development": "Development",
+        "content": "Content",
+        "photography": "Photography",
+        "support": "Support"
+      }
+    },
+    "launched_on": {
+      "type": "date",
+      "label": "Launch date"
+    },
+    "duration_weeks": {
+      "type": "number",
+      "label": "Duration in weeks"
+    },
+    "featured": {
+      "type": "boolean",
+      "label": "Featured project",
+      "default": false
+    },
+    "completion": {
+      "type": "range",
+      "label": "Completion",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "default": 100
+    },
+    "website": {
+      "type": "text",
+      "label": "Project website",
+      "placeholder": "https://example.com",
+      "description": "A full HTTPS URL, linked from the case-study details."
+    },
+    "cover_image": {
+      "type": "media",
+      "label": "Cover image",
+      "multiple": false,
+      "description": "Main image in the project hero. Add alternative text in the media library."
+    },
+    "gallery": {
+      "type": "media",
+      "label": "Project gallery",
+      "multiple": true
+    },
+    "overview": {
+      "type": "markdown",
+      "label": "Project overview",
+      "description": "Introduce the project, its audience and the scope of your work."
+    },
+    "challenge": {
+      "type": "markdown",
+      "label": "The challenge"
+    },
+    "solution": {
+      "type": "markdown",
+      "label": "The solution"
+    },
+    "outcome": {
+      "type": "markdown",
+      "label": "The outcome"
+    },
+    "accent_color": {
+      "type": "color",
+      "label": "Project accent colour",
+      "description": "Shown as a colour swatch in the detail template."
+    },
+    "results": {
+      "type": "repeater",
+      "label": "Measurable results",
+      "subfields": [
+        {
+          "key": "value",
+          "type": "text",
+          "label": "Result",
+          "placeholder": "+35%"
+        },
+        {
+          "key": "label",
+          "type": "text",
+          "label": "Metric",
+          "placeholder": "More enquiries"
+        },
+        {
+          "key": "detail",
+          "type": "textarea",
+          "label": "Explanation"
+        }
+      ]
+    },
+    "testimonial": {
+      "type": "textarea",
+      "label": "Client testimonial"
+    },
+    "testimonial_author": {
+      "type": "text",
+      "label": "Testimonial attribution"
+    },
+    "related_projects": {
+      "type": "relation",
+      "label": "Related projects",
+      "target": "project",
+      "multiple": true
+    }
+  }
+}

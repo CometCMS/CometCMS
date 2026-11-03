@@ -52,15 +52,16 @@ export default defineConfig(({ command }) => ({
     },
   },
   server: {
-    // Proxy API calls to the PHP dev server during development.
+    // Preserve the browser's host: preview CSP sources must match the origin
+    // used by srcdoc iframes and their relative block module URLs.
     proxy: {
-      '/admin/api': 'http://localhost:8000',
-      '/admin/site-preview': 'http://localhost:8000',
-      '/site-preview': 'http://localhost:8000',
-      '/api': 'http://localhost:8000',
-      '/media': 'http://localhost:8000',
+      '/admin/api': { target: 'http://localhost:8000', changeOrigin: false },
+      '/admin/site-preview': { target: 'http://localhost:8000', changeOrigin: false },
+      '/site-preview': { target: 'http://localhost:8000', changeOrigin: false },
+      '/api': { target: 'http://localhost:8000', changeOrigin: false },
+      '/media': { target: 'http://localhost:8000', changeOrigin: false },
       // Site assets the builder canvas loads, such as language flags.
-      '/_site': 'http://localhost:8000',
+      '/_site': { target: 'http://localhost:8000', changeOrigin: false },
     },
     cors: true,
   },

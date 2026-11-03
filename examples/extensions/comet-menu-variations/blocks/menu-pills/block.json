@@ -1,0 +1,68 @@
+{
+  "$schema": "../../../../../schemas/block.schema.json",
+  "title": "Pill Navigation",
+  "description": "Rounded navigation chips in soft, outline, solid or ghost styles.",
+  "icon": "mdi:dots-horizontal",
+  "category": "Navigation",
+  "keywords": [
+    "menu",
+    "chips",
+    "tags"
+  ],
+  "props": {
+    "navigation": {
+      "use": "navigation"
+    },
+    "style": {
+      "type": "enum",
+      "label": "Style",
+      "options": [
+        "soft",
+        "outline",
+        "solid",
+        "ghost"
+      ],
+      "default": "soft",
+      "option_labels": {
+        "soft": "Soft",
+        "outline": "Outline",
+        "solid": "Solid",
+        "ghost": "Ghost"
+      }
+    },
+    "alignment": {
+      "type": "enum",
+      "label": "Alignment",
+      "options": [
+        "start",
+        "center",
+        "end",
+        "stretch"
+      ],
+      "default": "start",
+      "option_labels": {
+        "start": "Start",
+        "center": "Center",
+        "end": "End",
+        "stretch": "Stretch"
+      },
+      "group": "Layout"
+    },
+    "accent": {
+      "use": "accent"
+    },
+    "surface": {
+      "use": "surface"
+    },
+    "corners": {
+      "use": "corners",
+      "default": "full"
+    },
+    "density": {
+      "use": "density"
+    },
+    "uppercase": {
+      "use": "uppercase"
+    }
+  }
+}

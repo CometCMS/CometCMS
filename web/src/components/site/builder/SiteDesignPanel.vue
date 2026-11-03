@@ -19,48 +19,70 @@
     <div v-else-if="!theme" class="flex flex-1 items-center justify-center"><LoadingSpinner /></div>
 
     <div v-else class="space-y-5" :class="layout === 'page' ? 'p-6' : 'flex-1 overflow-y-auto p-3'">
+      <section class="rounded-xl border border-slate-200 bg-slate-50/60 p-3" :aria-label="t('site.theme.activeTheme')">
+        <div class="flex items-center gap-3">
+          <span class="flex h-10 w-10 shrink-0 flex-col overflow-hidden rounded-lg ring-1 ring-black/5" aria-hidden="true">
+            <span v-for="(color, index) in themeSwatches(theme, site.data.theme_defaults)" :key="index" class="flex-1" :style="{ background: color }"></span>
+          </span>
+          <div class="min-w-0 flex-1">
+            <p class="text-[11px] font-medium uppercase tracking-wide text-slate-500">{{ t("site.theme.activeTheme") }}</p>
+            <p class="flex min-w-0 items-center gap-1.5">
+              <span class="truncate text-sm font-semibold text-slate-900">{{ activeTheme?.name ?? t("site.theme.customDesign") }}</span>
+              <span v-if="modified" class="shrink-0 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">{{ t("site.theme.modified") }}</span>
+            </p>
+            <p class="truncate text-xs text-slate-500">{{ activeTheme ? themeSource(activeTheme) : t("site.theme.customDesignHint") }}</p>
+          </div>
+        </div>
+        <p v-if="modified && activeTheme" class="mt-2 text-xs text-slate-500">{{ t(activeTheme.editable ? "site.theme.modifiedEditableHint" : "site.theme.modifiedHint") }}</p>
+        <div v-if="modified" class="mt-3 flex flex-wrap gap-2">
+          <button v-if="activeTheme?.editable" type="button" class="btn-primary btn-sm" :disabled="busy" @click="updateActiveTheme()">
+            <Icon icon="mdi:content-save-outline" class="h-4 w-4" />
+            {{ t("site.theme.saveToTheme") }}
+          </button>
+          <button v-if="activeTheme" type="button" class="btn-secondary btn-sm" :disabled="busy" @click="resetOpen = true">
+            <Icon icon="mdi:restore" class="h-4 w-4" />
+            {{ t("site.theme.reset") }}
+          </button>
+          <button type="button" class="btn-secondary btn-sm" :disabled="busy || savedCount >= MAX_THEME_PRESETS" @click="openSaveAs(null)">
+            <Icon icon="mdi:content-save-plus-outline" class="h-4 w-4" />
+            {{ t("site.theme.saveAsTheme") }}
+          </button>
+        </div>
+      </section>
+
       <BuilderGroup v-model:open="expanded.presets" icon="mdi:view-dashboard-outline" :title="t('site.theme.presets')" content-class="mt-2 space-y-3">
-        <div v-if="savedPresets.length" class="space-y-2">
-          <h4 class="px-1 text-xs font-semibold text-slate-700">{{ t("site.theme.savedPresets") }}</h4>
+        <div v-for="group in themeGroups" :key="group.key" class="space-y-2">
+          <h4 class="px-1 text-xs font-semibold text-slate-700">{{ t(`site.theme.group.${group.key}`) }}</h4>
           <div class="grid grid-cols-[repeat(auto-fill,minmax(6rem,1fr))] gap-2">
-            <div v-for="preset in savedPresets" :key="preset.id" class="group relative">
+            <div v-for="item in group.items" :key="item.ref" class="group relative">
               <button
                 type="button"
-                class="w-full rounded-lg border border-slate-200 p-2 text-left transition hover:border-theme-400 hover:shadow-sm"
-                :title="preset.name"
-                @click="applySavedPreset(preset)"
+                class="w-full rounded-lg border p-2 text-left transition hover:shadow-sm"
+                :class="item.ref === activeRef ? 'border-theme-500 ring-2 ring-theme-500/30' : 'border-slate-200 hover:border-theme-400'"
+                :title="item.extensionTitle ? `${item.name} · ${item.extensionTitle}` : item.name"
+                :aria-pressed="item.ref === activeRef"
+                @click="chooseTheme(item)"
               >
                 <span class="flex h-6 overflow-hidden rounded-md ring-1 ring-black/5">
-                  <span v-for="(color, index) in presetSwatches(preset)" :key="index" class="flex-1" :style="{ background: color }"></span>
+                  <span v-for="(color, index) in themeSwatches(item.theme, site.data.theme_defaults)" :key="index" class="flex-1" :style="{ background: color }"></span>
                 </span>
-                <span class="mt-1.5 block truncate pr-4 text-xs font-medium text-slate-700">{{ preset.name }}</span>
+                <span class="mt-1.5 flex items-center gap-1 pr-4">
+                  <Icon v-if="item.ref === activeRef" icon="mdi:check-circle" class="h-3.5 w-3.5 shrink-0 text-theme-600" />
+                  <span class="truncate text-xs font-medium text-slate-700">{{ item.name }}</span>
+                </span>
               </button>
               <button
+                v-if="item.editable"
                 type="button"
                 class="absolute bottom-1.5 right-1 rounded p-0.5 text-slate-400 opacity-0 transition hover:bg-red-50 hover:text-red-600 focus:opacity-100 group-hover:opacity-100"
-                :aria-label="t('site.theme.deletePresetNamed', { name: preset.name })"
+                :aria-label="t('site.theme.deletePresetNamed', { name: item.name })"
                 :title="t('common.delete')"
-                @click="deleteTarget = preset"
+                @click="deleteTarget = item"
               >
                 <Icon icon="mdi:trash-can-outline" class="h-3.5 w-3.5" />
               </button>
             </div>
           </div>
-          <h4 class="px-1 pt-1 text-xs font-semibold text-slate-700">{{ t("site.theme.builtInPresets") }}</h4>
-        </div>
-        <div class="grid grid-cols-[repeat(auto-fill,minmax(6rem,1fr))] gap-2">
-          <button
-            v-for="preset in PRESETS"
-            :key="preset.key"
-            type="button"
-            class="rounded-lg border border-slate-200 p-2 text-left transition hover:border-theme-400 hover:shadow-sm"
-            @click="applyPreset(preset)"
-          >
-            <span class="flex h-6 overflow-hidden rounded-md ring-1 ring-black/5">
-              <span v-for="color in presetSwatches(preset)" :key="color" class="flex-1" :style="{ background: color }"></span>
-            </span>
-            <span class="mt-1.5 block truncate text-xs font-medium text-slate-700">{{ t(`site.theme.preset.${preset.key}`) }}</span>
-          </button>
         </div>
       </BuilderGroup>
 
@@ -218,32 +240,50 @@
         <ThemeMotionSettings :motion="theme.motion" />
       </BuilderGroup>
 
-      <div class="space-y-2">
-        <button type="button" class="btn-secondary w-full justify-center" :disabled="savedPresets.length >= MAX_THEME_PRESETS" @click="saveOpen = true">
-          <Icon icon="mdi:content-save-outline" class="h-4 w-4" />
-          {{ t("site.theme.savePreset") }}
-        </button>
-        <button type="button" class="btn-secondary w-full justify-center" @click="resetTheme">
-          <Icon icon="mdi:restore" class="h-4 w-4" />
-          {{ t("site.theme.reset") }}
-        </button>
-      </div>
-
       <ComponentNameModal
         v-model="saveOpen"
         icon="mdi:palette-outline"
-        :title="t('site.theme.savePreset')"
-        :message="t('site.theme.savePresetHint')"
+        :title="t('site.theme.saveAsTheme')"
+        :message="t(pendingSwitch ? 'site.theme.saveBeforeSwitchHint' : 'site.theme.savePresetHint', { name: pendingSwitch?.name ?? '' })"
         :label="t('site.theme.presetName')"
         :placeholder="t('site.theme.presetNamePlaceholder')"
-        :confirm-label="t('site.builder.save')"
+        :confirm-label="t(pendingSwitch ? 'site.theme.saveAndSwitch' : 'site.builder.save')"
         :loading="busy"
-        @confirm="savePreset"
+        @update:model-value="(open) => { if (!open) pendingSwitch = null }"
+        @confirm="saveAsTheme"
+      />
+      <AppDialog
+        :model-value="switchTarget !== null && !saveOpen"
+        icon="mdi:swap-horizontal"
+        :title="t('site.theme.switchTitle', { name: switchTarget?.name ?? '' })"
+        :busy="busy"
+        @update:model-value="(open) => { if (!open) switchTarget = null }"
+      >
+        <p class="text-sm text-slate-600">{{ activeTheme ? t("site.theme.switchMessage", { current: activeTheme.name, name: switchTarget?.name ?? "" }) : t("site.theme.switchMessageCustom", { name: switchTarget?.name ?? "" }) }}</p>
+        <p class="mt-2 text-xs text-slate-500">{{ t("site.theme.keptOnSwitch") }}</p>
+        <template #footer="{ close }">
+          <button type="button" class="btn-secondary mr-auto" data-dialog-initial-focus :disabled="busy" @click="close">{{ t("common.cancel") }}</button>
+          <button v-if="activeTheme?.editable" type="button" class="btn-secondary" :disabled="busy" @click="updateActiveTheme(switchTarget)">
+            {{ t("site.theme.saveToNamedAndSwitch", { name: activeTheme.name }) }}
+          </button>
+          <button v-else type="button" class="btn-secondary" :disabled="busy || savedCount >= MAX_THEME_PRESETS" @click="openSaveAs(switchTarget)">
+            {{ t("site.theme.saveAsThemeFirst") }}
+          </button>
+          <button type="button" class="btn-danger" :disabled="busy" @click="switchTo(switchTarget)">{{ t("site.theme.discardAndSwitch") }}</button>
+        </template>
+      </AppDialog>
+      <ConfirmModal
+        v-model="resetOpen"
+        variant="warning"
+        :title="t('site.theme.resetTitle', { name: activeTheme?.name ?? '' })"
+        :message="t('site.theme.resetMessage')"
+        :confirm-label="t('site.theme.reset')"
+        @confirm="resetTheme"
       />
       <ConfirmModal
         :model-value="deleteTarget !== null"
         :title="t('site.theme.deletePresetNamed', { name: deleteTarget?.name ?? '' })"
-        :message="t('site.theme.deletePresetMessage')"
+        :message="t(deleteTarget?.ref === activeRef ? 'site.theme.deleteActiveMessage' : 'site.theme.deletePresetMessage')"
         :confirm-label="t('common.delete')"
         :loading="busy"
         @update:model-value="(open) => { if (!open) deleteTarget = null }"
@@ -258,6 +298,7 @@ import { computed, ref } from "vue";
 import { Icon } from "@iconify/vue";
 import BuilderGroup from "./BuilderGroup.vue";
 import BuilderHelp from "./BuilderHelp.vue";
+import AppDialog from "../../AppDialog.vue";
 import ConfirmModal from "../../ConfirmModal.vue";
 import LoadingSpinner from "../../LoadingSpinner.vue";
 import RangeRow from "../RangeRow.vue";
@@ -277,6 +318,7 @@ import { useToastStore } from "../../../stores/toast.js";
 import { useI18n } from "../../../i18n/index.js";
 import { MAX_CUSTOM_COLORS, themeColorOptions } from "../../../composables/themeColors.js";
 import { newId } from "../../../composables/layoutTree.js";
+import { DEFAULT_THEME, applyTheme, themeList, themeModified, themeSwatches } from "../../../composables/siteThemes.js";
 
 /** Global design of the website, shared by the backend settings and builder sidebar. */
 defineProps({
@@ -296,61 +338,28 @@ const MAX_THEME_PRESETS = 50;
 
 const COLOR_KEYS = ["primary", "secondary", "accent", "background", "surface", "text", "muted", "border"];
 
-const PRESETS = [
-  { key: "clean", theme: {} },
-  {
-    key: "warm",
-    theme: {
-      colors: { primary: "#c2410c", secondary: "#292524", accent: "#0d9488", background: "#fffbf5", surface: "#f5efe6", text: "#1c1917", muted: "#78716c", border: "#e7e0d6" },
-      fonts: { heading: "old-style", body: "humanist" },
-      radius: "lg",
-    },
-  },
-  {
-    key: "editorial",
-    theme: {
-      colors: { primary: "#b91c1c", secondary: "#111827", accent: "#1d4ed8", background: "#ffffff", surface: "#f6f6f4", text: "#111111", muted: "#6b6b6b", border: "#e5e5e5" },
-      fonts: { heading: "didone", body: "transitional" },
-      radius: "none",
-      spacingFactor: 1.25,
-      type_scale: "1.333",
-    },
-  },
-  {
-    key: "forest",
-    theme: {
-      colors: { primary: "#15803d", secondary: "#14532d", accent: "#ca8a04", background: "#fbfdf9", surface: "#eef5ea", text: "#10200f", muted: "#5b6b58", border: "#dbe7d4" },
-      fonts: { heading: "slab", body: "humanist" },
-    },
-  },
-  {
-    key: "midnight",
-    theme: {
-      mode: "dark",
-      dark_colors: { primary: "#a78bfa", secondary: "#e9e5ff", accent: "#f472b6", background: "#0f0d1a", surface: "#1a1730", text: "#ede9fe", muted: "#a1a1c2", border: "#2a2545" },
-      fonts: { heading: "geometric", body: "system" },
-      radius: "lg",
-      radii: { sm: 6, md: 12, lg: 20 },
-    },
-  },
-  {
-    key: "studio",
-    theme: {
-      mode: "auto",
-      colors: { primary: "#0f172a", secondary: "#334155", accent: "#06b6d4", background: "#ffffff", surface: "#f8fafc", text: "#0f172a", muted: "#64748b", border: "#e2e8f0" },
-      fonts: { heading: "neo-grotesque", body: "neo-grotesque" },
-      heading_weight: 800,
-      radius: "sm",
-    },
-  },
-];
-
 const site = useSiteStore();
 const toast = useToastStore();
 const { t } = useI18n();
 const theme = computed(() => site.draft?.theme ?? null);
-const savedPresets = computed(() => site.data?.theme_presets ?? []);
+const themes = computed(() => themeList(site.data, t));
+const savedCount = computed(() => site.data?.theme_presets?.length ?? 0);
+const activeRef = computed(() => theme.value?.active_theme ?? DEFAULT_THEME);
+/** The active theme, or null when it no longer exists (deleted, or its extension is disabled). */
+const activeTheme = computed(() => themes.value.find((item) => item.ref === activeRef.value) ?? null);
+/** Whether the design holds changes that resetting or switching themes would discard. */
+const modified = computed(() => themeModified(theme.value, activeTheme.value?.theme ?? null));
+const themeGroups = computed(() => [
+  { key: "site", items: themes.value.filter((item) => item.editable) },
+  { key: "extension", items: themes.value.filter((item) => item.extension) },
+  { key: "builtIn", items: themes.value.filter((item) => item.source === "builtin") },
+].filter((group) => group.items.length));
 const saveOpen = ref(false);
+/** The theme to apply once the design was saved as a new theme. */
+const pendingSwitch = ref(null);
+/** The theme waiting for confirmation, because switching would discard changes. */
+const switchTarget = ref(null);
+const resetOpen = ref(false);
 /** Which screen size the default padding controls edit; tablet and mobile may inherit the larger one. */
 const paddingDevice = ref("desktop");
 const paddingOptions = computed(() => [
@@ -378,53 +387,63 @@ function customColorKey(palette) {
   return palette === "dark_colors" ? "dark_color" : "color";
 }
 
-function presetSwatches(preset) {
-  const defaults = site.data.theme_defaults;
-  const key = preset.theme.mode === "dark" ? "dark_colors" : "colors";
-  const colors = { ...defaults[key], ...(preset.theme[key] ?? {}) };
-  return [colors.background, colors.surface, colors.primary, colors.accent, colors.text];
+function themeSource(item) {
+  if (item.extension) return t("site.theme.fromExtension", { name: item.extensionTitle });
+  return t(item.editable ? "site.theme.sourceSite" : "site.theme.sourceBuiltIn");
 }
 
-function applyPreset(preset) {
-  const defaults = JSON.parse(JSON.stringify(site.data.theme_defaults));
-  const { spacingFactor = 1, ...presetTheme } = preset.theme;
-  const next = {
-    ...defaults,
-    ...presetTheme,
-    colors: { ...defaults.colors, ...(preset.theme.colors ?? {}) },
-    dark_colors: { ...defaults.dark_colors, ...(preset.theme.dark_colors ?? {}) },
-    fonts: { ...defaults.fonts, ...(preset.theme.fonts ?? {}) },
-    radii: { ...defaults.radii, ...(preset.theme.radii ?? {}) },
-    space: scaledSpace(spacingFactor),
-    custom_css: theme.value.custom_css,
-    custom_colors: theme.value.custom_colors ?? {},
-    shadows: theme.value.shadows ?? {},
-  };
-  site.draft.theme = { ...theme.value, ...next };
+/** Apply a theme as defined; with unsaved theme changes, ask first. Choosing the active theme offers a reset. */
+function chooseTheme(item) {
+  if (item.ref === activeRef.value) {
+    if (modified.value) resetOpen.value = true;
+    return;
+  }
+  if (modified.value) switchTarget.value = item;
+  else switchTo(item);
 }
 
-/**
- * A saved design replaces the current one, except custom CSS. Custom colors
- * and shadows are merged so elements using ones made after saving keep them.
- */
-function applySavedPreset(preset) {
-  const saved = JSON.parse(JSON.stringify(preset.theme));
-  site.draft.theme = {
-    ...theme.value,
-    ...saved,
-    custom_colors: { ...(theme.value.custom_colors ?? {}), ...(saved.custom_colors ?? {}) },
-    shadows: { ...(theme.value.shadows ?? {}), ...(saved.shadows ?? {}) },
-    custom_css: theme.value.custom_css,
-  };
+function switchTo(item) {
+  site.draft.theme = applyTheme(item.theme, theme.value, item.ref);
+  switchTarget.value = null;
+  pendingSwitch.value = null;
 }
 
-async function savePreset(name) {
+function resetTheme() {
+  if (activeTheme.value) site.draft.theme = applyTheme(activeTheme.value.theme, theme.value, activeTheme.value.ref);
+  resetOpen.value = false;
+}
+
+function openSaveAs(next) {
+  pendingSwitch.value = next;
+  saveOpen.value = true;
+}
+
+/** Keep the design under a new name; it becomes the active theme unless another one is applied next. */
+async function saveAsTheme(name) {
   busy.value = true;
   try {
-    await site.createThemePreset(name);
+    const preset = await site.createThemePreset(name);
+    site.draft.theme.active_theme = `preset:${preset.id}`;
+    toast.success(t("site.theme.presetSaved", { name: preset.name }));
+    const next = pendingSwitch.value;
     saveOpen.value = false;
-    expanded.value.presets = true;
-    toast.success(t("site.theme.presetSaved", { name }));
+    if (next) switchTo(next);
+  } catch (err) {
+    toast.error(err.message);
+  } finally {
+    busy.value = false;
+  }
+}
+
+/** Write the customized design into the active site theme, then optionally apply `next`. */
+async function updateActiveTheme(next = null) {
+  const current = activeTheme.value;
+  if (!current?.editable) return;
+  busy.value = true;
+  try {
+    await site.updateThemePreset(current.id);
+    toast.success(t(site.dirtyParts.includes("theme") && !next ? "site.theme.themeUpdatedUnsaved" : "site.theme.themeUpdated", { name: current.name }));
+    if (next) switchTo(next);
   } catch (err) {
     toast.error(err.message);
   } finally {
@@ -459,10 +478,6 @@ const spacingPreset = computed(() =>
 
 function applySpacingPreset(key) {
   theme.value.space = scaledSpace(SPACING_PRESETS[key]);
-}
-
-function resetTheme() {
-  site.draft.theme = { ...JSON.parse(JSON.stringify(site.data.theme_defaults)), custom_css: theme.value.custom_css, custom_colors: theme.value.custom_colors ?? {}, shadows: theme.value.shadows ?? {}, updated_at: theme.value.updated_at };
 }
 
 function addCustomColor() {

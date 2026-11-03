@@ -1,0 +1,67 @@
+{
+  "name": "Neo-Brutalism",
+  "theme": {
+    "mode": "light",
+    "colors": {
+      "primary": "#f9df46",
+      "secondary": "#b8a1ff",
+      "accent": "#a5e6cc",
+      "background": "#fffdf5",
+      "surface": "#ffffff",
+      "text": "#191919",
+      "muted": "#555149",
+      "border": "#191919"
+    },
+    "dark_colors": {
+      "primary": "#f9df46",
+      "secondary": "#b8a1ff",
+      "accent": "#a5e6cc",
+      "background": "#18171b",
+      "surface": "#29272c",
+      "text": "#fffdf5",
+      "muted": "#cbc6d0",
+      "border": "#f5f0e3"
+    },
+    "fonts": {
+      "body": "neo-grotesque",
+      "heading": "neo-grotesque"
+    },
+    "base_size": 18,
+    "line_height": 1.6,
+    "type_scale": "1.333",
+    "heading_weight": 900,
+    "heading_line_height": 1.05,
+    "heading_letter_spacing": -0.04,
+    "heading_transform": "",
+    "radius": "none",
+    "radii": { "sm": 2, "md": 4, "lg": 8 },
+    "container_width": 1200,
+    "narrow_width": 760,
+    "section_padding": "lg",
+    "section_padding_tablet": "md",
+    "section_padding_mobile": "md",
+    "grid_padding": "none",
+    "grid_padding_tablet": "none",
+    "grid_padding_mobile": "none",
+    "column_padding": "none",
+    "column_padding_tablet": "none",
+    "column_padding_mobile": "none",
+    "space": { "xs": 4, "sm": 8, "md": 16, "lg": 32, "xl": 64, "2xl": 104 },
+    "links": {
+      "color": "text",
+      "hover_color": "",
+      "decoration": "underline",
+      "thickness": 2,
+      "offset": 0.2
+    },
+    "shadow_scale": {
+      "sm": { "color": "border", "x": 3, "y": 3, "blur": 0, "spread": 0, "opacity": 100, "inset": false },
+      "md": { "color": "border", "x": 6, "y": 6, "blur": 0, "spread": 0, "opacity": 100, "inset": false },
+      "lg": { "color": "border", "x": 10, "y": 10, "blur": 0, "spread": 0, "opacity": 100, "inset": false }
+    },
+    "shadows": {
+      "hard": { "label": "Neo offset", "color": "border", "x": 8, "y": 8, "blur": 0, "spread": 0, "opacity": 100, "inset": false }
+    },
+    "motion": { "fast": 200, "normal": 400, "slow": 700, "stagger": 80, "hover": 120 }
+  }
+}

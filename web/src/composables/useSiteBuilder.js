@@ -2,6 +2,8 @@ import { resolveLocalized, setLocalized, removeLocalized, localizedState, resolv
 import { hasInvalidValues, isSmartValue, reference, referenceConfig, smartSummary } from './smartValues.js'
 import { normalizeKey, uniqueKey } from './fieldBuilderUtils.js'
 import { useBuilderClipboard } from './builderClipboard.js'
+import { extensionText } from './extensionText.js'
+import { useI18n } from '../i18n/index.js'
 import { computed, inject, provide, ref, shallowRef } from 'vue'
 import {
   AREA_CONTENT,
@@ -378,7 +380,8 @@ export function createSiteBuilder({ t, componentApi = {}, templateApi = {}, fiel
 
   /** Drop containers: structure, tabs, item templates, content areas, the modal panel and lists without a card yet. */
   function isDropContainer(node) {
-    return !!node && (isStructure(node.kind) || ['tabs', 'tab', PAGE_CONTENT, AREA_CONTENT, MODAL].includes(node.kind) || isTemplateField(node) || (node.kind === 'collection' && !node.children?.length))
+    return !!node && (isStructure(node.kind) || ['tabs', 'tab', PAGE_CONTENT, AREA_CONTENT, MODAL].includes(node.kind) || isTemplateField(node) || (node.kind === 'collection' && !node.children?.length)
+      || !!spec.value?.kinds?.[node.kind]?.slot)
   }
 
   /**
@@ -1190,8 +1193,12 @@ export function createSiteBuilder({ t, componentApi = {}, templateApi = {}, fiel
 
   // ─── Labels ────────────────────────────────────────────────────────────
 
+  const adminLocale = useI18n().locale
+
   function kindLabel(kind) {
-    return t(`site.kind.${kind}`)
+    const own = spec.value?.kinds?.[kind]
+    if (own?.extension) return extensionText({ title: own.label, l10n: own.l10n }, 'title', adminLocale.value)
+    return own?.label ?? (kind.startsWith('block:') ? kind.slice(6) : t(`site.kind.${kind}`))
   }
 
   /**

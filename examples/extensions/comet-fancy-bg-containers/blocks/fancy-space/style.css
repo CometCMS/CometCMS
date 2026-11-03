@@ -1,0 +1,38 @@
+.c-block-cometcms__fancy-space .cometcms-fbg__nebula {
+  inset: -15%;
+  background:
+    radial-gradient(ellipse at 20% 30%, color-mix(in srgb, var(--fbg-a, #818cf8) 65%, transparent), transparent 48%),
+    radial-gradient(ellipse at 80% 75%, color-mix(in srgb, var(--fbg-b, #e879f9) 50%, transparent), transparent 45%);
+  filter: blur(24px);
+  animation: cometcms-fbg-breathe var(--fbg-period) ease-in-out infinite alternate;
+}
+.c-block-cometcms__fancy-space .cometcms-fbg__stars {
+  inset: -12%;
+  background-image:
+    radial-gradient(circle at 15% 23%, #fff 1px, transparent 1.6px),
+    radial-gradient(circle at 73% 61%, #fff 1px, transparent 1.6px),
+    radial-gradient(circle at 42% 87%, var(--fbg-a, #818cf8) 1px, transparent 2px),
+    radial-gradient(circle at 92% 11%, var(--fbg-b, #e879f9) 1px, transparent 2px);
+  background-size:
+    calc(var(--fbg-unit) * 2.9) calc(var(--fbg-unit) * 2.3),
+    calc(var(--fbg-unit) * 3.7) calc(var(--fbg-unit) * 3.1),
+    calc(var(--fbg-unit) * 2.1) calc(var(--fbg-unit) * 2.7),
+    calc(var(--fbg-unit) * 4.3) calc(var(--fbg-unit) * 3.9);
+  animation: cometcms-fbg-float calc(var(--fbg-period) * 2) linear infinite alternate;
+}
+.c-block-cometcms__fancy-space .cometcms-fbg__stars--far {
+  rotate: 180deg;
+  opacity: .45;
+  scale: .75;
+  animation-direction: alternate-reverse;
+}
+.c-block-cometcms__fancy-space .cometcms-fbg__orbit {
+  width: calc(var(--fbg-unit) * 6);
+  height: calc(var(--fbg-unit) * 6);
+  border: 1px solid color-mix(in srgb, var(--fbg-b, #e879f9) 35%, transparent);
+  border-radius: 50%;
+  right: -8%; top: -35%;
+  box-shadow: 0 0 80px color-mix(in srgb, var(--fbg-a, #818cf8) 12%, transparent), inset 0 0 40px color-mix(in srgb, var(--fbg-b, #e879f9) 12%, transparent);
+}
+.c-block-cometcms__fancy-space .cometcms-fbg[data-variant="starfield"] > .cometcms-fbg__effects > .cometcms-fbg__nebula,
+.c-block-cometcms__fancy-space .cometcms-fbg[data-variant="starfield"] > .cometcms-fbg__effects > .cometcms-fbg__orbit { display: none; }

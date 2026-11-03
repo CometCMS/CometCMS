@@ -1,0 +1,14 @@
+<figure class="cometcms-testimonial cometcms-testimonial--{{layout}}">
+  {{^rating=none}}<div class="cometcms-testimonial__rating" role="img" aria-label="{{rating_label}}: {{rating}} / 5">
+    <span aria-hidden="true">{{#rating=1}}★☆☆☆☆{{/rating=1}}{{#rating=2}}★★☆☆☆{{/rating=2}}{{#rating=3}}★★★☆☆{{/rating=3}}{{#rating=4}}★★★★☆{{/rating=4}}{{#rating=5}}★★★★★{{/rating=5}}</span>
+  </div>{{/rating=none}}
+  <blockquote class="cometcms-testimonial__quote"><p>{{quote}}</p></blockquote>
+  <figcaption class="cometcms-testimonial__author">
+    {{#portrait}}<img class="cometcms-testimonial__portrait" src="{{portrait}}" alt="{{portrait.alt}}" width="56" height="56" loading="lazy">{{/portrait}}
+    <div>
+      {{#name}}<strong class="cometcms-testimonial__name">{{name}}</strong>{{/name}}
+      {{#role}}<span class="cometcms-testimonial__detail">{{role}}</span>{{/role}}
+      {{#company}}<span class="cometcms-testimonial__detail">{{company}}</span>{{/company}}
+    </div>
+  </figcaption>
+</figure>

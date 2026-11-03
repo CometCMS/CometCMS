@@ -88,6 +88,20 @@ export const useSiteStore = defineStore('site', () => {
     if (active === getActiveWorkspace() && generation === requestGeneration) applyFonts(response.data)
   }
 
+  /** Refresh seeded types, templates and presets while keeping pending edits in the designer. */
+  async function refreshExtensions() {
+    const active = getActiveWorkspace()
+    const generation = requestGeneration
+    const response = await api.site.get()
+    if (active !== getActiveWorkspace() || generation !== requestGeneration) return
+    const pending = Object.fromEntries(dirtyParts.value.map((part) => [part, clone(draft.value[part])]))
+    data.value = response.data
+    workspace = active
+    syncPageBuilderActive()
+    resetDraft()
+    Object.assign(draft.value, pending)
+  }
+
   function resetDraft() {
     draft.value = data.value
       ? { settings: clone(data.value.settings), languages: languagesOf(data.value.settings), form_settings: clone(data.value.form_settings ?? {}), theme: clone(data.value.theme), menus: clone(data.value.menus), templates: clone(data.value.templates ?? {}) }
@@ -238,6 +252,13 @@ export const useSiteStore = defineStore('site', () => {
     return response.data
   }
 
+  /** Make the design as currently edited the definition of a site-owned theme. */
+  async function updateThemePreset(id) {
+    const response = await api.site.updateThemePreset(id, draft.value.theme)
+    data.value.theme_presets = (data.value.theme_presets ?? []).map((preset) => preset.id === id ? response.data : preset)
+    return response.data
+  }
+
   async function deleteThemePreset(id) {
     await api.site.deleteThemePreset(id)
     data.value.theme_presets = (data.value.theme_presets ?? []).filter((preset) => preset.id !== id)
@@ -270,5 +291,5 @@ export const useSiteStore = defineStore('site', () => {
     statusWorkspace = ''
   }
 
-  return { data, draft, loading, error, saving, fieldErrors, dirtyParts, isDirty, live, pageBuilderActive, homepagePreview, load, loadStatus, applyFonts, refreshFonts, save, saveRoute, resetDraft, markCustomized, createTemplate, createThemePreset, deleteThemePreset, applyRestoredTheme, discardTheme, invalidate }
+  return { data, draft, loading, error, saving, fieldErrors, dirtyParts, isDirty, live, pageBuilderActive, homepagePreview, load, loadStatus, applyFonts, refreshFonts, refreshExtensions, save, saveRoute, resetDraft, markCustomized, createTemplate, createThemePreset, updateThemePreset, deleteThemePreset, applyRestoredTheme, discardTheme, invalidate }
 })

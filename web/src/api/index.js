@@ -208,6 +208,7 @@ async function requestOnce(method, path, body = null, workspace = getActiveWorks
     const err = new Error(json.error?.message ?? t('apiError.failed'))
     err.code    = json.error?.code ?? 'unknown'
     err.fields  = json.error?.fields ?? {}
+    err.details = json.error?.details ?? null
     err.status  = res.status
     err.retryAfter = json.error?.retry_after ?? null
     throw err
@@ -254,6 +255,7 @@ function requestWithProgress(method, path, formData, onProgress, timeoutMs = 0) 
         const err = new Error(json.error?.message ?? t('apiError.failed'))
         err.code = json.error?.code ?? 'unknown'
         err.fields = json.error?.fields ?? {}
+        err.details = json.error?.details ?? null
         err.status = xhr.status
         err.retryAfter = json.error?.retry_after ?? null
         return reject(err)
@@ -433,6 +435,7 @@ export const api = {
     saveFormSettings: (data)             => request('PUT',    '/site/form-settings', data),
     saveTheme:    (data, workspace)      => request('PUT',    '/site/theme', data, workspace),
     createThemePreset: (name, theme) => request('POST', '/site/theme/presets', { name, theme }),
+    updateThemePreset: (id, theme) => request('PUT', `/site/theme/presets/${encodeURIComponent(id)}`, { theme }),
     deleteThemePreset: (id) => request('DELETE', `/site/theme/presets/${encodeURIComponent(id)}`),
     themeRevisions: () => request('GET', '/site/theme/revisions'),
     themeRevision: (id) => request('GET', `/site/theme/revisions/${encodeURIComponent(id)}`),
@@ -483,6 +486,26 @@ export const api = {
     indexPreviewUrl: (type, locale = '') => sitePreviewUrl(`/${encodeURIComponent(type)}`, locale),
     /** The homepage with the saved header and footer. */
     homePreviewUrl: (locale = '') => sitePreviewUrl('', locale),
+  },
+
+  extensions: {
+    setEnabled: (name, enabled) => request('PUT', `/site/extensions/${name.split('/').map(encodeURIComponent).join('/')}`, { enabled }),
+    setSettings: (name, settings) => request('PUT', `/site/extensions/${name.split('/').map(encodeURIComponent).join('/')}`, { settings }),
+    list: () => request('GET', '/site/extensions'),
+    get: (name) => request('GET', `/site/extensions/${name.split('/').map(encodeURIComponent).join('/')}`),
+    delete: (name, remove = []) => request('DELETE', `/site/extensions/${name.split('/').map(encodeURIComponent).join('/')}`, { remove }),
+    /**
+     * Install or update an extension ZIP. A 409 extension_review contains changes,
+     * scripts and seed choices together; resubmit the ZIP with the reviewed decisions.
+     */
+    install: (file, { acceptChanges = false, allowScripts = false, seeds, onProgress } = {}) => {
+      const body = new FormData()
+      body.append('extension', file, file.name)
+      if (acceptChanges) body.append('accept_changes', '1')
+      if (allowScripts) body.append('allow_scripts', '1')
+      if (seeds !== undefined) body.append('seeds', JSON.stringify(seeds))
+      return requestWithProgress('POST', '/site/extensions', body, onProgress)
+    },
   },
 
   fonts: {

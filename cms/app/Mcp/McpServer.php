@@ -153,7 +153,7 @@ final class McpServer
             'instructions' => implode(' ', [
                 $this->principal === [] ? 'Unauthenticated access is read-only: only public schemas, published entries, and public media are available. Send a bearer access token for private reads or writes.' : 'Authenticated access uses the bearer token permission grants.',
                 'Use CometCMS tools to inspect schemas, manage entries, and work with media.',
-                $this->canUseBuilder() ? 'Page-builder tools edit shared, live content areas and templates of collections. Start with get_builder_schema, list_templates and get_layout; every layout write requires the latest revision.' : 'Page-builder tools are available to bearer tokens with site.manage permission.',
+                $this->canUseBuilder() ? 'Page-builder tools edit shared, live content areas and templates of collections. Start with get_builder_schema, list_templates and get_layout; list_extensions explains the installed extension blocks. Every layout write requires the latest revision.' : 'Page-builder tools are available to bearer tokens with site.manage permission.',
                 'Content type updates are surgical by default: omitted label, icon, and fields are preserved. All content types use the workspace languages and default language.',
                 'When updating content type fields, pass only the fields to add or change; use remove_fields to delete fields, or replace_fields for a full field map replacement.',
                 'Entry writes target one locale and preserve other languages. Include locale, revision for optimistic concurrency, and reset_fields to remove translated overrides. Publication status and URL slugs belong to each locale.',
@@ -284,7 +284,7 @@ final class McpServer
         $name = $this->segment($args['name'] ?? '', 'name');
         $this->requirePermission('create_content_type', ['name' => $name]);
 
-        if ($this->types->exists($name)) {
+        if ($this->types->exists($name, includeDisabled: true)) {
             throw new McpError('A content type with this API name already exists.', 422, ['code' => 'validation_failed', 'fields' => ['name' => ['A content type with this API name already exists.']]]);
         }
 

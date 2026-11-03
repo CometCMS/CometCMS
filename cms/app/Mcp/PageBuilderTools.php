@@ -10,6 +10,7 @@ use CometCMS\Content\ContentTypeRepository;
 use CometCMS\Core\ConflictException;
 use CometCMS\Core\HtmlSanitizer;
 use CometCMS\Core\ValidationException;
+use CometCMS\Extensions\ExtensionRegistry;
 use CometCMS\Localization\LocalizedValue;
 use CometCMS\Site\ElementConditions;
 use CometCMS\Site\LayoutSchema;
@@ -22,7 +23,7 @@ use CometCMS\Workspaces\WorkspaceContext;
 /** Shared-layout tools; transport and authorization belong to McpServer. */
 final class PageBuilderTools
 {
-    public const NAMES = ['get_builder_schema', 'get_layout', 'get_section', 'get_element', 'set_layout', 'update_section', 'update_element', 'list_templates', 'set_template_parts'];
+    public const NAMES = ['get_builder_schema', 'list_extensions', 'get_layout', 'get_section', 'get_element', 'set_layout', 'update_section', 'update_element', 'list_templates', 'set_template_parts'];
 
     public static function schemas(): array
     {
@@ -52,6 +53,7 @@ final class PageBuilderTools
         ], ['kind'])];
         $contracts = [
             'get_builder_schema' => ['Discover builder vocabulary', 'Without kind: kinds, allowed children, every style key\'s values and limits; call this first. With kind (one or a list): props with defaults and the style keys each kind takes.', ['kind' => ['anyOf' => [$string, ['type' => 'array', 'items' => $string, 'minItems' => 1]]]], []],
+            'list_extensions' => ['List installed extensions', 'Installed extensions with their status, settings and blocks: each block\'s kind for layouts, what it is for, its palette category, whether it holds child elements (slot) and its variations. Disabled extensions\' blocks do not render. Use get_builder_schema with a kind for its props.', [], []],
             'get_layout' => ['Read layout overview or scoped tree', 'Read ordered section IDs, kinds, counts and revision. Use section_ids to select top-level sections; depth or mode opts into a tree. Summary mode omits props. Reads always return the whole layout revision. Start here before reading or writing sections.', $target + $read + ['section_ids' => ['type' => 'array', 'items' => $string, 'minItems' => 1, 'uniqueItems' => true, 'description' => 'Only these top-level section IDs, returned in layout order. Unknown IDs fail with 404; call get_layout without selectors to discover IDs.']], ['collection', 'variant']],
             'get_section' => ['Read one section', 'Read one top-level section subtree and whole layout revision. Limit child levels with depth or use mode: summary for IDs, kinds, names and styles without props. Default props are omitted in full mode; use get_builder_schema(kind) for defaults.', $target + ['section_id' => $string] + $read, ['collection', 'variant', 'section_id']],
             'get_element' => ['Read one element', 'Read a node by ID, its props/style and immediate child summaries, enclosing section and layout revision.', $target + ['element_id' => $string], ['collection', 'variant', 'element_id']],
@@ -81,14 +83,17 @@ final class PageBuilderTools
 
     /** Content areas of the components placed so far: id => [{id, name}], null when the component is missing. */
     private array $componentAreas = [];
+    private ?array $builderSpec = null;
 
     public function __construct(private readonly WorkspaceContext $workspace, private readonly array $principal, private readonly PermissionService $permissions = new PermissionService()) {}
 
     public function call(string $tool, array $args): array
     {
+        $this->builderSpec = null;
         $contract = self::schemas()[$tool]['inputSchema'];
         ToolArguments::validate($tool, $args, $contract);
         if ($tool === 'get_builder_schema') return ['data' => $this->vocabulary($args)];
+        if ($tool === 'list_extensions') return ['data' => $this->extensions()];
 
         $collection = $this->identifier($args['collection'], 'collection');
         $variant = $args['variant'];
@@ -290,14 +295,13 @@ final class PageBuilderTools
      */
     private function vocabulary(array $args): array
     {
-        $spec = LayoutSchema::spec(true);
+        $spec = $this->spec();
         $usable = $this->usableKinds();
         if (array_key_exists('kind', $args)) {
             $kinds = is_array($args['kind']) && array_is_list($args['kind']) && $args['kind'] !== [] ? $args['kind'] : [$args['kind']];
             $result = [];
             foreach ($kinds as $index => $kind) {
-                $kind = $this->identifier($kind, is_array($args['kind']) ? 'kind.' . $index : 'kind');
-                if (!in_array($kind, $usable, true)) $this->invalid('kind', 'Unknown kind. Call get_builder_schema without kind to list available kinds.');
+                if (!is_string($kind) || !in_array($kind, $usable, true)) $this->invalid('kind', 'Unknown kind. Call get_builder_schema without kind to list available kinds.');
                 $node = $spec['kinds'][$kind];
                 // Icon names are listed once, without kind.
                 $props = array_map(static fn(array $prop): array => $prop['type'] === 'icon' ? ['options' => in_array('', $prop['options'], true) ? 'icons, or "" for none' : 'icons'] + $prop : $prop, $node['props']);
@@ -323,6 +327,32 @@ final class PageBuilderTools
         ];
     }
 
+    /** Installed extensions as agents choose blocks from them; install and settings stay in the admin. */
+    private function extensions(): array
+    {
+        $registry = new ExtensionRegistry($this->workspace);
+        $metadata = $registry->metadata();
+        $extensions = array_map(static function (array $extension) use ($registry): array {
+            $blocks = array_map(static function (array $block) use ($registry): array {
+                $spec = $registry->get('block:' . $block['name']) ?? [];
+                return [
+                    'kind' => 'block:' . $block['name'], 'title' => $block['title'], 'description' => $block['description'],
+                    'category' => $spec['category'] ?? '', 'slot' => $spec['slot'] ?? false,
+                    'variations' => array_map(static fn(array $variation): array => ['name' => $variation['name'], 'title' => $variation['title'], 'props' => $variation['props']], $spec['variations'] ?? []),
+                    'script' => $block['script'], 'deprecated' => $block['deprecated'] !== null,
+                ];
+            }, $extension['blocks']);
+            return [
+                'name' => $extension['name'], 'title' => $extension['title'], 'description' => $extension['description'], 'version' => $extension['version'],
+                'enabled' => $extension['enabled'] && $extension['dependency_errors'] === [], 'requires' => (object) $extension['requires'],
+                'settings' => (object) $extension['settings_values'], 'blocks' => array_values($blocks),
+            ];
+        }, $metadata['extensions']);
+
+        // Folder extensions that failed validation, as file:line problems.
+        return ['extensions' => $extensions, 'failed' => $metadata['errors']];
+    }
+
     /** The icon names icon props take. */
     private function icons(array $spec): array
     {
@@ -333,9 +363,11 @@ final class PageBuilderTools
     /** Kinds a layout or an entry's content can hold: those reachable from the top level, and component instances with their area content. */
     private function usableKinds(): array
     {
+        $spec = $this->spec();
         $kinds = ['root' => true];
         for ($queue = ['root']; $queue !== [];) {
-            foreach (LayoutSchema::childrenFor(array_shift($queue), true, false) as $child) {
+            $parent = array_shift($queue);
+            foreach ($parent === 'root' ? $spec['root'] : ($spec['kinds'][$parent]['children'] ?? []) as $child) {
                 if (isset($kinds[$child])) continue;
                 $kinds[$child] = true;
                 $queue[] = $child;
@@ -343,6 +375,11 @@ final class PageBuilderTools
         }
         unset($kinds['root']);
         return [...array_keys($kinds), LayoutSchema::COMPONENT, LayoutSchema::AREA_CONTENT];
+    }
+
+    private function spec(): array
+    {
+        return $this->builderSpec ??= LayoutSchema::spec(true, blocks: new ExtensionRegistry($this->workspace));
     }
 
     /** $map with keys of equal values joined into one "a, b" key. */
@@ -385,7 +422,7 @@ final class PageBuilderTools
     private function compact(array $node, bool $summary = false): array
     {
         $result = $this->summary($node);
-        $defaults = array_map(static fn(array $spec): mixed => $spec['default'], LayoutSchema::propSpec($node['kind']));
+        $defaults = array_map(static fn(array $spec): mixed => $spec['default'], $this->spec()['kinds'][$node['kind']]['props'] ?? []);
         $props = array_filter($node['props'] ?? [], static fn(mixed $value, string $key): bool => $value !== ($defaults[$key] ?? null), ARRAY_FILTER_USE_BOTH);
         if (!$summary && $props !== []) $result['props'] = $props;
         if (($node['style'] ?? []) !== []) $result['style'] = $node['style'];
@@ -497,7 +534,7 @@ final class PageBuilderTools
             if (++$count > LayoutSchema::MAX_NODES) $this->invalid($nodePath, 'Layout exceeds the ' . LayoutSchema::MAX_NODES . ' node limit.');
             $this->map($node, $nodePath);
             $this->keys($node, ['id', 'kind', 'name', 'props', 'style', 'responsive', 'states', 'children'], $nodePath);
-            if (!is_string($node['kind'] ?? null) || !in_array($node['kind'], [...LayoutSchema::STRUCTURE, ...LayoutSchema::ELEMENTS, 'tab', LayoutSchema::COMPONENT, LayoutSchema::PAGE_CONTENT, LayoutSchema::AREA_CONTENT], true)) $this->invalid($nodePath . '.kind', 'Unknown or missing kind.');
+            if (!is_string($node['kind'] ?? null) || !in_array($node['kind'], $this->usableKinds(), true)) $this->invalid($nodePath . '.kind', 'Unknown or missing kind.');
             $this->placement($node, $nodePath, $at, $areas);
             if (!array_key_exists('id', $node)) $node['id'] = LayoutSchema::newId();
             $id = $this->identifier($node['id'], $nodePath . '.id');
@@ -507,13 +544,11 @@ final class PageBuilderTools
             foreach (['props', 'style'] as $key) {
                 if (!array_key_exists($key, $node)) continue;
                 $this->map($node[$key], $nodePath . '.' . $key);
-                $specs = $key === 'props' ? LayoutSchema::propSpec($node['kind']) : array_intersect_key(LayoutSchema::styleSpec(), array_flip(LayoutSchema::styleKeys($node['kind'])));
+                $specs = $key === 'props' ? $this->spec()['kinds'][$node['kind']]['props'] : array_intersect_key($this->spec()['style'], array_flip($this->spec()['kinds'][$node['kind']]['style']));
                 foreach ($node[$key] as $property => $value) {
                     $valuePath = $nodePath . '.' . $key . '.' . $property;
                     if (!isset($specs[$property])) $this->invalid($valuePath, 'Unknown ' . $key . ' key for ' . $node['kind'] . '.');
-                    $localized = $key === 'props' ? in_array($property, LayoutSchema::LOCALIZED_PROPS[$node['kind']] ?? [], true) : !empty($specs[$property]['localized']);
-                    $binding = $key === 'props' ? SmartValue::PROPERTIES[$node['kind']][$property] ?? null : SmartValue::STYLE_PROPERTIES[$property] ?? null;
-                    $this->valueShape($value, $specs[$property]['type'], $valuePath, $localized, $binding !== null);
+                    $this->valueShape($value, $specs[$property], $valuePath, !empty($specs[$property]['localized']), isset($specs[$property]['binding']));
                 }
             }
             foreach (['responsive' => array_keys(StyleVariants::DEVICES), 'states' => StyleVariants::STATES] as $group => $variants) {
@@ -530,7 +565,7 @@ final class PageBuilderTools
             if ($kind === LayoutSchema::COMPONENT) $node['children'] = $this->areaContents($node, $nodePath);
             $node['children'] = $this->prepare($node['children'] ?? [], $nodePath . '.children', $seen, $count, [
                 // A repeater's item template may not contain another one.
-                'parent' => $kind === 'field' ? ($at['item'] ? '' : 'field') : $kind,
+                'parent' => ($this->spec()['kinds'][$kind]['slot'] ?? false) ? ($at['item'] ? 'item-slot' : 'slot') : ($kind === 'field' ? ($at['item'] ? '' : 'field') : $kind),
                 // Cards, item templates, an area's default content and an instance's content areas hold no Entry content area.
                 'page_content' => $at['page_content'] && !in_array($kind, ['field', 'collection', LayoutSchema::PAGE_CONTENT, LayoutSchema::COMPONENT], true),
                 'rows' => match ($kind) {
@@ -614,14 +649,24 @@ final class PageBuilderTools
     }
 
     /** Reject malformed compound values before lenient normalizers can cast them. */
-    private function valueShape(mixed $value, string $type, string $path, bool $localized = false, bool $binding = false): void
+    private function valueShape(mixed $value, array $spec, string $path, bool $localized = false, bool $binding = false): void
     {
+        $type = $spec['type'];
         if ($localized && LocalizedValue::is($value)) {
             $this->map($value['values'] ?? null, $path . '.values');
-            foreach ($value['values'] as $locale => $item) $this->valueShape($item, $type, $path . '.values.' . $locale, false, $binding);
+            foreach ($value['values'] as $locale => $item) $this->valueShape($item, $spec, $path . '.values.' . $locale, false, $binding);
             return;
         }
         if ($binding && SmartValue::isDynamic($value)) return; // SmartValue validates its own structure.
+        if ($type === 'list') {
+            if (!is_array($value) || !array_is_list($value)) $this->invalid($path, 'Expected an array of item objects.');
+            foreach ($value as $index => $item) {
+                $this->map($item, $path . '.' . $index);
+                $this->keys($item, array_keys($spec['fields']), $path . '.' . $index);
+                foreach ($item as $key => $field) $this->valueShape($field, $spec['fields'][$key], $path . '.' . $index . '.' . $key);
+            }
+            return;
+        }
         if (in_array($type, ['set', 'media_list', 'content_types', 'search_fields', 'sort_fields'], true)) {
             if (!is_array($value) || !array_is_list($value)) $this->invalid($path, 'Expected an array of strings.');
             foreach ($value as $index => $item) if (!is_string($item)) $this->invalid($path . '.' . $index, 'Expected a string.');
@@ -686,7 +731,7 @@ final class PageBuilderTools
         if (count($input) !== count($output)) $this->invalid($path, 'Invalid child placement, nesting limit, duplicate page placeholder or collection card count. Inspect allowed children with get_builder_schema.');
         $styles = LayoutSchema::styleSpec();
         foreach ($input as $index => $node) {
-            $props = LayoutSchema::propSpec($node['kind']);
+            $props = $this->spec()['kinds'][$node['kind']]['props'];
             $actual = $output[$index];
             $nodePath = $path . '.' . $index;
             foreach (['id', 'kind', 'name'] as $key) {

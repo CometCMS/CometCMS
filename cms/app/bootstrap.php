@@ -52,6 +52,17 @@ spl_autoload_register(static function (string $class): void {
     }
 });
 
+// Report missing PHP requirements on every request, before anything depends on them.
+$_missingRequirements = \CometCMS\Core\Requirements::missing();
+if ($_missingRequirements !== []) {
+    comet_bootstrap_failure('PHP requirements missing', \CometCMS\Core\Requirements::hint($_missingRequirements), [
+        'missing' => implode(', ', $_missingRequirements),
+        'php' => PHP_VERSION,
+        'php_ini' => php_ini_loaded_file() ?: '(none)',
+    ]);
+}
+unset($_missingRequirements);
+
 function comet_config(string $key, mixed $default = null): mixed
 {
     global $cometConfig;

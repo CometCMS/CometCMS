@@ -1,0 +1,300 @@
+/* Shared menu markup comes from CometCMS; these selectors stay inside this extension.
+   Each element sets option classes (cometcms-mv--option-value) on its wrapper,
+   and theme values (accent, surface, corners) as custom properties. */
+.cometcms-mv {
+  --mv-tint: var(--mv-accent, var(--c-primary));
+  /* Black or white text, whichever reads better on the accent. */
+  --mv-on-tint: oklch(from var(--mv-tint) clamp(0, (0.7 - l) * 1000, 1) 0 0);
+  --mv-line: color-mix(in srgb, currentColor 16%, transparent);
+  /* The corners prop holds a theme radius; --mv-corners is "initial" when unset. */
+  --mv-radius: var(--mv-corners, .75rem);
+  --mv-py: .7em; --mv-px: 1.1em; --mv-gap: .55rem;
+  min-width: 0;
+}
+.cometcms-mv--density-compact { --mv-py: .45em; --mv-px: .8em; --mv-gap: .3rem; }
+.cometcms-mv--density-spacious { --mv-py: 1em; --mv-px: 1.5em; --mv-gap: .9rem; }
+
+.cometcms-mv > .c-menu { --c-menu-hover: var(--mv-tint); display: block; width: 100%; min-width: 0; text-align: start; }
+.cometcms-mv .c-menu-list { gap: var(--mv-gap); align-items: stretch; }
+.cometcms-mv .c-menu-list > li { min-width: 0; max-width: 100%; }
+.cometcms-mv .c-menu-label { border-radius: inherit; }
+.cometcms-mv .c-menu-label > :is(a, span:not(.c-menu-chevron)) { padding: var(--mv-py) var(--mv-px); }
+.cometcms-mv :is(li, .c-menu-label, a), .cometcms-mv a::after {
+  transition: color .2s, background-color .2s, border-color .2s, box-shadow .2s, opacity .2s, translate .2s, padding .2s;
+}
+.cometcms-mv .c-menu :is(a, summary):focus-visible { outline: 2px solid var(--mv-tint); outline-offset: -3px; }
+.cometcms-mv--caps .c-menu-list > li > :is(.c-menu-label, .c-menu-disclosure > summary.c-menu-label) { text-transform: uppercase; letter-spacing: .07em; }
+/* A parent whose submenu holds the current page is marked too. */
+.cometcms-mv .c-menu-list > li:has(.c-submenu a[aria-current="page"]) > .c-menu-label { color: var(--mv-tint); }
+
+/* Disclosures stay in flow at every size, so long labels and deep trees fit. */
+.cometcms-mv .c-submenu { margin: .1em .75em .6em; padding-inline-start: .35em; text-align: start; text-transform: none; letter-spacing: normal; }
+.cometcms-mv .c-submenu .c-menu-label > :is(a, span:not(.c-menu-chevron)) { padding: calc(var(--mv-py) * .55) calc(var(--mv-px) * .7); }
+.cometcms-mv .c-menu-disclosure > summary:not(.c-menu-label) {
+  height: calc(1lh + 2 * var(--mv-py)); width: 2.25em; align-items: center; justify-content: center; border-radius: inherit;
+}
+.cometcms-mv .c-submenu .c-menu-disclosure > summary:not(.c-menu-label) { height: calc(1lh + 1.1 * var(--mv-py)); }
+.cometcms-mv .c-has-children > .c-menu-label { padding-inline-end: 2.25em; padding-right: 2.25em; }
+.cometcms-mv .c-menu-chevron { width: 2.25em; }
+
+/* Words wrap whole in rows of items; only words longer than the row break. */
+.cometcms-mv:is(.cometcms-mv--pills, .cometcms-mv--segmented, .cometcms-mv--inline) .c-menu-list > li > :is(.c-menu-label, .c-menu-disclosure > summary.c-menu-label) > :is(a, span) { overflow-wrap: break-word; }
+
+/* ---------- Pills: independent chips that wrap naturally. ---------- */
+.cometcms-mv--pills .c-menu-list { flex-direction: row; flex-wrap: wrap; align-items: flex-start; }
+.cometcms-mv--pills .c-menu-list > li {
+  --mv-bg: transparent;
+  border: 1px solid transparent; border-radius: var(--mv-radius); background: var(--mv-bg);
+}
+.cometcms-mv--pills.cometcms-mv--align-center .c-menu-list { justify-content: center; }
+.cometcms-mv--pills.cometcms-mv--align-end .c-menu-list { justify-content: flex-end; }
+.cometcms-mv--pills.cometcms-mv--align-stretch .c-menu-list > li { flex: 1 1 auto; text-align: center; }
+.cometcms-mv--pills .c-menu-list > li > .c-menu-label :is(a, span):focus-visible { outline-offset: 2px; }
+
+.cometcms-mv--pills.cometcms-mv--style-soft .c-menu-list > li { --mv-bg: var(--mv-surface, color-mix(in srgb, var(--mv-tint) 7%, transparent)); }
+.cometcms-mv--pills.cometcms-mv--style-soft .c-menu-list > li:has(> .c-menu-label > a:hover, > .c-menu-disclosure > summary.c-menu-label:hover) {
+  --mv-bg: color-mix(in srgb, var(--mv-tint) 14%, transparent);
+}
+.cometcms-mv--pills.cometcms-mv--style-soft .c-menu-list > li:has(> .c-menu-label > a[aria-current="page"]) {
+  --mv-bg: color-mix(in srgb, var(--mv-tint) 18%, transparent); border-color: color-mix(in srgb, var(--mv-tint) 30%, transparent);
+}
+
+.cometcms-mv--pills.cometcms-mv--style-outline .c-menu-list > li { --mv-bg: var(--mv-surface, transparent); border-color: var(--mv-line); }
+.cometcms-mv--pills.cometcms-mv--style-outline .c-menu-list > li:has(> .c-menu-label > a:hover, > .c-menu-disclosure > summary.c-menu-label:hover) {
+  border-color: var(--mv-tint);
+}
+.cometcms-mv--pills.cometcms-mv--style-outline .c-menu-list > li:has(> .c-menu-label > a[aria-current="page"]) {
+  border-color: var(--mv-tint); box-shadow: inset 0 0 0 1px var(--mv-tint); --mv-bg: color-mix(in srgb, var(--mv-tint) 6%, transparent);
+}
+
+.cometcms-mv--pills.cometcms-mv--style-solid .c-menu-list > li { --mv-bg: var(--mv-surface, color-mix(in srgb, currentColor 6%, transparent)); }
+.cometcms-mv--pills.cometcms-mv--style-solid .c-menu-list > li:is(:has(> .c-menu-label > a:is(:hover, [aria-current="page"])), :has(> .c-menu-disclosure > summary.c-menu-label:hover)) {
+  --mv-bg: var(--mv-tint); --c-menu-hover: var(--mv-on-tint); color: var(--mv-on-tint);
+}
+.cometcms-mv--pills.cometcms-mv--style-solid .c-menu-list > li:has(> .c-menu-label > a:hover):not(:has(> .c-menu-label > a[aria-current="page"])) {
+  --mv-bg: color-mix(in srgb, var(--mv-tint) 85%, currentColor);
+}
+
+.cometcms-mv--pills.cometcms-mv--style-ghost .c-menu-list > li:has(> .c-menu-label > a:hover, > .c-menu-disclosure > summary.c-menu-label:hover) {
+  --mv-bg: color-mix(in srgb, currentColor 7%, transparent);
+}
+.cometcms-mv--pills.cometcms-mv--style-ghost .c-menu-list > li:has(> .c-menu-label > a[aria-current="page"]) {
+  --mv-bg: color-mix(in srgb, var(--mv-tint) 12%, transparent);
+}
+
+/* ---------- Segments: a track, a tab bar or a button group. ---------- */
+.cometcms-mv--segmented .c-menu-list { flex-direction: row; flex-wrap: wrap; gap: 0; text-align: center; }
+.cometcms-mv--segmented .c-menu-list > li { flex: 1 1 8rem; }
+.cometcms-mv--segmented.cometcms-mv--width-fit .c-menu-list { width: fit-content; max-width: 100%; }
+.cometcms-mv--segmented.cometcms-mv--width-fit .c-menu-list > li { flex: 1 1 auto; }
+.cometcms-mv--segmented.cometcms-mv--width-fit.cometcms-mv--align-center .c-menu-list { margin-inline: auto; }
+.cometcms-mv--segmented.cometcms-mv--width-fit.cometcms-mv--align-end .c-menu-list { margin-inline-start: auto; }
+
+/* Track: the current page sits on a raised thumb. */
+.cometcms-mv--segmented.cometcms-mv--style-track .c-menu-list {
+  --mv-inset: .3rem;
+  gap: .2rem; padding: var(--mv-inset); border-radius: var(--mv-radius);
+  background: var(--mv-surface, color-mix(in srgb, currentColor 7%, transparent));
+}
+.cometcms-mv--segmented.cometcms-mv--style-track .c-menu-list > li { border-radius: max(0px, var(--mv-radius) - var(--mv-inset)); }
+.cometcms-mv--segmented.cometcms-mv--style-track .c-menu-list > li:has(> .c-menu-label > a:hover, > .c-menu-disclosure > summary.c-menu-label:hover) {
+  background: color-mix(in srgb, currentColor 6%, transparent);
+}
+.cometcms-mv--segmented.cometcms-mv--style-track .c-menu-list > li:has(> .c-menu-label > a[aria-current="page"]) {
+  background: var(--c-background, #fff);
+  box-shadow: 0 1px 2px rgb(0 0 0 / .1), 0 2px 8px -2px rgb(0 0 0 / .12), 0 0 0 1px color-mix(in srgb, var(--mv-tint) 18%, transparent);
+}
+
+/* Tabs: an underline marks the current page. */
+.cometcms-mv--segmented.cometcms-mv--style-tabs .c-menu-list { border-bottom: 1px solid var(--mv-line); }
+.cometcms-mv--segmented.cometcms-mv--style-tabs .c-menu-list > li {
+  margin-bottom: -1px; border-radius: min(var(--mv-radius), .6rem) min(var(--mv-radius), .6rem) 0 0;
+  box-shadow: inset 0 -2px 0 transparent;
+}
+.cometcms-mv--segmented.cometcms-mv--style-tabs .c-menu-list > li:has(> .c-menu-label > a:hover, > .c-menu-disclosure > summary.c-menu-label:hover) {
+  background: color-mix(in srgb, currentColor 4%, transparent); box-shadow: inset 0 -2px 0 color-mix(in srgb, currentColor 30%, transparent);
+}
+.cometcms-mv--segmented.cometcms-mv--style-tabs .c-menu-list > li:has(> .c-menu-label > a[aria-current="page"]) {
+  box-shadow: inset 0 -3px 0 var(--mv-tint);
+}
+.cometcms-mv--segmented.cometcms-mv--style-tabs .c-menu-list { background: var(--mv-surface, transparent); }
+
+/* Divided: a button group; hairline gaps draw the dividers, also across wrapped rows. */
+.cometcms-mv--segmented.cometcms-mv--style-divided .c-menu-list {
+  gap: 1px; overflow: clip; border: 1px solid var(--mv-line); border-radius: var(--mv-radius); background: var(--mv-line);
+}
+.cometcms-mv--segmented.cometcms-mv--style-divided .c-menu-list > li { background: var(--mv-surface, var(--c-background, #fff)); }
+.cometcms-mv--segmented.cometcms-mv--style-divided .c-menu-list > li:has(> .c-menu-label > a:hover, > .c-menu-disclosure > summary.c-menu-label:hover) {
+  background: color-mix(in srgb, var(--mv-tint) 9%, var(--mv-surface, var(--c-background, #fff)));
+}
+.cometcms-mv--segmented.cometcms-mv--style-divided .c-menu-list > li:has(> .c-menu-label > a[aria-current="page"]) {
+  background: var(--mv-tint); --c-menu-hover: var(--mv-on-tint); color: var(--mv-on-tint);
+}
+
+/* ---------- Editorial index: the number is decoration; the link remains its accessible name. ---------- */
+.cometcms-mv--index { --mv-size: clamp(1.45rem, 3.2vw, 2.25rem); --mv-px: 0px; }
+.cometcms-mv--index.cometcms-mv--size-medium { --mv-size: clamp(1.15rem, 2vw, 1.5rem); }
+.cometcms-mv--index.cometcms-mv--size-display { --mv-size: clamp(1.9rem, 6vw, 4rem); }
+.cometcms-mv--index .c-menu-list { counter-reset: mv-item; gap: 0; }
+.cometcms-mv--index .c-menu-list > li {
+  counter-increment: mv-item;
+  display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: baseline; column-gap: clamp(.9rem, 3vw, 2.5rem);
+  font-size: var(--mv-size); line-height: 1.12;
+}
+.cometcms-mv--index .c-menu-list > li > * { grid-column: -2; }
+.cometcms-mv--index .c-menu-list > li::before {
+  content: counter(mv-item, decimal-leading-zero) / "";
+  min-width: 2ch; font-size: max(.75rem, .32em); font-weight: 500; letter-spacing: .06em;
+  font-variant-numeric: tabular-nums; color: var(--mv-tint);
+}
+.cometcms-mv--index.cometcms-mv--numbers-decimal .c-menu-list > li::before { content: counter(mv-item) "." / ""; }
+.cometcms-mv--index.cometcms-mv--numbers-roman .c-menu-list > li::before { content: counter(mv-item, upper-roman) / ""; }
+.cometcms-mv--index.cometcms-mv--numbers-alpha .c-menu-list > li::before { content: counter(mv-item, upper-alpha) / ""; }
+.cometcms-mv--index.cometcms-mv--numbers-none .c-menu-list > li { grid-template-columns: minmax(0, 1fr); }
+.cometcms-mv--index.cometcms-mv--numbers-none .c-menu-list > li::before { content: none; }
+.cometcms-mv--index .c-menu-list > li > :is(.c-menu-label, .c-menu-disclosure > summary.c-menu-label) { font-weight: 600; letter-spacing: -.03em; }
+.cometcms-mv--index .c-menu-list > li > .c-menu-label > a { padding-inline-start: 0; }
+.cometcms-mv--index .c-menu-list > li > :is(.c-menu-label, .c-menu-disclosure > summary.c-menu-label) .c-menu-icon { width: .8em; height: .8em; margin-inline-end: .35em; align-self: center; vertical-align: -.08em; color: var(--mv-tint); }
+.cometcms-mv--index .c-submenu { font-size: max(1rem, .45em); line-height: 1.4; font-weight: 400; letter-spacing: normal; margin-inline: 0; }
+.cometcms-mv--index.cometcms-mv--dividers .c-menu-list > li { border-bottom: 1px solid var(--mv-line); }
+.cometcms-mv--index.cometcms-mv--dividers .c-menu-list > li:first-child { border-top: 1px solid var(--mv-line); }
+
+.cometcms-mv--index.cometcms-mv--effect-slide .c-menu-list > li > .c-menu-label > a:hover { padding-inline-start: .45em; }
+.cometcms-mv--index.cometcms-mv--effect-fill .c-menu-list > li { padding-inline: .6rem; }
+.cometcms-mv--index.cometcms-mv--effect-fill .c-menu-list > li:has(> .c-menu-label > a:hover, > .c-menu-disclosure > summary.c-menu-label:hover) {
+  background: color-mix(in srgb, var(--mv-tint) 8%, transparent);
+}
+
+.cometcms-mv--index.cometcms-mv--arrows .c-menu-list > li:not(.c-has-children) > .c-menu-label > a { display: flex; align-items: baseline; }
+.cometcms-mv--index.cometcms-mv--arrows .c-menu-list > li:not(.c-has-children) > .c-menu-label > a::after {
+  content: "\2192" / ""; margin-inline-start: auto; padding-inline-start: .5em;
+  font-size: .7em; font-weight: 400; opacity: .3; translate: -.35em 0;
+}
+.cometcms-mv--index.cometcms-mv--arrows .c-menu-list > li:not(.c-has-children) > .c-menu-label > a:is(:hover, :focus-visible, [aria-current="page"])::after { opacity: 1; translate: 0 0; }
+
+/* ---------- Cards: clickable tiles with room for icons and nested destinations. ---------- */
+.cometcms-mv--cards { --mv-columns: 3; --mv-py: 1.1em; --mv-px: 1.2em; }
+.cometcms-mv--cards.cometcms-mv--density-compact { --mv-py: .75em; --mv-px: .9em; }
+.cometcms-mv--cards.cometcms-mv--density-spacious { --mv-py: 1.6em; --mv-px: 1.6em; }
+.cometcms-mv--cards.cometcms-mv--columns-two { --mv-columns: 2; }
+.cometcms-mv--cards.cometcms-mv--columns-four { --mv-columns: 4; }
+.cometcms-mv--cards .c-menu-list { display: grid; grid-template-columns: repeat(var(--mv-columns), minmax(0, 1fr)); counter-reset: mv-item; }
+.cometcms-mv--cards.cometcms-mv--columns-auto .c-menu-list { grid-template-columns: repeat(auto-fill, minmax(min(100%, 13rem), 1fr)); }
+.cometcms-mv--cards .c-menu-list > li {
+  --mv-bg: transparent;
+  counter-increment: mv-item; position: relative; display: flex; flex-direction: column;
+  border: 1px solid transparent; border-radius: var(--mv-radius); background: var(--mv-bg);
+}
+.cometcms-mv--cards.cometcms-mv--align-center .c-menu-list > li { text-align: center; }
+.cometcms-mv--cards.cometcms-mv--align-center .c-menu-list > li.c-has-children > .c-menu-label { padding-inline-start: 2.25em; }
+.cometcms-mv--cards .c-menu-list > li > :is(.c-menu-label, .c-menu-disclosure > summary.c-menu-label) { font-weight: 600; }
+.cometcms-mv--cards .c-menu-list > li > .c-menu-label .c-menu-icon {
+  display: block; width: 1.75em; height: 1.75em; margin: 0 0 .6em; color: var(--mv-tint);
+}
+.cometcms-mv--cards.cometcms-mv--align-center .c-menu-list > li > .c-menu-label .c-menu-icon { margin-inline: auto; }
+/* A leaf card is clickable as a whole; parents keep their own toggle. */
+.cometcms-mv--cards .c-menu-list > li:not(.c-has-children) > .c-menu-label > a::before { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+.cometcms-mv--cards .c-menu-list > li:not(.c-has-children) > .c-menu-label > a:focus-visible { outline: none; }
+.cometcms-mv--cards .c-menu-list > li:has(> .c-menu-label > a:focus-visible) { outline: 2px solid var(--mv-tint); outline-offset: 2px; }
+.cometcms-mv--cards .c-menu-list > li:is(:hover, :focus-within) { border-color: var(--mv-tint); }
+.cometcms-mv--cards .c-menu-list > li:has(> .c-menu-label > a[aria-current="page"]) { border-color: var(--mv-tint); }
+
+.cometcms-mv--cards.cometcms-mv--numbered .c-menu-list > li::before {
+  content: counter(mv-item, decimal-leading-zero) / "";
+  padding: var(--mv-py) var(--mv-px) 0; margin-bottom: calc(var(--mv-py) * -.5);
+  font-size: .8em; letter-spacing: .06em; font-variant-numeric: tabular-nums; color: var(--mv-tint);
+}
+.cometcms-mv--cards.cometcms-mv--height-tall .c-menu-list > li { min-height: clamp(8.5rem, 16vw, 12rem); }
+.cometcms-mv--cards.cometcms-mv--height-tall .c-menu-list > li > :is(.c-menu-label, .c-menu-disclosure:has(> summary.c-menu-label)) { margin-top: auto; font-size: 1.15em; }
+
+.cometcms-mv--cards.cometcms-mv--arrows .c-menu-list > li:not(.c-has-children) > .c-menu-label > a { padding-inline-end: calc(var(--mv-px) + 1.4em); }
+.cometcms-mv--cards.cometcms-mv--arrows.cometcms-mv--align-center .c-menu-list > li:not(.c-has-children) > .c-menu-label > a { padding-inline-start: calc(var(--mv-px) + 1.4em); }
+.cometcms-mv--cards.cometcms-mv--arrows .c-menu-list > li:not(.c-has-children) > .c-menu-label > a::after {
+  content: "\2197" / ""; position: absolute; top: var(--mv-py); inset-inline-end: var(--mv-px);
+  font-weight: 400; line-height: 1.2; opacity: .4;
+}
+.cometcms-mv--cards.cometcms-mv--arrows .c-menu-list > li:not(.c-has-children) > .c-menu-label > a:is(:hover, :focus-visible)::after {
+  opacity: 1; translate: .15em -.15em; color: var(--mv-tint);
+}
+
+.cometcms-mv--cards.cometcms-mv--style-outline .c-menu-list > li { --mv-bg: var(--mv-surface, transparent); border-color: var(--mv-line); }
+.cometcms-mv--cards.cometcms-mv--style-outline .c-menu-list > li:is(:hover, :focus-within) { box-shadow: 0 4px 0 color-mix(in srgb, var(--mv-tint) 18%, transparent); }
+.cometcms-mv--cards.cometcms-mv--style-filled .c-menu-list > li { --mv-bg: var(--mv-surface, color-mix(in srgb, var(--mv-tint) 7%, transparent)); }
+.cometcms-mv--cards.cometcms-mv--style-filled .c-menu-list > li:is(:hover, :focus-within) { --mv-bg: color-mix(in srgb, var(--mv-tint) 13%, var(--mv-surface, transparent)); border-color: transparent; }
+.cometcms-mv--cards.cometcms-mv--style-elevated .c-menu-list > li {
+  --mv-bg: var(--mv-surface, var(--c-background, #fff)); border-color: color-mix(in srgb, currentColor 7%, transparent);
+  box-shadow: 0 1px 2px rgb(0 0 0 / .06), 0 4px 14px -4px rgb(0 0 0 / .12);
+}
+.cometcms-mv--cards.cometcms-mv--style-elevated .c-menu-list > li:is(:hover, :focus-within) {
+  translate: 0 -3px; border-color: color-mix(in srgb, currentColor 7%, transparent);
+  box-shadow: 0 2px 4px rgb(0 0 0 / .06), 0 14px 30px -10px rgb(0 0 0 / .22);
+}
+.cometcms-mv--cards.cometcms-mv--style-stripe .c-menu-list > li {
+  --mv-bg: var(--mv-surface, color-mix(in srgb, currentColor 4%, transparent)); box-shadow: inset 4px 0 0 var(--mv-tint);
+}
+.cometcms-mv--cards.cometcms-mv--style-stripe .c-menu-list > li:is(:hover, :focus-within) {
+  --mv-bg: color-mix(in srgb, var(--mv-tint) 9%, var(--mv-surface, transparent)); border-color: transparent; box-shadow: inset 7px 0 0 var(--mv-tint);
+}
+.cometcms-mv--cards.cometcms-mv--style-stripe .c-menu-list > li > :is(.c-menu-label, .c-menu-disclosure) { padding-inline-start: 4px; }
+
+/* ---------- Sidebar: a vertical list with a marked current page. ---------- */
+.cometcms-mv--sidebar { --mv-py: .55em; --mv-px: .9em; }
+.cometcms-mv--sidebar.cometcms-mv--density-compact { --mv-py: .35em; --mv-px: .75em; }
+.cometcms-mv--sidebar.cometcms-mv--density-spacious { --mv-py: .8em; --mv-px: 1.1em; }
+.cometcms-mv--sidebar .c-menu-list { gap: 2px; }
+.cometcms-mv--sidebar .c-menu-label { border-radius: var(--mv-radius); }
+.cometcms-mv--sidebar .c-menu-label:has(> a:hover), .cometcms-mv--sidebar summary.c-menu-label:hover { background: color-mix(in srgb, currentColor 6%, transparent); }
+.cometcms-mv--sidebar .c-submenu { margin-inline: 1em 0; }
+
+.cometcms-mv--sidebar.cometcms-mv--style-rail .c-menu-list { border-inline-start: 2px solid var(--mv-line); }
+.cometcms-mv--sidebar.cometcms-mv--style-rail .c-menu-list > li { margin-inline-start: -2px; }
+.cometcms-mv--sidebar.cometcms-mv--style-rail .c-menu-list > li > .c-menu-label,
+.cometcms-mv--sidebar.cometcms-mv--style-rail .c-menu-list > li > .c-menu-disclosure > summary.c-menu-label {
+  border-inline-start: 2px solid transparent; border-start-start-radius: 0; border-end-start-radius: 0;
+}
+.cometcms-mv--sidebar.cometcms-mv--style-rail .c-submenu { border-inline-start: 0; }
+.cometcms-mv--sidebar.cometcms-mv--style-rail .c-menu-label:has(> a[aria-current="page"]) {
+  border-inline-start-color: var(--mv-tint); background: color-mix(in srgb, var(--mv-tint) 9%, transparent);
+}
+.cometcms-mv--sidebar.cometcms-mv--style-pill .c-menu-label:has(> a[aria-current="page"]) {
+  background: var(--mv-tint); --c-menu-hover: var(--mv-on-tint); color: var(--mv-on-tint);
+}
+.cometcms-mv--sidebar.cometcms-mv--style-plain .c-menu-label:has(> a:hover) { background: none; }
+
+/* ---------- Inline links: a row of text links with separators. ---------- */
+.cometcms-mv--inline { --mv-py: .3em; --mv-px: .55em; --mv-gap: 0; }
+.cometcms-mv--inline.cometcms-mv--density-compact { --mv-py: .2em; --mv-px: .35em; }
+.cometcms-mv--inline.cometcms-mv--density-spacious { --mv-py: .45em; --mv-px: .9em; }
+.cometcms-mv--inline .c-menu-list { flex-direction: row; flex-wrap: wrap; align-items: flex-start; row-gap: .25em; }
+.cometcms-mv--inline.cometcms-mv--align-center .c-menu-list { justify-content: center; }
+.cometcms-mv--inline.cometcms-mv--align-end .c-menu-list { justify-content: flex-end; }
+.cometcms-mv--inline.cometcms-mv--align-between .c-menu-list { justify-content: space-between; }
+.cometcms-mv--inline .c-menu-list > li + li > :is(.c-menu-label, .c-menu-disclosure > summary.c-menu-label)::before {
+  content: "\00B7" / ""; align-self: center; opacity: .45; pointer-events: none;
+}
+.cometcms-mv--inline.cometcms-mv--separator-slash .c-menu-list > li + li > :is(.c-menu-label, .c-menu-disclosure > summary.c-menu-label)::before { content: "/" / ""; }
+.cometcms-mv--inline.cometcms-mv--separator-pipe .c-menu-list > li + li > :is(.c-menu-label, .c-menu-disclosure > summary.c-menu-label)::before { content: "|" / ""; opacity: .3; }
+.cometcms-mv--inline.cometcms-mv--separator-dash .c-menu-list > li + li > :is(.c-menu-label, .c-menu-disclosure > summary.c-menu-label)::before { content: "\2014" / ""; opacity: .3; }
+.cometcms-mv--inline.cometcms-mv--separator-none .c-menu-list > li + li > :is(.c-menu-label, .c-menu-disclosure > summary.c-menu-label)::before { content: none; }
+.cometcms-mv--inline.cometcms-mv--align-between.cometcms-mv--separator-none .c-menu-list > li:first-child > .c-menu-label > a { padding-inline-start: 0; }
+.cometcms-mv--inline .c-menu a { text-decoration-line: underline; text-decoration-color: transparent; text-decoration-thickness: 1.5px; text-underline-offset: .3em; }
+.cometcms-mv--inline.cometcms-mv--hover-underline .c-menu a:is(:hover, [aria-current="page"]) { text-decoration-color: currentColor; }
+.cometcms-mv--inline.cometcms-mv--hover-fade .c-menu-list:has(a:hover) a:not(:hover) { opacity: .45; }
+.cometcms-mv--inline.cometcms-mv--hover-fade .c-menu a:hover { color: inherit; }
+.cometcms-mv--inline.cometcms-mv--hover-fade .c-menu a[aria-current="page"] { text-decoration-color: var(--mv-tint); }
+
+@media (max-width: 760px) {
+  .cometcms-mv--cards:not(.cometcms-mv--columns-auto) .c-menu-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 480px) {
+  .cometcms-mv--cards:not(.cometcms-mv--columns-auto) .c-menu-list { grid-template-columns: minmax(0, 1fr); }
+  .cometcms-mv--segmented.cometcms-mv--style-tabs .c-menu-list > li { flex-basis: 6rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cometcms-mv *, .cometcms-mv *::before, .cometcms-mv *::after { transition: none; }
+  .cometcms-mv--cards .c-menu-list > li:is(:hover, :focus-within) { translate: none; }
+}
+@media (forced-colors: active) {
+  .cometcms-mv .c-menu a[aria-current="page"] { text-decoration: underline; }
+  .cometcms-mv--cards .c-menu-list > li, .cometcms-mv--pills .c-menu-list > li { border-color: CanvasText; }
+}

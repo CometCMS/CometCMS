@@ -1,0 +1,63 @@
+{
+  "$schema": "../../../schemas/comet-extension.schema.json",
+  "api_version": 1,
+  "name": "cometcms/menu-variations",
+  "title": "CometCMS - Menu Variations",
+  "description": "Pills, segmented tabs, a numbered index, cards, a sidebar and inline links powered by your site menus, each with styles, shapes and spacing options.",
+  "version": "1.1.0",
+  "author": "CometCMS",
+  "license": "MIT",
+  "shared_props": {
+    "navigation": {
+      "type": "menu",
+      "label": "Menu",
+      "default": "main"
+    },
+    "accent": {
+      "type": "color",
+      "label": "Accent color",
+      "default": "primary",
+      "group": "Colors"
+    },
+    "surface": {
+      "type": "color",
+      "label": "Surface color",
+      "group": "Colors",
+      "help": "Background of the links. Leave empty to use the style's own."
+    },
+    "corners": {
+      "type": "radius",
+      "label": "Corners",
+      "default": "md",
+      "group": "Shape and spacing",
+      "help": "Uses the theme's corner sizes.",
+      "option_aliases": {
+        "round": "full",
+        "rounded": "md",
+        "large": "lg",
+        "square": "none"
+      }
+    },
+    "density": {
+      "type": "enum",
+      "label": "Spacing",
+      "options": [
+        "compact",
+        "comfortable",
+        "spacious"
+      ],
+      "default": "comfortable",
+      "group": "Shape and spacing",
+      "option_labels": {
+        "compact": "Compact",
+        "comfortable": "Comfortable",
+        "spacious": "Spacious"
+      }
+    },
+    "uppercase": {
+      "type": "bool",
+      "label": "Uppercase labels",
+      "group": "Shape and spacing"
+    }
+  }
+}

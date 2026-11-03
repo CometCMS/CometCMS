@@ -1,0 +1,80 @@
+{
+  "$schema": "../../../../../schemas/block.schema.json",
+  "title": "Segmented Navigation",
+  "description": "A segmented control, tab bar or button group with a highlighted current page.",
+  "icon": "mdi:view-week-outline",
+  "category": "Navigation",
+  "keywords": [
+    "menu",
+    "tabs",
+    "switcher"
+  ],
+  "props": {
+    "navigation": {
+      "use": "navigation"
+    },
+    "style": {
+      "type": "enum",
+      "label": "Style",
+      "options": [
+        "track",
+        "tabs",
+        "divided"
+      ],
+      "default": "track",
+      "option_labels": {
+        "track": "Track",
+        "tabs": "Tabs",
+        "divided": "Divided"
+      }
+    },
+    "width": {
+      "type": "enum",
+      "label": "Width",
+      "options": [
+        "fill",
+        "fit"
+      ],
+      "default": "fill",
+      "option_labels": {
+        "fill": "Fill the row",
+        "fit": "Fit content"
+      },
+      "group": "Layout"
+    },
+    "alignment": {
+      "type": "enum",
+      "label": "Alignment",
+      "options": [
+        "start",
+        "center",
+        "end"
+      ],
+      "default": "start",
+      "option_labels": {
+        "start": "Start",
+        "center": "Center",
+        "end": "End"
+      },
+      "group": "Layout",
+      "visible_when": {
+        "width": "fit"
+      }
+    },
+    "accent": {
+      "use": "accent"
+    },
+    "surface": {
+      "use": "surface"
+    },
+    "corners": {
+      "use": "corners"
+    },
+    "density": {
+      "use": "density"
+    },
+    "uppercase": {
+      "use": "uppercase"
+    }
+  }
+}

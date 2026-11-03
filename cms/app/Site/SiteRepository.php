@@ -10,6 +10,8 @@ use CometCMS\Core\Security;
 use CometCMS\Core\ValidationException;
 use CometCMS\Localization\LocalizedValue;
 use CometCMS\Localization\LanguageSettings;
+use CometCMS\Extensions\ExtensionRegistry;
+use CometCMS\Extensions\HiddenSeeds;
 use CometCMS\Storage\JsonStore;
 use CometCMS\Workspaces\WorkspaceContext;
 use CometCMS\Workspaces\WorkspaceRepository;
@@ -62,19 +64,40 @@ final class SiteRepository
     private ContentTypeRepository $types;
     private ?array $settingsCache = null;
     private ?array $typesCache = null;
+    private ?ExtensionRegistry $extensionRegistry = null;
+    private HiddenSeeds $hiddenSeeds;
 
-    public function __construct(?WorkspaceContext $workspace = null, ?ContentTypeRepository $types = null)
+    /** $includeDisabled also lists components and presets of disabled extensions. */
+    public function __construct(?WorkspaceContext $workspace = null, ?ContentTypeRepository $types = null, private readonly bool $includeDisabled = false)
     {
         $this->workspace = $workspace ?? WorkspaceContext::active();
         $this->types = $types ?? new ContentTypeRepository($this->workspace);
         $this->store = new JsonStore($this->workspace->path('site'));
         $this->themeStore = new JsonStore($this->workspace->path('site') . '/theme');
         $this->revisions = new JsonStore($this->workspace->path('revisions') . '/site');
+        $this->hiddenSeeds = new HiddenSeeds($this->workspace);
     }
 
     public function workspace(): WorkspaceContext
     {
         return $this->workspace;
+    }
+
+    public function extensions(): ExtensionRegistry
+    {
+        return $this->extensionRegistry ??= new ExtensionRegistry($this->workspace);
+    }
+
+    /** Whether a seeded item is hidden because its extension is disabled. */
+    private function hidden(string $kind, string $id): bool
+    {
+        return !$this->includeDisabled && $this->hiddenSeeds->has($kind, $id);
+    }
+
+    /** The extension registry also resolves block kinds for the renderer. */
+    public function blocks(): ExtensionRegistry
+    {
+        return $this->extensions();
     }
 
     /** @return array<string, array> content types keyed by name */
@@ -114,7 +137,18 @@ final class SiteRepository
         $settings['updated_at'] = Security::now();
         $settings['revision'] = bin2hex(random_bytes(12));
         // Workspace languages and website availability are derived on every read.
-        $this->store->write(array_diff_key($settings, array_flip(['enabled', 'locales', 'default_locale'])), 'settings');
+        $stored = array_diff_key($settings, array_flip(['enabled', 'locales', 'default_locale']));
+        // A disabled extension only hides its types. Saving unrelated settings
+        // must not erase their routes or a temporarily unavailable homepage.
+        $previous = $this->store->read('settings') ?? [];
+        $hidden = ExtensionRegistry::disabledContentTypes($this->workspace);
+        foreach ($hidden as $name) {
+            if (isset($previous['routes'][$name])) $stored['routes'][$name] = $previous['routes'][$name];
+        }
+        if ($settings['homepage']['type'] === '' && in_array($previous['homepage']['type'] ?? '', $hidden, true)) {
+            $stored['homepage'] = $previous['homepage'];
+        }
+        $this->store->write($stored, 'settings');
         $this->settingsCache = $settings;
         $this->clearCache();
 
@@ -190,15 +224,17 @@ final class SiteRepository
     }
 
     /**
-     * Designs saved under a name, so a customized theme can be brought back
-     * after trying another preset. Custom CSS stays out: it is admin-only
-     * and kept when a preset is applied.
+     * Themes saved under a name by users or seeded by extensions ("extension"
+     * names the owner, '' for the site's own). Custom CSS stays out: it is
+     * admin-only and kept when a theme is applied.
      *
-     * @return list<array{id: string, name: string, theme: array, created_at: string}>
+     * @return list<array{id: string, name: string, theme: array, extension: string, extension_title: string, created_at: string, updated_at: string}>
      */
     public function themePresets(): array
     {
-        $list = array_values(array_filter(array_map(fn(array $stored): ?array => $this->readThemePreset($stored), $this->themeStore->all('presets'))));
+        $owners = $this->presetOwners();
+        $list = array_values(array_filter(array_map(fn(array $stored): ?array => $this->readThemePreset($stored, $owners), $this->themeStore->all('presets')),
+            fn(?array $preset): bool => $preset !== null && !$this->hidden('presets', $preset['id'])));
         usort($list, static fn(array $a, array $b): int => strcasecmp($a['name'], $b['name']));
 
         return $list;
@@ -206,11 +242,11 @@ final class SiteRepository
 
     public function themePreset(string $id): ?array
     {
-        if ($id === '' || LayoutSchema::key($id) !== $id) {
+        if ($id === '' || LayoutSchema::key($id) !== $id || $this->hidden('presets', $id)) {
             return null;
         }
 
-        return $this->readThemePreset($this->themeStore->read('presets', $id));
+        return $this->readThemePreset($this->themeStore->read('presets', $id), $this->presetOwners());
     }
 
     public function createThemePreset(mixed $name, mixed $theme): array
@@ -235,7 +271,33 @@ final class SiteRepository
             ];
             $this->themeStore->write($preset, 'presets', $preset['id']);
 
-            return $preset;
+            return $this->readThemePreset($preset, $this->presetOwners());
+        }, 'presets');
+    }
+
+    /**
+     * Replace a site-owned theme's design with $theme, e.g. the customized
+     * design while it is active. Extension themes are their extension's
+     * definition and change only through its updates.
+     */
+    public function updateThemePreset(string $id, mixed $theme): ?array
+    {
+        if (!is_array($theme)) {
+            throw new ValidationException(['theme' => 'A preset needs a theme.']);
+        }
+
+        return $this->themeStore->synchronized(function () use ($id, $theme): ?array {
+            $preset = $this->themePreset($id);
+            if ($preset === null) {
+                return null;
+            }
+            if ($preset['extension'] !== '') {
+                throw new ValidationException(['theme' => 'This theme comes from an extension and cannot be changed. Save the design as a new theme instead.']);
+            }
+            $stored = $this->themeStore->read('presets', $id) ?? [];
+            $this->themeStore->write(['theme' => self::presetTheme($theme), 'updated_at' => Security::now()] + $stored, 'presets', $id);
+
+            return $this->themePreset($id);
         }, 'presets');
     }
 
@@ -244,7 +306,35 @@ final class SiteRepository
         $this->themeStore->delete('presets', $id);
     }
 
-    private function readThemePreset(?array $stored): ?array
+    /**
+     * The design tokens of a theme reference ("builtin:{id}" or "preset:{id}"),
+     * or null when it no longer exists, e.g. after its preset was deleted.
+     */
+    public function themeDefinition(string $reference): ?array
+    {
+        [$source, $id] = explode(':', Theme::themeReference($reference), 2);
+        if ($source === 'builtin') {
+            return isset(Theme::BUILT_IN_THEMES[$id]) ? Theme::definition(Theme::BUILT_IN_THEMES[$id]) : null;
+        }
+
+        return $this->themePreset($id)['theme'] ?? null;
+    }
+
+    /** @return array<string, string> preset id => name of the extension that seeded it */
+    private function presetOwners(): array
+    {
+        $owners = [];
+        foreach ($this->store->read('extensions-seeded') ?? [] as $extension => $items) {
+            foreach (is_array($items) ? $items : [] as $item) {
+                if (($item['kind'] ?? null) === 'presets' && is_string($item['id'] ?? null)) $owners[$item['id']] = (string) $extension;
+            }
+        }
+
+        return $owners;
+    }
+
+    /** @param array<string, string> $owners see presetOwners() */
+    private function readThemePreset(?array $stored, array $owners): ?array
     {
         $id = $stored['id'] ?? null;
         if (!is_string($id) || LayoutSchema::key($id) !== $id || !is_array($stored['theme'] ?? null)) {
@@ -255,13 +345,16 @@ final class SiteRepository
             'id' => $id,
             'name' => self::line($stored['name'] ?? '', 120) ?: $id,
             'theme' => self::presetTheme($stored['theme']),
+            'extension' => $owners[$id] ?? '',
+            'extension_title' => isset($owners[$id]) ? (string) ($this->extensions()->extension($owners[$id])['title'] ?? $owners[$id]) : '',
             'created_at' => (string) ($stored['created_at'] ?? ''),
+            'updated_at' => (string) ($stored['updated_at'] ?? ''),
         ];
     }
 
     private static function presetTheme(array $theme): array
     {
-        return array_diff_key(Theme::normalize($theme), ['custom_css' => true]);
+        return Theme::definition($theme);
     }
 
     /** When the newest of the given files changed, formatted like Security::now(); '' if none exists. */
@@ -360,7 +453,7 @@ final class SiteRepository
         $this->assertRegion($region);
         $stored = $this->themeStore->read('regions', $region);
 
-        $nodes = ($stored['format_version'] ?? null) === LayoutSchema::FORMAT_VERSION ? LayoutSchema::normalizeRegion($region, $stored['nodes'] ?? []) : LayoutSchema::defaultRegion($region);
+        $nodes = ($stored['format_version'] ?? null) === LayoutSchema::FORMAT_VERSION ? LayoutSchema::normalizeRegion($region, $stored['nodes'] ?? [], blocks: $this->blocks()) : LayoutSchema::defaultRegion($region);
 
         // The modal template cannot do without its panel; one saved without it starts over.
         return $region === LayoutSchema::MODAL && $nodes === [] ? LayoutSchema::defaultRegion($region) : $nodes;
@@ -384,7 +477,7 @@ final class SiteRepository
     private function saveRegionUnlocked(string $region, mixed $nodes, array $user = [], string $event = 'saved'): array
     {
         $this->assertRegion($region);
-        $nodes = LayoutSchema::normalizeRegion($region, $nodes, true);
+        $nodes = LayoutSchema::normalizeRegion($region, $nodes, true, $this->blocks());
         $this->writeRevision(['regions', $region], $this->regionSnapshot($region), $user, $event);
         $this->themeStore->write(['format_version' => LayoutSchema::FORMAT_VERSION, 'nodes' => $nodes], 'regions', $region);
         $this->clearCache();
@@ -464,14 +557,14 @@ final class SiteRepository
      * Normalize templates for saving or previewing ({type: {variant:
      * templates}}); anything invalid is rejected.
      */
-    public function validateTemplates(mixed $templates): array
+    public function validateTemplates(mixed $templates, ?array $types = null, ?array $components = null): array
     {
         if (!is_array($templates)) {
             throw new ValidationException(['templates' => 'Invalid templates.']);
         }
         $normalized = [];
         foreach ($templates as $type => $variants) {
-            $schema = $this->types()[(string) $type] ?? null;
+            $schema = ($types ?? $this->types())[(string) $type] ?? null;
             if ($schema === null || !is_array($variants)) {
                 throw new ValidationException(['templates' => 'Unknown content type: ' . $type]);
             }
@@ -479,7 +572,7 @@ final class SiteRepository
                 if (!in_array($variant, $this->variantsFor($schema), true)) {
                     throw new ValidationException(['templates' => 'Unknown page kind: ' . $variant]);
                 }
-                $normalized[(string) $type][(string) $variant] = $this->normalizeTemplates($schema, (string) $variant, $list, true);
+                $normalized[(string) $type][(string) $variant] = $this->normalizeTemplates($schema, (string) $variant, $list, true, $components);
             }
         }
 
@@ -610,7 +703,7 @@ final class SiteRepository
      * Known parts, unique ids, the default template last. Saving rejects
      * what reading drops or repairs.
      */
-    private function normalizeTemplates(array $schema, string $variant, mixed $list, bool $strict): array
+    private function normalizeTemplates(array $schema, string $variant, mixed $list, bool $strict, ?array $components = null): array
     {
         $fail = static function (string $message) use ($strict): bool {
             if ($strict) throw new ValidationException(['templates' => $message]);
@@ -621,7 +714,8 @@ final class SiteRepository
             $list = [];
         }
         $type = (string) $schema['name'];
-        $components = $strict ? array_column($this->components(), null, 'id') : null;
+        // Templates may keep a header or footer from a disabled extension.
+        $components ??= $strict ? array_column($this->storedComponents(), null, 'id') : null;
         $seen = [];
         $default = null;
         $others = [];
@@ -760,6 +854,17 @@ final class SiteRepository
         return in_array($template, array_column($this->templates($type, $variant), 'id'), true);
     }
 
+    /** Remove an extension-seeded template list and its saved content areas. */
+    public function deleteTemplateSet(string $type, string $variant): void
+    {
+        Security::assertSafeName($type);
+        Security::assertSafeName($variant);
+        $this->themeStore->delete('templates', $type, $variant);
+        self::removeDirectory($this->themeStore->path('content', $type, $variant));
+        self::removeDirectory($this->revisions->path('content', $type, $variant));
+        $this->clearCache();
+    }
+
     /** A deleted template's content area and its history. */
     private function deleteContentArea(string $type, string $variant, string $area): void
     {
@@ -784,7 +889,7 @@ final class SiteRepository
         }
 
         return ($stored['format_version'] ?? null) === LayoutSchema::FORMAT_VERSION
-            ? LayoutSchema::normalize($stored['nodes'] ?? [], $variant === 'detail')
+            ? LayoutSchema::normalize($stored['nodes'] ?? [], $variant === 'detail', $this->blocks())
             : LayoutSchema::defaultLayout($schema, $variant);
     }
 
@@ -810,7 +915,7 @@ final class SiteRepository
         $schema = $this->requireType($type);
         $this->assertVariant($schema, $variant);
         $this->assertArea($type, $variant, $area);
-        $nodes = LayoutSchema::normalize($nodes, $variant === 'detail');
+        $nodes = LayoutSchema::normalize($nodes, $variant === 'detail', $this->blocks());
         if ($variant === 'detail') $this->ensureAreas($type, $nodes);
         $this->writeRevision(['content', $type, $variant, $area], $this->layoutSnapshot($type, $variant, $area), $user, $event);
         $this->themeStore->write(['format_version' => LayoutSchema::FORMAT_VERSION, 'nodes' => $nodes], 'content', $type, $variant, $area);
@@ -923,6 +1028,12 @@ final class SiteRepository
      */
     public function components(): array
     {
+        return array_values(array_filter($this->storedComponents(), fn(array $component): bool => !$this->hidden('components', $component['id'])));
+    }
+
+    /** Every stored component, also those hidden with a disabled extension. */
+    private function storedComponents(): array
+    {
         $list = [];
 
         foreach ($this->themeStore->all('components') as $stored) {
@@ -937,14 +1048,25 @@ final class SiteRepository
         return $list;
     }
 
+    /** A component; null when missing or hidden with a disabled extension, so placements stop rendering. */
     public function component(string $id): ?array
+    {
+        return $this->hidden('components', $id) ? null : $this->storedComponent($id);
+    }
+
+    /** Whether a stored component is only unavailable because its extension is disabled. */
+    public function componentDisabled(string $id): bool
+    {
+        return $this->hidden('components', $id) && $this->storedComponent($id) !== null;
+    }
+
+    private function storedComponent(string $id): ?array
     {
         if ($id === '' || LayoutSchema::key($id) !== $id) {
             return null;
         }
 
-        $stored = $this->themeStore->read('components', $id);
-        return $this->readComponent($stored);
+        return $this->readComponent($this->themeStore->read('components', $id));
     }
 
     /**
@@ -989,6 +1111,40 @@ final class SiteRepository
             'created_at' => Security::now(),
         ], $nodes, $type);
 
+        return $this->writeComponent($component);
+    }
+
+    /** Validate an extension component without writing it. Context includes other seeds. */
+    public function normalizeExtensionComponent(string $id, array $data, array $types, array $components, ExtensionRegistry $blocks): array
+    {
+        if ($id === '' || LayoutSchema::key($id) !== $id || !in_array($data['root'] ?? null, LayoutSchema::STRUCTURE, true)) {
+            throw new ValidationException(['component' => 'Invalid component id or root.']);
+        }
+        $component = [
+            'id' => $id, 'name' => $this->componentName($data['name'] ?? ''), 'icon' => '',
+            'root' => $data['root'], 'type' => $data['type'] ?? '', 'created_at' => Security::now(),
+        ];
+        if (!is_string($component['type']) || ($component['type'] !== '' && !isset($types[$component['type']]))) {
+            throw new ValidationException(['type' => 'Unknown component content type.']);
+        }
+        $nodes = LayoutSchema::normalizeComponent($data['nodes'] ?? [], $component['root'], $blocks);
+        if ($nodes === [] || ($component['type'] === '' && LayoutSchema::usesSource($nodes, 'current'))) {
+            throw new ValidationException(['nodes' => 'A component needs its root and a content type when it uses entry fields.']);
+        }
+        foreach (LayoutSchema::componentRefs($nodes) as $ref) {
+            $inner = $components[$ref] ?? null;
+            if ($ref === $id || $inner === null || (($inner['type'] ?? '') !== '' && $inner['type'] !== $component['type'])) {
+                throw new ValidationException(['nodes' => 'Invalid component reference: ' . $ref]);
+            }
+        }
+        return $component + ['nodes' => $nodes];
+    }
+
+    /** Copy an extension's component into the site's library, keeping its declared id. */
+    public function seedComponent(string $id, array $data, ?array $components = null): array
+    {
+        $component = $this->normalizeExtensionComponent($id, $data, $this->types(), $components ?? array_column($this->storedComponents(), null, 'id'), $this->blocks());
+        $component['created_at'] = $this->storedComponent($id)['created_at'] ?? $component['created_at'];
         return $this->writeComponent($component);
     }
 
@@ -1161,7 +1317,7 @@ final class SiteRepository
         foreach ($this->storedAreas(false) as [$type, $variant, $area]) {
             $paths[] = ['content', $type, $variant, $area];
         }
-        foreach ($this->components() as $other) {
+        foreach ($this->storedComponents() as $other) {
             if ($other['id'] !== $id) {
                 $paths[] = ['components', $other['id']];
             }
@@ -1280,7 +1436,7 @@ final class SiteRepository
             'icon' => is_string($stored['icon'] ?? null) ? $stored['icon'] : '',
             'root' => $root,
             'type' => LayoutSchema::key($stored['type'] ?? ''),
-            'nodes' => $nodes = LayoutSchema::normalizeComponent($stored['nodes'] ?? [], $root),
+            'nodes' => $nodes = LayoutSchema::normalizeComponent($stored['nodes'] ?? [], $root, $this->blocks()),
             // Where each placement adds its own elements: [{id, name}].
             'areas' => LayoutSchema::componentAreas($nodes),
             'created_at' => (string) ($stored['created_at'] ?? ''),
@@ -1296,7 +1452,7 @@ final class SiteRepository
      */
     private function validateComponent(array $component, mixed $nodes, mixed $type): array
     {
-        $nodes = LayoutSchema::normalizeComponent($nodes, $component['root']);
+        $nodes = LayoutSchema::normalizeComponent($nodes, $component['root'], $this->blocks());
         if ($nodes === []) {
             throw new ValidationException(['nodes' => 'A component needs its ' . $component['root'] . '.']);
         }

@@ -7,6 +7,7 @@ namespace CometCMS\Content;
 use CometCMS\Cache\ApiCache;
 use CometCMS\Core\Security;
 use CometCMS\Core\ValidationException;
+use CometCMS\Extensions\HiddenSeeds;
 use CometCMS\Localization\LanguageSettings;
 use CometCMS\Localization\LocalizedValue;
 use CometCMS\Site\FormRepository;
@@ -19,16 +20,23 @@ final class ContentTypeRepository
 {
     private JsonStore $store;
     private SettingsStore $settings;
+    private HiddenSeeds $hidden;
 
     private WorkspaceContext $workspace;
 
-    public function __construct(?WorkspaceContext $workspace = null)
+    public function __construct(?WorkspaceContext $workspace = null, private readonly bool $includeDisabled = false)
     {
         $this->workspace = $workspace ?? WorkspaceContext::active();
         WorkspaceContext::setActive($this->workspace->slug());
         $this->workspace->ensure();
         $this->store = new JsonStore($this->workspace->path('content-types'));
         $this->settings = new SettingsStore();
+        $this->hidden = new HiddenSeeds($this->workspace);
+    }
+
+    public function isDisabled(string $name): bool
+    {
+        return !$this->includeDisabled && $this->hidden->has('content_types', $name);
     }
 
     public function all(): array
@@ -53,6 +61,9 @@ final class ContentTypeRepository
             $types[$collection] ??= $this->fallback($collection);
         }
 
+        if (!$this->includeDisabled) {
+            foreach ($this->hidden->ids('content_types') as $name) unset($types[$name]);
+        }
         $order = array_flip($this->contentTypeOrder());
 
         uasort($types, static function (array $a, array $b) use ($order): int {
@@ -85,9 +96,10 @@ final class ContentTypeRepository
         return $this->fallback($name);
     }
 
-    public function exists(string $name): bool
+    public function exists(string $name, bool $includeDisabled = false): bool
     {
         Security::assertSafeName($name);
+        if (!$includeDisabled && $this->isDisabled($name)) return false;
 
         if ($this->store->read($name) !== null) {
             return true;
@@ -144,6 +156,7 @@ final class ContentTypeRepository
         if (!empty($schema['api_enabled'])) {
             $schema['visibility'] = 'public';
         }
+        if ($this->isDisabled($name)) throw new ValidationException(['name' => 'Enable the extension before editing this content type.']);
         $previous = $this->exists($name) ? $this->find($name) : null;
         if ($previous !== null && isset($schema['revision']) && $schema['revision'] !== $previous['revision']) throw new \CometCMS\Core\ConflictException();
         $schema['api_enabled'] ??= $previous['api_enabled'] ?? false;
@@ -152,13 +165,6 @@ final class ContentTypeRepository
             $schema['submission_settings'] = $previous['submission_settings'] ?? null;
         }
         $schema = $this->normalize($name, $this->keepAreas($schema, $previous, $dropAreas));
-        if ($schema['allow_submissions']) {
-            $fillable = array_filter($schema['fields'], static fn(array $config, string $key): bool => FormRepository::accepts($key, $config, $schema), ARRAY_FILTER_USE_BOTH);
-            $unsupported = array_filter(FormRepository::unsupported($schema), static fn(array $config): bool => !empty($config['required']));
-            if ($fillable === [] || $unsupported !== []) {
-                throw new ValidationException(['allow_submissions' => 'Submissions need at least one custom field visitors can fill in, and all required custom fields must support forms.']);
-            }
-        }
         // Language settings are workspace-owned; discard old per-type overrides on save.
         $stored = array_diff_key($schema, array_flip(['revision', 'locales', 'default_locale']));
         $this->store->write($stored, $name);
@@ -229,7 +235,7 @@ final class ContentTypeRepository
         rmdir($path);
     }
 
-    private function normalize(string $name, array $schema): array
+    public function normalize(string $name, array $schema): array
     {
         $name = Security::slug((string) ($schema['name'] ?? $name));
         $fields = is_array($schema['fields'] ?? null) ? $schema['fields'] : [];
@@ -260,6 +266,13 @@ final class ContentTypeRepository
             'default_locale' => $languages['default_locale'],
             'fields' => $fields,
         ];
+        if ($normalized['allow_submissions']) {
+            $fillable = array_filter($normalized['fields'], static fn(array $config, string $key): bool => FormRepository::accepts($key, $config, $normalized), ARRAY_FILTER_USE_BOTH);
+            $unsupported = array_filter(FormRepository::unsupported($normalized), static fn(array $config): bool => !empty($config['required']));
+            if ($fillable === [] || $unsupported !== []) {
+                throw new ValidationException(['allow_submissions' => 'Submissions need at least one custom field visitors can fill in, and all required custom fields must support forms.']);
+            }
+        }
         return $normalized + ['revision' => LocalizedValue::hash($normalized)];
     }
 

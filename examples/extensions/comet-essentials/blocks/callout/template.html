@@ -1,0 +1,9 @@
+{{! The wrapper element gets the class c-block-cometcms__callout automatically. }}
+<aside class="cometcms-callout cometcms-callout--{{tone}}" role="note">
+  {{#tone=success}}<img class="cometcms-callout__icon" src="assets/check.svg" alt="" width="24" height="24">{{/tone=success}}
+  <div>
+    <h3 class="cometcms-callout__title">{{title}}</h3>
+    <p>{{message}}</p>
+    {{#show_link}}{{#link}}<a class="cometcms-callout__link" href="{{link}}">{{link_label}}</a>{{/link}}{{/show_link}}
+  </div>
+</aside>

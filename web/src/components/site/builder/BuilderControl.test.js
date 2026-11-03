@@ -9,10 +9,11 @@ import { SITE_ICONS } from '../../../composables/siteIcons.js'
 import { t } from '../../../i18n/index.js'
 
 async function renderControl(name, def, value, overrides = {}) {
-  const { styleState = 'normal', ...controlProps } = overrides
+  const { styleState = 'normal', menus = [], ...controlProps } = overrides
   const app = createSSRApp({ setup() {
     const builder = createSiteBuilder({ t })
     builder.styleState.value = styleState
+    builder.menus.value = menus
     return () => h(BuilderControl, { node: { id: 'icon1', kind: 'icon', props: {}, style: {} }, name, def, value, ...controlProps })
   } })
   app.use(createPinia())
@@ -33,6 +34,33 @@ describe('builder HTML source control', () => {
     expect(html).not.toContain('<style>')
     expect(html).not.toContain('<section')
     expect(html).not.toContain('tiptap')
+  })
+})
+
+describe('extension menu controls', () => {
+  it('selects site-owned menus by name and allows clearing an extension menu', async () => {
+    const html = await renderControl('navigation', { type: 'menu', label: 'Menu', default: 'main' }, 'footer', {
+      node: { id: 'nav1', kind: 'block:cometcms/menu-pills', props: { navigation: 'footer' }, style: {} },
+      menus: [{ name: 'main', label: 'Main navigation' }, { name: 'footer', label: 'Footer links' }],
+    })
+    expect(html).toContain('<select')
+    expect(html).toMatch(/<option value=""[^>]*>None<\/option>/)
+    expect(html).toMatch(/<option value="main"[^>]*>Main navigation<\/option>/)
+    expect(html).toMatch(/<option value="footer"[^>]*>Footer links<\/option>/)
+    expect(html).toMatch(/<select[^>]*value="footer"/)
+  })
+})
+
+describe('extension theme value controls', () => {
+  it('offers space and radius props as the Style panel bars, worded like it', async () => {
+    const node = { id: 'pill1', kind: 'block:cometcms/menu-pills', props: {}, style: {} }
+    const radius = await renderControl('corners', { type: 'enum', theme: 'radius', label: 'Corners', options: ['', 'none', 'theme', 'sm', 'md', 'lg', 'full'], default: 'md' }, 'full', { node, group: 'props' })
+    expect(radius).not.toContain('<select')
+    expect(radius).toContain('title="Default"')
+    expect(radius).toMatch(/title="Theme[^"]*"/)
+    const space = await renderControl('gap', { type: 'enum', theme: 'space', label: 'Gap', options: ['', 'none', 'xs', 'sm', 'md', 'lg', 'xl', '2xl'], default: 'md' }, 'md', { node, group: 'props' })
+    expect(space).not.toContain('<select')
+    expect(space).toContain('>2XL<')
   })
 })
 
@@ -61,6 +89,18 @@ describe('builder icon controls', () => {
     expect(shape).toContain('aria-checked="true" aria-label="Circle"')
     const color = await renderControl('text_color', { type: 'color', options: ['', 'primary', 'inverse'], default: '' }, 'primary', { group: 'style' })
     expect(color).toContain('Icon color')
+  })
+})
+
+describe('extension accent colors', () => {
+  it('labels an empty extension color as None and keeps style color defaults', async () => {
+    const def = { type: 'color', default: 'primary', options: ['', 'primary'] }
+    const extension = await renderControl('accent', def, '', {
+      node: { id: 'card1', kind: 'block:cometcms/card', props: { accent: '' }, style: {} },
+    })
+    expect(extension).toContain('>None</span>')
+    const style = await renderControl('background', def, '', { group: 'style' })
+    expect(style).toContain('>Default</span>')
   })
 })
 
@@ -290,5 +330,21 @@ describe('builder bound controls', () => {
     expect(text).not.toContain('id="builder-h1-props-text"')
     const link = await renderControl('link', { type: 'link', default: { type: 'none' }, binding: 'link' }, { type: 'none' }, { node: { id: 'h1', kind: 'heading', props: {} } })
     expect(link).not.toContain('id="builder-h1-props-link"')
+  })
+})
+
+describe('block integer sliders', () => {
+  it('renders labeled sliders with an exact numeric value, including zero and small ranges', async () => {
+    for (const value of [0, 2]) {
+      const html = await renderControl('zoom', { type: 'int', label: 'Zoom level', control: 'slider', min: 0, max: 3, default: 1 }, value, {
+        node: { id: 'map1', kind: 'block:cometcms/maps', props: {}, style: {} },
+      })
+      expect(html).toContain('for="builder-map1-props-zoom"')
+      expect(html).toContain('id="builder-map1-props-zoom" type="range"')
+      expect(html).toContain('type="number"')
+      expect(html).toContain('aria-label="Zoom level"')
+      expect(html.match(new RegExp(`value="${value}"`, 'g'))).toHaveLength(2)
+      expect(html).toContain('min="0" max="3" step="1"')
+    }
   })
 })

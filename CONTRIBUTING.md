@@ -33,6 +33,8 @@ After a production build, `node tests/browser/typography.mjs` checks the font ma
 
 The small font fixtures and their licences under `tests/fixtures/fonts/` are used only by tests and are excluded from production builds. They cover variable weights and static italics without requiring a network connection.
 
+After a production build, `node tests/browser/extensions.mjs` verifies the example extensions through ZIP selection and drops, asset serving, palette insertion, inspector editing, live preview, saving, public rendering, deletion, reinstallation and a confirmed breaking update. It uses an isolated temporary installation and Chrome/Chromium (`CHROME_BIN` may override the executable), without network dependencies. `npm run extensions -- validate <folder-or-zip>` checks an extension with the installer's rules. See [Extensions](docs/guide/extensions.md) for the extension format and trust limits.
+
 ## Testing
 
 The builder guide includes four short recordings of the real editor. To regenerate

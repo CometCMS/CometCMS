@@ -1,0 +1,38 @@
+{
+  "api_version": 1,
+  "name": "cometcms/weather",
+  "title": "Comet Weather",
+  "description": "Current weather for a place, from the free Open-Meteo service. Demonstrates settings, network permissions, translations, script lifecycles and block migrations.",
+  "version": "2.0.0",
+  "author": "CometCMS",
+  "license": "MIT",
+  "homepage": "https://open-meteo.com/",
+  "cms": ">=2.0",
+  "permissions": {
+    "connect": ["https://api.open-meteo.com"]
+  },
+  "settings": {
+    "units": {
+      "type": "enum",
+      "label": "Units",
+      "options": ["metric", "imperial"],
+      "option_labels": { "metric": "Metric (°C, km/h)", "imperial": "Imperial (°F, mph)" },
+      "default": "metric"
+    },
+    "refresh_minutes": {
+      "type": "int",
+      "label": "Refresh every (minutes)",
+      "min": 0,
+      "max": 120,
+      "default": 15,
+      "control": "slider",
+      "help": "How often open pages update the weather. 0 loads it once."
+    },
+    "credit": {
+      "type": "bool",
+      "label": "Credit Open-Meteo",
+      "default": true,
+      "help": "Open-Meteo's free plan asks for attribution."
+    }
+  }
+}

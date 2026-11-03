@@ -282,7 +282,7 @@
                 :key="loc"
                 :value="loc"
               >
-                {{ loc }}
+                {{ localeLabel(loc) }}
               </option>
             </select>
           </div>
@@ -753,7 +753,7 @@ import TabNavigation from "../components/TabNavigation.vue";
 import { api } from "../api/index.js";
 import { fieldDefaultValue } from "../composables/fieldDefaults.js";
 import { hasEntryDraftChanges } from "../composables/entryDraftChanges.js";
-import { languageTabItem } from "../composables/localeOptions.js";
+import { languageTabItem, localeLabel } from "../composables/localeOptions.js";
 import { useToastStore } from "../stores/toast.js";
 import TranslationInfo from "../components/TranslationInfo.vue";
 import { entryForLocale, resolveLocalized } from "../composables/localizedValues.js";

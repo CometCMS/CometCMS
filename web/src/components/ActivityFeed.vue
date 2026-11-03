@@ -255,6 +255,7 @@ const EVENT_LABELS = {
   "site.settings_updated": "activity.siteSettingsUpdated",
   "site.theme_updated": "activity.siteThemeUpdated",
   "site.theme_preset_created": "activity.siteThemePresetCreated",
+  "site.theme_preset_updated": "activity.siteThemePresetUpdated",
   "site.theme_preset_deleted": "activity.siteThemePresetDeleted",
   "site.templates_updated": "activity.siteTemplatesUpdated",
   "site.menus_updated": "activity.siteMenusUpdated",

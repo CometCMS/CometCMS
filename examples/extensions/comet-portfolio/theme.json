@@ -1,0 +1,10 @@
+{
+  "name": "Portfolio dusk",
+  "theme": {
+    "mode": "light",
+    "colors": {
+      "primary": "#0f766e",
+      "accent": "#d97706"
+    }
+  }
+}

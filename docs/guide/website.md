@@ -1,6 +1,8 @@
 # Website
 
-CometCMS provides a visual Page Builder with shared layouts and structured custom fields. Pages are rendered by PHP on your server, so there is still nothing to install: no Node or build step. Interactive elements, including gallery viewers and internal link modals, use small bundled scripts included only when needed. Developers can also enable the headless API per content type, independently of website pages.
+Developers can add their own page-builder elements with [extensions](./extensions): ZIPs of reusable blocks and optional site content, installed from **Website Settings → Extensions**.
+
+CometCMS provides a visual Page Builder with shared layouts and structured custom fields. Pages are rendered by PHP on your server, so there is still nothing to install: no Node or build step. Interactive elements, including gallery viewers and internal link modals, use small bundled scripts included only when needed. Custom blocks can also include their own scripts. Developers can also enable the headless API per content type, independently of website pages.
 
 The website is data-driven. You design a **layout per content type** once, and every entry of that type uses it. Editors keep filling in fields; the layout decides how those fields look.
 
@@ -374,6 +376,18 @@ For a section link, enter an anchor ID assigned in the page builder, such as `co
 
 Open **Website → Design & layout → Website design** (or **Design** in the builder rail) to set colors for light and dark mode, choose whether to follow the visitor's system preference, and adjust fonts and sizes, with a live preview. Choose system font stacks or install the families you need. The website starter downloads Inter and Lora as normal installed fonts; you can replace or remove them once they are no longer used. Empty workspaces start without installed fonts. **Manage fonts** opens the installed library, the online catalogue and custom uploads; the same library is also available as the **Fonts** tab on the Page Builder settings page. Every family is shown as a live specimen, and you can type your own preview text and change its size. Website and editor font files are always served from your CometCMS installation.
 
+### Themes
+
+A **theme** is a complete design: colors, fonts, spacing, corners, shadows and animations. **Themes** at the top of the design panel lists the built-in themes, your own and those installed by [extensions](extensions.md). The card at the top shows the **active theme**. Every change in the panel customizes it and marks it **Modified**.
+
+- **Reset** discards the changes and brings back the active theme's design.
+- **Save to theme**, available for your own themes, makes the current design that theme's new definition. Themes from extensions change only when their extension is updated.
+- **Save as new theme** keeps the changed design under a name and makes it the active theme.
+
+These actions appear once the theme is modified. **Themes** starts collapsed; expand it to choose another theme.
+
+Choosing another theme applies it exactly as designed, so changes made to the current one are reset. When that would lose changes, a dialog asks first. It offers to save them to the current theme (or as a new theme) before switching, or to discard them. Custom CSS is never part of a theme and stays. Custom colors and shadows that only the current design has also stay, so elements using them keep working. As with every design change, save the website design to publish the switch.
+
 The **Catalogue** lets website managers search and filter Fontsource families by category, see each family's preview as it scrolls into view, and install selected character sets. Latin and extended Latin are selected by default where available. Installations show progress and can be cancelled or resumed after an interruption. Catalogue access requires outbound HTTPS from the PHP host; installed fonts continue working offline. Updates happen only when you choose **Update font**.
 
 **Upload** accepts custom WOFF2 files, with a family name, fallback category, style and weight for each file. Drop files onto the upload area; style and weight are suggested from the file names and each file shows a local preview before upload. Enter identical start and end weights for a static face, or the supported range for a variable face. Upload italic files separately and confirm permission to use the fonts. You can add more files to an existing custom family. Files are limited to 10 MiB each and 100 MiB per family, subject to your host's upload limits.
@@ -401,7 +415,7 @@ Each workspace keeps the whole design of its website in one folder, `storage/wor
 
 ```
 theme/
-  theme.json                    design settings
+  theme.json                    design settings, including the active theme
   style.css                     custom CSS
   regions/header.json           header and footer
   regions/footer.json
@@ -409,6 +423,7 @@ theme/
   content/{type}/index/{area}.json    and of its list page
   templates/{type}/{variant}.json     its templates, where they differ from the default
   components/{name}.json        reusable components
+  presets/{id}.json             your themes and those installed by extensions
 ```
 
 Public pages load `style.css` after the generated theme styles. The builder previews unsaved CSS immediately, and theme revisions include both settings and CSS. You can also edit `style.css` directly; stylesheet versions and page caches account for its contents.

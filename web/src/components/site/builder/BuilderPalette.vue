@@ -37,16 +37,38 @@
       </div>
     </BuilderGroup>
 
-    <BuilderGroup v-if="elementKinds.length" v-model:open="expanded.elements" :title="t('site.builder.elements')" content-class="mt-2 grid grid-cols-2 gap-1.5">
+    <BuilderGroup v-if="elementItems.length" v-model:open="expanded.elements" :title="t('site.builder.elements')" content-class="mt-2 grid grid-cols-2 gap-1.5">
       <PaletteItem
-        v-for="kind in elementKinds"
-        :key="kind"
+        v-for="item in elementItems"
+        :key="item.key"
         stacked
-        :icon="KIND_ICONS[kind]"
-        :label="builder.kindLabel(kind)"
-        :hint="kindHint(kind)"
-        @add="builder.insert(create(kind))"
-        @drag="start($event, () => create(kind))"
+        :icon="item.icon"
+        :label="item.label"
+        :hint="item.hint"
+        @add="builder.insert(item.create())"
+        @drag="start($event, item.create)"
+        @dragend="end"
+      />
+    </BuilderGroup>
+
+    <!-- Extension blocks with a category get a group of their own. -->
+    <BuilderGroup
+      v-for="category in categories"
+      :key="category.key"
+      :open="expanded[`category:${category.key}`] ?? true"
+      :title="category.title"
+      content-class="mt-2 grid grid-cols-2 gap-1.5"
+      @update:open="(value) => (expanded[`category:${category.key}`] = value)"
+    >
+      <PaletteItem
+        v-for="item in category.items"
+        :key="item.key"
+        stacked
+        :icon="item.icon"
+        :label="item.label"
+        :hint="item.hint"
+        @add="builder.insert(item.create())"
+        @drag="start($event, item.create)"
         @dragend="end"
       />
     </BuilderGroup>
@@ -90,7 +112,7 @@
       <p v-if="!builder.components.value.length" class="px-1 text-xs text-slate-400">{{ t('site.component.paletteEmpty') }}</p>
       <router-link to="/page-builder/components" class="inline-flex px-1 py-1 text-xs font-medium text-theme-700 hover:underline">{{ t('site.component.manage') }}</router-link>
     </BuilderGroup>
-    <p v-if="searchTerms.length && !presets.length && !layoutKinds.length && !elementKinds.length && !fields.length && !components.length" role="status" class="px-1 text-sm text-slate-500">
+    <p v-if="searchTerms.length && !presets.length && !layoutKinds.length && !paletteItems.length && !fields.length && !components.length" role="status" class="px-1 text-sm text-slate-500">
       {{ t("site.builder.noSearchResults") }}
     </p>
   </div>
@@ -101,9 +123,10 @@ import { computed, ref, useId, watch } from "vue";
 import BuilderGroup from "./BuilderGroup.vue";
 import PaletteItem from "./PaletteItem.vue";
 import GroupedList from "./GroupedList.vue";
-import { componentIcon, KIND_ICONS } from "./kindIcons.js";
+import { componentIcon, KIND_ICONS, kindIcon } from "./kindIcons.js";
 import { fieldGroups, fieldShortcut } from "../../../composables/smartValues.js";
-import { MODAL, ancestors, instanceNode, sectionPreset } from "../../../composables/layoutTree.js";
+import { MODAL, ancestors, clone, instanceNode, sectionPreset } from "../../../composables/layoutTree.js";
+import { extensionText, variationText } from "../../../composables/extensionText.js";
 import { useFieldTypeMeta } from "../../../composables/useFieldTypeMeta.js";
 import { useSiteBuilder } from "../../../composables/useSiteBuilder.js";
 import { startPaletteDrag, endPaletteDrag } from "../../../composables/builderPaletteDrag.js";
@@ -117,7 +140,7 @@ const props = defineProps({
 });
 
 const builder = useSiteBuilder();
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const { fieldTypeIcon } = useFieldTypeMeta();
 const search = ref("");
 const searchId = `builder-palette-search-${useId()}`;
@@ -140,6 +163,8 @@ const presets = computed(() => builder.rootKind.value === MODAL ? [] : PRESETS.f
 )));
 
 function kindHint(kind) {
+  const own = builder.spec.value?.kinds?.[kind];
+  if (own?.description) return extensionText(own, "description", locale.value);
   const key = `site.kindHint.${kind}`;
   const text = t(key);
   return text === key ? "" : text;
@@ -148,9 +173,37 @@ const layoutKinds = computed(() => ["row", "column"].filter((kind) => matches(
   t("site.builder.layout"), builder.kindLabel(kind), kind,
 )));
 
-const elementKinds = computed(() =>
-  (builder.spec.value?.elements ?? []).filter((kind) => !["field", "component"].includes(kind) && matches(builder.kindLabel(kind), kind, kindHint(kind))),
-);
+/**
+ * Palette entries: each element, and after an extension block its variations, which
+ * insert the block with their starting values. Deprecated blocks are not offered.
+ */
+const paletteItems = computed(() => (builder.spec.value?.elements ?? []).filter((kind) => !["field", "component"].includes(kind)).flatMap((kind) => {
+  const own = builder.spec.value?.kinds?.[kind] ?? {};
+  if (typeof own.deprecated === "string") return [];
+  const category = own.extension ? extensionText(own, "category", locale.value) || "" : "";
+  const keywords = own.extension ? extensionText(own, "keywords", locale.value) ?? [] : [];
+  const block = { key: kind, kind, category, groupKey: own.category || "", icon: kindIcon(kind, builder.spec.value), label: builder.kindLabel(kind), hint: kindHint(kind), terms: [kind, ...keywords], create: () => create(kind) };
+  const variations = (own.variations ?? []).map((variation) => ({
+    ...block,
+    key: `${kind}:${variation.name}`,
+    icon: variation.icon || block.icon,
+    label: variationText(own, variation, "title", locale.value),
+    hint: variationText(own, variation, "description", locale.value) || block.hint,
+    terms: [...block.terms, block.label, variation.name],
+    create: () => builder.make(kind, clone(variation.props)),
+  }));
+  return [block, ...variations];
+}).filter((item) => matches(item.label, item.hint, item.category, ...item.terms)));
+const elementItems = computed(() => paletteItems.value.filter((item) => !item.groupKey));
+const categories = computed(() => {
+  const groups = new Map();
+  for (const item of paletteItems.value) {
+    if (!item.groupKey) continue;
+    if (!groups.has(item.groupKey)) groups.set(item.groupKey, { key: item.groupKey, title: item.category, items: [] });
+    groups.get(item.groupKey).items.push(item);
+  }
+  return [...groups.values()];
+});
 
 const components = computed(() => [...builder.components.value]
   .filter((component) => matches(t('site.component.group'), component.name, builder.kindLabel(component.root)))

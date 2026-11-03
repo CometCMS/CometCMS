@@ -1,0 +1,105 @@
+{
+  "name": "Material-inspired",
+  "theme": {
+    "base_size": 17,
+    "line_height": 1.65,
+    "type_scale": "1.25",
+    "heading_weight": 600,
+    "heading_line_height": 1.15,
+    "heading_letter_spacing": -0.015,
+    "heading_transform": "",
+    "container_width": 1200,
+    "narrow_width": 760,
+    "section_padding": "lg",
+    "section_padding_tablet": "md",
+    "section_padding_mobile": "md",
+    "grid_padding": "none",
+    "grid_padding_tablet": "none",
+    "grid_padding_mobile": "none",
+    "column_padding": "none",
+    "column_padding_tablet": "none",
+    "column_padding_mobile": "none",
+    "space": {
+      "xs": 4,
+      "sm": 8,
+      "md": 16,
+      "lg": 32,
+      "xl": 64,
+      "2xl": 96
+    },
+    "mode": "light",
+    "colors": {
+      "primary": "#315da8",
+      "secondary": "#566179",
+      "accent": "#087e82",
+      "background": "#faf9ff",
+      "surface": "#eef1fa",
+      "text": "#1b1c22",
+      "muted": "#555f70",
+      "border": "#b1bbcd"
+    },
+    "dark_colors": {
+      "primary": "#aac7ff",
+      "secondary": "#bec6dc",
+      "accent": "#7ad5d7",
+      "background": "#111318",
+      "surface": "#1f2631",
+      "text": "#e2e2e9",
+      "muted": "#bbc4d5",
+      "border": "#66748b"
+    },
+    "fonts": {
+      "body": "inter",
+      "heading": "inter"
+    },
+    "radius": "lg",
+    "radii": {
+      "sm": 8,
+      "md": 16,
+      "lg": 24
+    },
+    "links": {
+      "color": "primary",
+      "hover_color": "secondary",
+      "decoration": "hover",
+      "thickness": 1,
+      "offset": 0.18
+    },
+    "shadow_scale": {
+      "sm": {
+        "color": "#000000",
+        "x": 0,
+        "y": 2,
+        "blur": 4,
+        "spread": 0,
+        "opacity": 12,
+        "inset": false
+      },
+      "md": {
+        "color": "#000000",
+        "x": 0,
+        "y": 6,
+        "blur": 16,
+        "spread": 0,
+        "opacity": 14,
+        "inset": false
+      },
+      "lg": {
+        "color": "#000000",
+        "x": 0,
+        "y": 12,
+        "blur": 32,
+        "spread": 0,
+        "opacity": 18,
+        "inset": false
+      }
+    },
+    "motion": {
+      "fast": 220,
+      "normal": 400,
+      "slow": 600,
+      "stagger": 70,
+      "hover": 180
+    }
+  }
+}

@@ -74,7 +74,7 @@ SEED . 'foreach (["admin", "reader"] as $role) { session_id(' . var_export($pref
             $readerCookie = 'cometcms_admin=' . $prefix . '-reader';
             [$status, $json, $headers] = comet_site_preview_test_request($port, $base . '/admin/api/site/preview-search?workspace=default&q=draft' . $returnQuery, $readerCookie);
             assert_same(200, $status);
-            assert_same('private, no-store', $headers['cache-control']);
+            assert_same('private, no-store, no-transform', $headers['cache-control']);
             $hits = json_decode($json, true)['data'];
             assert_same(['Visible draft'], array_column($hits, 'title'));
             assert_true(str_starts_with($hits[0]['url'], $base . '/admin/site-preview?workspace=default&path='));

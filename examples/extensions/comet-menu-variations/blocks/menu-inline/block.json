@@ -1,0 +1,80 @@
+{
+  "$schema": "../../../../../schemas/block.schema.json",
+  "title": "Inline Links",
+  "description": "A row of text links with separators for footers, legal links and quick navigation.",
+  "icon": "mdi:link-variant",
+  "category": "Navigation",
+  "keywords": [
+    "menu",
+    "footer",
+    "legal"
+  ],
+  "props": {
+    "navigation": {
+      "use": "navigation"
+    },
+    "separator": {
+      "type": "enum",
+      "label": "Separator",
+      "options": [
+        "dot",
+        "slash",
+        "pipe",
+        "dash",
+        "none"
+      ],
+      "default": "dot",
+      "option_labels": {
+        "dot": "Dot ·",
+        "slash": "Slash /",
+        "pipe": "Pipe |",
+        "dash": "Dash –",
+        "none": "None"
+      },
+      "group": "Layout"
+    },
+    "hover": {
+      "type": "enum",
+      "label": "Hover effect",
+      "options": [
+        "underline",
+        "color",
+        "fade"
+      ],
+      "default": "underline",
+      "option_labels": {
+        "underline": "Underline",
+        "color": "Color",
+        "fade": "Fade others"
+      },
+      "group": "Layout"
+    },
+    "alignment": {
+      "type": "enum",
+      "label": "Alignment",
+      "options": [
+        "start",
+        "center",
+        "end",
+        "between"
+      ],
+      "default": "start",
+      "option_labels": {
+        "start": "Start",
+        "center": "Center",
+        "end": "End",
+        "between": "Spread"
+      },
+      "group": "Layout"
+    },
+    "accent": {
+      "use": "accent"
+    },
+    "density": {
+      "use": "density"
+    },
+    "uppercase": {
+      "use": "uppercase"
+    }
+  }
+}

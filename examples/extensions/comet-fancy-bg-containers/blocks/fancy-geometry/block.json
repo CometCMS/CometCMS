@@ -1,0 +1,47 @@
+{
+  "$schema": "../../../../../schemas/block.schema.json",
+  "title": "Geometric Forms",
+  "description": "Floating rings, angular panels and geometric outlines behind your content.",
+  "icon": "mdi:shape-outline",
+  "props": {
+    "variant": {
+      "type": "enum",
+      "label": "Background style",
+      "options": [
+        "mixed",
+        "rings",
+        "angular"
+      ],
+      "default": "mixed",
+      "option_labels": {
+        "mixed": "Mixed shapes",
+        "rings": "Rings",
+        "angular": "Angular"
+      }
+    },
+    "accent": {
+      "use": "accent"
+    },
+    "secondary": {
+      "use": "secondary"
+    },
+    "intensity": {
+      "use": "intensity"
+    },
+    "motion": {
+      "use": "motion"
+    },
+    "scale": {
+      "use": "scale"
+    },
+    "padding": {
+      "use": "padding"
+    },
+    "height": {
+      "use": "height"
+    },
+    "align": {
+      "use": "align"
+    }
+  }
+}

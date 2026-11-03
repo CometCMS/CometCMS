@@ -1,0 +1,153 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CometCMS extension translations (i18n/<locale>.json)",
+  "description": "Editor texts in one admin language. Every key is optional; unknown blocks, props, options and fields are errors.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120,
+      "description": ""
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500,
+      "description": ""
+    },
+    "settings": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/propTexts"
+      }
+    },
+    "shared_props": {
+      "type": "object",
+      "description": "Applies wherever a block uses the shared prop, except texts the block rewords itself.",
+      "additionalProperties": {
+        "$ref": "#/definitions/propTexts"
+      }
+    },
+    "blocks": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120,
+            "description": ""
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500,
+            "description": ""
+          },
+          "category": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40,
+            "description": ""
+          },
+          "deprecated": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300,
+            "description": ""
+          },
+          "keywords": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40
+            },
+            "maxItems": 12
+          },
+          "variations": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "title": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 120,
+                  "description": ""
+                },
+                "description": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500,
+                  "description": ""
+                }
+              }
+            }
+          },
+          "props": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/definitions/propTexts"
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "propTexts": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120,
+          "description": ""
+        },
+        "help": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300,
+          "description": ""
+        },
+        "placeholder": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120,
+          "description": ""
+        },
+        "group": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40,
+          "description": ""
+        },
+        "options": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120,
+            "description": ""
+          }
+        },
+        "fields": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/propTexts"
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

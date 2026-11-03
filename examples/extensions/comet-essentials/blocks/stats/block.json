@@ -1,0 +1,23 @@
+{
+  "title": "Stats",
+  "description": "Key numbers that count up when they scroll into view.",
+  "icon": "mdi:counter",
+  "props": {
+    "items": {
+      "type": "list",
+      "label": "Numbers",
+      "max": 6,
+      "fields": {
+        "value": { "type": "int", "label": "Number", "min": 0, "max": 1000000, "default": 100 },
+        "suffix": { "type": "string", "label": "Suffix", "max": 10 },
+        "label": { "type": "string", "label": "Label", "max": 80 }
+      },
+      "default": [
+        { "value": 250, "suffix": "+", "label": "Websites" },
+        { "value": 99, "suffix": "%", "label": "Uptime" },
+        { "value": 12, "label": "Languages" }
+      ]
+    },
+    "duration": { "type": "int", "label": "Count-up duration (ms)", "min": 0, "max": 5000, "default": 1200 }
+  }
+}

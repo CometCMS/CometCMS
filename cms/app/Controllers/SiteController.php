@@ -6,6 +6,8 @@ namespace CometCMS\Controllers;
 
 use CometCMS\Core\Http;
 use CometCMS\Core\RateLimiter;
+use CometCMS\Extensions\ExtensionRegistry;
+use CometCMS\Site\Blocks\BlockScripts;
 use CometCMS\Site\Flags;
 use CometCMS\Site\FormCaptcha;
 use CometCMS\Site\FormRepository;
@@ -69,7 +71,7 @@ final class SiteController
         WorkspaceContext::setActive($workspace->slug());
         $context = SiteContext::make($site, rtrim($this->http->url('/'), '/'), $this->origin());
         $response = (new SiteService($context))->respondCached($path, $_GET);
-        $this->send($response, $response['cache_status']);
+        $this->send($response, $response['cache_status'], $context);
     }
 
     public function font(string $workspace, string $hash): never
@@ -96,6 +98,37 @@ final class SiteController
             exit;
         }
         $this->http->streamFile($path, 'font/woff2');
+    }
+
+    /** Block package assets are content-addressed, so they never change under one URL. */
+    public function blockAsset(string $workspace, string $file): never
+    {
+        if (!(new WorkspaceRepository())->exists($workspace)) {
+            $this->http->notFound();
+        }
+        $asset = (new ExtensionRegistry(new WorkspaceContext($workspace)))->asset($file);
+        if ($asset === null) {
+            $this->http->notFound();
+        }
+        $etag = '"' . substr($file, 0, 64) . '"';
+        $headers = [
+            'ETag' => $etag,
+            'Cache-Control' => 'public, max-age=31536000, immutable',
+            // SVG opened directly must not run scripts with the site's origin.
+            'Content-Security-Policy' => "default-src 'none'; style-src 'unsafe-inline'; sandbox",
+        ];
+        if (trim((string) ($_SERVER['HTTP_IF_NONE_MATCH'] ?? '')) === $etag) {
+            http_response_code(304);
+            foreach ($headers as $name => $value) header($name . ': ' . $value);
+            exit;
+        }
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'HEAD') {
+            foreach ($headers + ['Content-Type' => $asset['type'], 'Content-Length' => (string) filesize($asset['path']), 'X-Content-Type-Options' => 'nosniff'] as $name => $value) {
+                header($name . ': ' . $value);
+            }
+            exit;
+        }
+        $this->http->streamFile($asset['path'], $asset['type'], $headers);
     }
 
     public function stylesheet(string $workspace, bool $custom = false): never
@@ -249,7 +282,8 @@ final class SiteController
         }
     }
 
-    private function send(array $response, string $cacheStatus): never
+    /** $context, for website pages, lets installed block scripts through the CSP. */
+    private function send(array $response, string $cacheStatus, ?SiteContext $context = null): never
     {
         $etag = '"' . substr(sha1($response['body']), 0, 20) . '"';
 
@@ -258,14 +292,17 @@ final class SiteController
         header('X-Content-Type-Options: nosniff');
         header('Referrer-Policy: strict-origin-when-cross-origin');
         header('X-CometCMS-Cache: ' . $cacheStatus);
-        header('Cache-Control: public, max-age=0, must-revalidate');
+        // no-transform keeps proxies and host optimizers (Cloudflare, mod_pagespeed)
+        // from rewriting inline scripts, which the hash-based CSP would then block.
+        header('Cache-Control: public, max-age=0, must-revalidate, no-transform');
         header('ETag: ' . $etag);
         if ($response['status'] === 503) {
             header('Retry-After: 3600');
         }
 
         if (str_starts_with($response['content_type'], 'text/html')) {
-            $policy = str_replace("script-src 'none'", SiteScripts::cspDirective($response['body']), self::CONTENT_SECURITY_POLICY);
+            $policy = str_replace("script-src 'none'", SiteScripts::cspDirective($response['body'], $context), self::CONTENT_SECURITY_POLICY);
+            if ($context !== null) $policy = BlockScripts::extendPolicy($policy, $response['body'], $context);
             $policy = FormCaptcha::extendPolicy($policy, $response['body']);
             header('Content-Security-Policy: ' . $policy);
         }

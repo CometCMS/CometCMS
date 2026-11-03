@@ -1,0 +1,45 @@
+{
+  "$schema": "../../../../../schemas/block.schema.json",
+  "title": "Soft Lights",
+  "description": "Softly drifting pools of light or an aurora ribbon behind your content.",
+  "icon": "mdi:blur",
+  "props": {
+    "variant": {
+      "type": "enum",
+      "label": "Background style",
+      "options": [
+        "orbs",
+        "aurora"
+      ],
+      "default": "orbs",
+      "option_labels": {
+        "orbs": "Light orbs",
+        "aurora": "Aurora ribbon"
+      }
+    },
+    "accent": {
+      "use": "accent"
+    },
+    "secondary": {
+      "use": "secondary"
+    },
+    "intensity": {
+      "use": "intensity"
+    },
+    "motion": {
+      "use": "motion"
+    },
+    "scale": {
+      "use": "scale"
+    },
+    "padding": {
+      "use": "padding"
+    },
+    "height": {
+      "use": "height"
+    },
+    "align": {
+      "use": "align"
+    }
+  }
+}

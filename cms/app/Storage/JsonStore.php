@@ -64,8 +64,13 @@ final class JsonStore
             throw new \RuntimeException('Could not encode JSON.');
         }
 
-        file_put_contents($tmp, $json . PHP_EOL, LOCK_EX);
-        rename($tmp, $path);
+        try {
+            if (file_put_contents($tmp, $json . PHP_EOL, LOCK_EX) !== strlen($json) + 1 || !rename($tmp, $path)) {
+                throw new \RuntimeException('Could not write JSON: ' . implode('/', $segments));
+            }
+        } finally {
+            if (is_file($tmp)) unlink($tmp);
+        }
         self::$generation++;
     }
 

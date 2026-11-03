@@ -1,0 +1,9 @@
+{{! The final numbers are in the HTML; view.js only animates them on the published site. }}
+<dl class="cometcms-stats">
+  {{#items}}
+  <div class="cometcms-stats__item">
+    <dt class="cometcms-stats__label">{{label}}</dt>
+    <dd class="cometcms-stats__value"><span data-value="{{value}}">{{value}}</span>{{suffix}}</dd>
+  </div>
+  {{/items}}
+</dl>

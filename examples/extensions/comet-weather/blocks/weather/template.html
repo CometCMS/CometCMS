@@ -1,0 +1,7 @@
+{{! Settings are read with an @ prefix: the credit section below uses the extension-wide "Credit Open-Meteo" switch. }}
+<section class="cometcms-weather cometcms-weather--{{layout}}" style="--cometcms-weather-accent: {{accent}}" aria-live="polite">
+  <h3 class="cometcms-weather__place">{{place}}</h3>
+  <p class="cometcms-weather__now" data-now>{{loading_label}}</p>
+  {{#layout=card}}{{#show_wind}}<p class="cometcms-weather__wind" data-wind hidden>{{wind_label}} <span data-wind-value></span></p>{{/show_wind}}{{/layout}}
+  {{#@credit}}<p class="cometcms-weather__credit"><a href="https://open-meteo.com/" target="_blank">Weather data by Open-Meteo.com</a></p>{{/@credit}}
+</section>

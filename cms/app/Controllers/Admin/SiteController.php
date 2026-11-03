@@ -8,6 +8,9 @@ use CometCMS\Auth\Auth;
 use CometCMS\Content\ContentRepository;
 use CometCMS\Core\Http;
 use CometCMS\Core\ValidationException;
+use CometCMS\Extensions\Extension;
+use CometCMS\Extensions\ExtensionException;
+use CometCMS\Extensions\ExtensionReview;
 use CometCMS\Site\FormRepository;
 use CometCMS\Site\FormCaptchaSettings;
 use CometCMS\Site\LayoutSchema;
@@ -55,6 +58,7 @@ final class SiteController extends BaseController
             'form_settings' => (new FormCaptchaSettings($this->site->workspace()))->admin(),
             'theme' => $this->site->theme(),
             'theme_presets' => $this->site->themePresets(),
+            'builtin_themes' => Theme::builtInThemes(),
             'menus' => $this->site->menus(),
             'menus_revision' => \CometCMS\Localization\LocalizedValue::hash($this->site->menus()),
             'menu_limits' => SiteRepository::MENU_LIMITS,
@@ -73,6 +77,119 @@ final class SiteController extends BaseController
             'workspace_label' => $this->site->workspaceLabel(),
             'can_edit_css' => Auth::allows($user, 'admin'),
         ]]);
+    }
+
+    public function extensions(): never
+    {
+        $user = $this->requirePermission('site.manage', ['resource' => 'site:*']);
+        $this->json(['data' => $this->site->extensions()->metadata() + ['can_install' => Auth::allows($user, 'admin')]]);
+    }
+
+    /** Install or update an extension from a ZIP upload. */
+    public function installExtension(): never
+    {
+        $this->requireUser('admin');
+        $this->requirePermission('site.manage', ['resource' => 'site:*']);
+        $this->verifyCsrf();
+        $upload = $_FILES['extension'] ?? null;
+        $error = is_array($upload) ? ($upload['error'] ?? UPLOAD_ERR_NO_FILE) : UPLOAD_ERR_NO_FILE;
+        if (in_array($error, [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true)
+            || ($error === UPLOAD_ERR_OK && (int) ($upload['size'] ?? 0) > Extension::MAX_BYTES)) {
+            $this->json(['error' => ['code' => 'invalid_extension', 'message' => 'The extension ZIP is too large for this server.', 'details' => []]], 413);
+        }
+        if ($error !== UPLOAD_ERR_OK || !is_string($upload['tmp_name'] ?? null) || !is_uploaded_file($upload['tmp_name']) || array_diff(array_keys($_FILES), ['extension']) !== []) {
+            $this->json(['error' => ['code' => 'invalid_extension', 'message' => 'Upload one extension as a .zip file.', 'details' => []]], 422);
+        }
+        try {
+            $seeds = null;
+            if (isset($_POST['seeds'])) {
+                $decoded = json_decode((string) $_POST['seeds']);
+                if (!$decoded instanceof \stdClass) throw ExtensionException::single('', 'Seed choices must be a JSON object.');
+                $seeds = (array) $decoded;
+            }
+            $result = $this->site->extensions()->install(
+                $upload['tmp_name'],
+                filter_var($_POST['accept_changes'] ?? false, FILTER_VALIDATE_BOOL),
+                filter_var($_POST['allow_scripts'] ?? false, FILTER_VALIDATE_BOOL),
+                $seeds,
+            );
+            $this->site->clearCache();
+            $this->logger->info('site.extension_installed', ['workspace' => $this->site->workspace()->slug(), 'extension' => $result['name'], 'version' => $result['version'], 'previous_version' => $result['previous_version'], 'scripts' => $result['scripts']]);
+            $this->json(['data' => $result], 201);
+        } catch (ExtensionException $e) {
+            $this->json(['error' => ['code' => 'invalid_extension', 'message' => $e->getMessage(), 'details' => $e->errors()]], 422);
+        } catch (ExtensionReview $e) {
+            $this->json(['error' => ['code' => 'extension_review', 'message' => $e->getMessage(), 'details' => $e->details()]], 409);
+        } catch (\RuntimeException $e) {
+            $this->json(['error' => ['code' => 'extension_unavailable', 'message' => $e->getMessage()]], 503);
+        }
+    }
+
+    public function extension(string $vendor, string $extension): never
+    {
+        $this->requirePermission('site.manage', ['resource' => 'site:*']);
+        $details = $this->site->extensions()->details($vendor . '/' . $extension);
+        if ($details === null) $this->json(['error' => ['code' => 'not_found', 'message' => 'Extension not found.']], 404);
+        $this->json(['data' => $details]);
+    }
+
+    public function updateExtension(string $vendor, string $extension): never
+    {
+        $this->requireUser('admin');
+        $this->requirePermission('site.manage', ['resource' => 'site:*']);
+        $this->verifyCsrf();
+        $name = $vendor . '/' . $extension;
+        try {
+            $request = $this->requestJson();
+            // Settings and status are separate requests, each with its own audit entry.
+            if (array_key_exists('settings', $request)) {
+                $values = $request['settings'];
+                if (!is_array($values) || ($values !== [] && array_is_list($values))) throw new \InvalidArgumentException('Settings must be an object of setting values.');
+                $settings = $this->site->extensions()->setSettings($name, $values);
+                if ($settings === null) {
+                    $this->json(['error' => ['code' => 'not_found', 'message' => 'Extension not found.']], 404);
+                }
+                $this->site->clearCache();
+                $this->logger->info('site.extension_configured', ['workspace' => $this->site->workspace()->slug(), 'extension' => $name]);
+                $this->json(['data' => ['name' => $name, 'settings' => (object) $settings]]);
+            }
+            $enabled = $request['enabled'] ?? null;
+            if (!is_bool($enabled)) throw new \InvalidArgumentException('Enabled must be a boolean.');
+            if (!$this->site->extensions()->setEnabled($name, $enabled)) {
+                $this->json(['error' => ['code' => 'not_found', 'message' => 'Extension not found.']], 404);
+            }
+            $this->site->clearCache();
+            $this->logger->info('site.extension_toggled', ['workspace' => $this->site->workspace()->slug(), 'extension' => $name, 'enabled' => $enabled]);
+            $this->json(['data' => ['name' => $name, 'enabled' => $enabled]]);
+        } catch (\InvalidArgumentException $e) {
+            $this->json(['error' => ['code' => 'invalid_extension', 'message' => $e->getMessage()]], 422);
+        } catch (\RuntimeException $e) {
+            $this->json(['error' => ['code' => 'extension_unavailable', 'message' => $e->getMessage()]], 503);
+        }
+    }
+
+    public function deleteExtension(string $vendor, string $extension): never
+    {
+        $this->requireUser('admin');
+        $this->requirePermission('site.manage', ['resource' => 'site:*']);
+        $this->verifyCsrf();
+        $name = $vendor . '/' . $extension;
+        try {
+            $remove = $this->requestJson()['remove'] ?? [];
+            if (!is_array($remove) || !array_is_list($remove) || array_filter($remove, static fn(mixed $id): bool => !is_string($id)) !== []) {
+                throw new \InvalidArgumentException('Removal choices must be a list of seeded item ids.');
+            }
+            if (!$this->site->extensions()->delete($name, $remove)) {
+                $this->json(['error' => ['code' => 'not_found', 'message' => 'Extension not found.']], 404);
+            }
+            $this->site->clearCache();
+            $this->logger->info('site.extension_deleted', ['workspace' => $this->site->workspace()->slug(), 'extension' => $name]);
+            $this->json(['data' => ['name' => $name]]);
+        } catch (\InvalidArgumentException $e) {
+            $this->json(['error' => ['code' => 'invalid_extension', 'message' => $e->getMessage()]], 422);
+        } catch (\RuntimeException $e) {
+            $this->json(['error' => ['code' => 'extension_unavailable', 'message' => $e->getMessage()]], 503);
+        }
     }
 
     /** Lightweight summary for editors: is the website live, which types are published. */
@@ -212,6 +329,20 @@ final class SiteController extends BaseController
         $preset = $this->validated(fn() => $this->site->createThemePreset($input['name'] ?? '', $input['theme'] ?? null));
         $this->logger->info('site.theme_preset_created', ['preset' => $preset['id']]);
         $this->json(['data' => $preset], 201);
+    }
+
+    /** Body: {theme}: the design that replaces a site-owned theme's definition. */
+    public function updateThemePreset(string $id): never
+    {
+        $this->requirePermission('site.manage', ['resource' => 'site:*']);
+        $this->verifyCsrf();
+        $input = $this->requestJson();
+        $preset = $this->validated(fn() => $this->site->updateThemePreset($id, $input['theme'] ?? null));
+        if ($preset === null) {
+            $this->json(['error' => ['code' => 'not_found', 'message' => 'Preset not found.']], 404);
+        }
+        $this->logger->info('site.theme_preset_updated', ['preset' => $id]);
+        $this->json(['data' => $preset]);
     }
 
     public function deleteThemePreset(string $id): never
@@ -830,7 +961,7 @@ final class SiteController extends BaseController
             $region = (string) ($body['region'] ?? '');
             $this->requireRegion($region);
             if (array_key_exists('nodes', $body)) {
-                $context->override('region:' . $region, $this->validated(static fn() => LayoutSchema::normalizeRegion($region, $body['nodes'])));
+                $context->override('region:' . $region, $this->validated(fn() => LayoutSchema::normalizeRegion($region, $body['nodes'], blocks: $this->site->blocks())));
             }
             $context->locale = in_array($locale, $context->locales(), true) ? $locale : $context->defaultLocale();
 
@@ -846,7 +977,7 @@ final class SiteController extends BaseController
         if ($target === 'component') {
             $component = $this->requireComponent((string) ($body['component'] ?? ''));
             if (array_key_exists('nodes', $body)) {
-                $component['nodes'] = $this->validated(static fn() => LayoutSchema::normalizeComponent($body['nodes'], $component['root']));
+                $component['nodes'] = $this->validated(fn() => LayoutSchema::normalizeComponent($body['nodes'], $component['root'], $this->site->blocks()));
             }
             // Instances inside other components show the unsaved edit, too.
             $context->override('component:' . $component['id'], $component);
@@ -867,7 +998,7 @@ final class SiteController extends BaseController
             $type = (string) ($body['type'] ?? '');
             [$schema, , $field] = $this->requirePage($type, LayoutSchema::key($body['entry'] ?? ''), (string) ($body['field'] ?? ''));
             $context->locale = $locale;
-            $context->pageDraft = ['field' => $field, 'nodes' => $this->validated(static fn() => LayoutSchema::normalize($body['nodes'] ?? []))];
+            $context->pageDraft = ['field' => $field, 'nodes' => $this->validated(fn() => LayoutSchema::normalize($body['nodes'] ?? [], blocks: $this->site->blocks()))];
             $entry = $context->findEntry($type, $this->content()->stableId($this->findAdminEntry($type, LayoutSchema::key($body['entry'] ?? '')) ?? []), true);
             if ($entry === null) {
                 $this->json(['error' => ['code' => 'not_found', 'message' => 'Entry not found.']], 404);
@@ -884,7 +1015,7 @@ final class SiteController extends BaseController
         $area = $this->requestedTemplate($type, $variant, $body['template'] ?? null);
 
         if (array_key_exists('nodes', $body)) {
-            $context->override('layout:' . $type . ':' . $variant . ':' . $area, $this->validated(static fn() => LayoutSchema::normalize($body['nodes'], $variant === 'detail')));
+            $context->override('layout:' . $type . ':' . $variant . ':' . $area, $this->validated(fn() => LayoutSchema::normalize($body['nodes'], $variant === 'detail', $this->site->blocks())));
         }
 
         $context->locale = $locale;
@@ -988,14 +1119,14 @@ final class SiteController extends BaseController
             if (!$context->isPublicType($type)) $this->http->notFound();
             $area = is_string($body['template'] ?? null) && $body['template'] !== '' ? $body['template'] : SiteRepository::DEFAULT_TEMPLATE;
             if (!$this->site->hasTemplate($type, $variant, $area)) throw new ValidationException(['template' => 'Unknown template.']);
-            $context->override('layout:' . $type . ':' . $variant . ':' . $area, LayoutSchema::normalize($body['nodes'] ?? []));
+            $context->override('layout:' . $type . ':' . $variant . ':' . $area, LayoutSchema::normalize($body['nodes'] ?? [], blocks: $this->site->blocks()));
         } elseif ($target === 'region') {
             $region = (string) ($body['region'] ?? '');
             $this->requireRegion($region);
-            $context->override('region:' . $region, LayoutSchema::normalizeRegion($region, $body['nodes'] ?? []));
+            $context->override('region:' . $region, LayoutSchema::normalizeRegion($region, $body['nodes'] ?? [], blocks: $this->site->blocks()));
         } elseif ($target === 'component') {
             $component = $this->requireComponent((string) ($body['component'] ?? ''));
-            $component['nodes'] = LayoutSchema::normalizeComponent($body['nodes'] ?? [], $component['root']);
+            $component['nodes'] = LayoutSchema::normalizeComponent($body['nodes'] ?? [], $component['root'], $this->site->blocks());
             $context->override('component:' . $component['id'], $component);
         }
         return $drafts;
@@ -1114,7 +1245,7 @@ final class SiteController extends BaseController
         $query = is_string($_GET['q'] ?? null) ? $_GET['q'] : '';
         $hits = (new SiteSearch($context))->search($query, $keys($_GET['types'] ?? ''), $keys($_GET['fields'] ?? ''),
             (int) ($_GET['limit'] ?? SiteSearch::MAX_RESULTS));
-        header('Cache-Control: private, no-store');
+        header('Cache-Control: private, no-store, no-transform');
         $this->json(['data' => $hits]);
     }
 
@@ -1135,10 +1266,10 @@ final class SiteController extends BaseController
     {
         http_response_code($status);
         header('Content-Type: text/html; charset=utf-8');
-        header('Cache-Control: private, no-store');
+        header('Cache-Control: private, no-store, no-transform');
         header('X-Robots-Tag: noindex, nofollow');
-        header("Content-Security-Policy: default-src 'self'; img-src 'self' data: https:; media-src 'self' https:; frame-src 'self' https://www.youtube-nocookie.com https://player.vimeo.com; style-src 'self' 'unsafe-inline' https:; font-src 'self' data: https:; "
-            . SiteScripts::cspDirective($html) . "; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'self'");
+        header('Content-Security-Policy: ' . \CometCMS\Site\Blocks\BlockScripts::extendPolicy("default-src 'self'; img-src 'self' data: https:; media-src 'self' https:; frame-src 'self' https://www.youtube-nocookie.com https://player.vimeo.com; style-src 'self' 'unsafe-inline' https:; font-src 'self' data: https:; "
+            . SiteScripts::cspDirective($html, $this->context()) . "; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'self'", $html, $this->context()));
         echo $html;
         exit;
     }
@@ -1170,7 +1301,7 @@ final class SiteController extends BaseController
             'default_locale' => $this->site->settings()['default_locale'],
             // The website's address serves another workspace (or none), so live links would mislead.
             'live_conflict' => $this->site->settings()['enabled'] && $this->liveUrlConflict($this->siteUrl() . '/'),
-            'spec' => LayoutSchema::spec($pageContent, $modal, $component),
+            'spec' => LayoutSchema::spec($pageContent, $modal, $this->site->blocks(), $component),
             'components' => $this->site->components(),
             'forms' => array_map(fn(array $form): array => ['id' => $form['id'], 'name' => $form['name'], 'type' => $form['type'], 'fields' => count($this->forms->inputs($form))], $this->forms->all()),
         ];

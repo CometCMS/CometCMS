@@ -60,7 +60,7 @@
     </nav>
     <div class="relative z-10 flex shrink-0 items-center gap-2.5 px-3 pb-2 pt-2.5" :class="{ 'border-b border-slate-200': isInstance }">
       <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-theme-50 text-theme-600 ring-1 ring-inset ring-theme-100">
-        <Icon :icon="nodeIcon(node, builder.isStacked(node), builder.componentOf(node))" class="h-[18px] w-[18px]" />
+        <KindIcon :icon="nodeIcon(node, builder.isStacked(node), builder.componentOf(node), builder.spec.value)" class="h-[18px] w-[18px]" />
       </span>
       <div class="min-w-0 flex-1">
         <div class="flex min-w-0 items-center gap-1">
@@ -72,6 +72,12 @@
           />
         </div>
         <p class="min-h-[1rem] truncate text-xs text-slate-500">{{ builder.nodeSummary(node) }}</p>
+        <p v-if="typeof builder.spec.value?.kinds?.[node.kind]?.deprecated === 'string'" class="mt-1 flex items-start gap-1 text-[11px] leading-snug text-amber-700">
+          <Icon icon="mdi:alert-outline" class="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />{{ deprecationNote }}
+        </p>
+        <p v-if="builder.spec.value?.kinds?.[node.kind]?.script" class="mt-1 flex items-start gap-1 text-[11px] leading-snug text-amber-700">
+          <Icon icon="mdi:language-javascript" class="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />{{ t("site.extensions.scriptPreviewHint") }}
+        </p>
       </div>
       <button type="button" class="inspector-action" :title="t('site.builder.duplicate')" :disabled="locked || builder.isCard(node) || node.kind === 'area_content'" @click="builder.duplicate(node.id)">
         <Icon icon="mdi:content-copy" class="h-4 w-4" />
@@ -204,6 +210,25 @@
             </button>
           </template>
         </BuilderControl>
+        <BuilderGroup
+          v-for="group in propGroups"
+          :key="group.key"
+          :open="openPropGroups[group.key] ?? true"
+          heading-tag="h4"
+          :title="group.title"
+          content-class="mt-3 space-y-3"
+          @update:open="(value) => (openPropGroups[group.key] = value)"
+        >
+          <BuilderControl
+            v-for="key in group.keys"
+            :key="`${node.id}-p-${key}`"
+            :node="node"
+            :name="key"
+            :def="propSpec[key]"
+            :value="builder.viewValue(node, 'props', key)"
+            @update="(value) => updateProp(key, value)"
+          />
+        </BuilderGroup>
         <BuilderGroup
           v-if="scrollProps.length"
           v-model:open="scrollingOpen"
@@ -349,7 +374,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from "vue";
+import { computed, reactive, ref, watch } from "vue";
 import { Icon } from "@iconify/vue";
 import BuilderControl from "./BuilderControl.vue";
 import SpacingControl from "./SpacingControl.vue";
@@ -361,11 +386,14 @@ import ColumnLayoutPicker from "./ColumnLayoutPicker.vue";
 import SegmentedControl from "../SegmentedControl.vue";
 import { DEVICE_ICONS, STATE_ICONS } from "./controlOptions.js";
 import { nodeIcon } from "./kindIcons.js";
+import KindIcon from "./KindIcon.vue";
 import { COMPONENT, findNode, locate } from "../../../composables/layoutTree.js";
 import { FRAME_DEFAULT, FRAME_NONE, frameLabel } from "../../../composables/templates.js";
 import { useBuilderBreadcrumbs } from "../../../composables/useBuilderBreadcrumbs.js";
 import { useSiteBuilder } from "../../../composables/useSiteBuilder.js";
 import { useI18n } from "../../../i18n/index.js";
+import { conditionsHold, extensionText } from "../../../composables/extensionText.js";
+import { resolveLocalized } from "../../../composables/localizedValues.js";
 
 const props = defineProps({
   templatePart: { type: String, default: null },
@@ -398,7 +426,7 @@ const STYLE_GROUPS = [
 ];
 
 const builder = useSiteBuilder();
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const frameMissing = computed(() => !!props.frame && ![FRAME_DEFAULT, FRAME_NONE].includes(props.frame.value)
   && !props.frame.components.some((component) => component.id === props.frame.value));
 const templatePartHint = computed(() => {
@@ -447,6 +475,7 @@ function ownOverride(part, key) {
 }
 /** One sentence on what the selected kind of element is for. */
 const kindHint = computed(() => {
+  if (builder.spec.value?.kinds?.[node.value?.kind]?.description) return builder.spec.value.kinds[node.value.kind].description;
   if (!node.value) return "";
   const kind = builder.isCard(node.value) ? "card" : node.value.kind;
   const key = `site.kindHint.${kind}`;
@@ -609,6 +638,13 @@ const visibleProps = computed(() => {
   const keys = Object.keys(propSpec.value);
   const props = current.props ?? {};
 
+  // Extension blocks declare their own rules: visible_when conditions, and deprecated props stay hidden.
+  if (current.kind.startsWith("block:")) {
+    const values = Object.fromEntries(keys.map((key) => [key, builder.viewValue(current, "props", key)]));
+    const resolve = (value) => resolveLocalized(value, builder.locale.value || builder.defaultLocale?.value || "en", builder.defaultLocale?.value || "en");
+    return keys.filter((key) => propSpec.value[key].deprecated === undefined && conditionsHold(propSpec.value[key], values, resolve));
+  }
+
   if (current.kind === "field") {
     const type = fieldConfig.value?.type;
     const displays = type === 'media' && fieldConfig.value?.multiple ? ['gallery', 'files'] : builder.spec.value?.field_displays?.[type] ?? [];
@@ -723,7 +759,23 @@ const visibleProps = computed(() => {
 const SCROLL_PROPS = ["sticky", "overlap", "overlap_background", "scroll_effect"];
 const scrollingOpen = ref(true);
 const scrollProps = computed(() => (node.value?.kind === "section" ? visibleProps.value.filter((key) => SCROLL_PROPS.includes(key)) : []));
-const contentProps = computed(() => visibleProps.value.filter((key) => !scrollProps.value.includes(key)));
+/** Extension props with a "group" gather in collapsible groups after the ungrouped ones, in declaration order. */
+const propGroups = computed(() => {
+  const groups = new Map();
+  for (const key of visibleProps.value) {
+    const def = propSpec.value[key];
+    if (!def?.group || !node.value?.kind.startsWith("block:")) continue;
+    if (!groups.has(def.group)) groups.set(def.group, { key: def.group, title: extensionText(def, "group", locale.value), keys: [] });
+    groups.get(def.group).keys.push(key);
+  }
+  return [...groups.values()];
+});
+const openPropGroups = reactive({});
+const contentProps = computed(() => visibleProps.value.filter((key) => !scrollProps.value.includes(key) && !propGroups.value.some((group) => group.keys.includes(key))));
+const deprecationNote = computed(() => {
+  const spec = builder.spec.value?.kinds?.[node.value?.kind];
+  return extensionText(spec, "deprecated", locale.value) || t("site.extensions.deprecatedBlock");
+});
 
 function updateProp(key, value) {
   if (key !== "source") {

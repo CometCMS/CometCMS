@@ -11,7 +11,7 @@
       @keydown="onKeydown"
     >
       <div class="flex items-center gap-2 px-3 pb-2 pt-2.5">
-        <Icon :icon="nodeIcon(node, builder.isStacked(node), builder.componentOf(node))" class="h-4 w-4 shrink-0 text-theme-600" />
+        <KindIcon :icon="nodeIcon(node, builder.isStacked(node), builder.componentOf(node), builder.spec.value)" class="h-4 w-4 shrink-0 text-theme-600" />
         <span class="min-w-0 truncate font-semibold text-slate-900" :title="builder.nodeLabel(node)">{{ builder.nodeLabel(node) }}</span>
         <span class="min-w-0 flex-1 truncate text-xs text-slate-400">{{ builder.nodeSummary(node) }}</span>
       </div>
@@ -58,6 +58,7 @@ import { Icon } from "@iconify/vue";
 import BuilderControl from "./BuilderControl.vue";
 import ColumnLayoutPicker from "./ColumnLayoutPicker.vue";
 import { nodeIcon } from "./kindIcons.js";
+import KindIcon from "./KindIcon.vue";
 import { COMPONENT, findNode, isStructure, locate } from "../../../composables/layoutTree.js";
 import { useSiteBuilder } from "../../../composables/useSiteBuilder.js";
 import { useI18n } from "../../../i18n/index.js";

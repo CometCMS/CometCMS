@@ -1,0 +1,483 @@
+<?php
+
+declare(strict_types=1);
+
+namespace CometCMS\Extensions;
+
+use CometCMS\Content\ContentRepository;
+use CometCMS\Content\ContentTypeRepository;
+use CometCMS\Core\Security;
+use CometCMS\Core\ValidationException;
+use CometCMS\Site\FontFiles;
+use CometCMS\Site\FontRegistry;
+use CometCMS\Site\LayoutSchema;
+use CometCMS\Site\SiteRepository;
+use CometCMS\Site\Theme;
+use CometCMS\Storage\JsonStore;
+use CometCMS\Workspaces\WorkspaceContext;
+
+/** Copies extension seeds into normal site storage. Only the ledger records their origin. */
+final class ExtensionSeeder
+{
+    /**
+     * Every seed kind, in write order, and whether disabling its extension
+     * hides it. Each new kind must decide here; templates keep applying and
+     * fonts stay available so themes that chose them keep rendering.
+     */
+    public const KINDS = ['fonts' => false, 'content_types' => true, 'components' => true, 'templates' => false, 'presets' => true];
+
+    private ContentTypeRepository $types;
+    private SiteRepository $site;
+    private FontRegistry $fonts;
+    private JsonStore $store;
+
+    public function __construct(private readonly WorkspaceContext $workspace, private readonly string $extension, private readonly ?ExtensionRegistry $blocks = null)
+    {
+        $this->types = new ContentTypeRepository($workspace, includeDisabled: true);
+        $this->site = new SiteRepository($workspace, $this->types, includeDisabled: true);
+        $this->store = new JsonStore($workspace->path('site'));
+        $this->fonts = new FontRegistry($workspace);
+    }
+
+    public static function key(array $seed): string
+    {
+        return $seed['kind'] . '/' . $seed['id'];
+    }
+
+    public function ledger(): array
+    {
+        return $this->store->read('extensions-seeded') ?? [];
+    }
+
+    /** Track each preset's source independently; older imports are matched by id or display name. */
+    public function resolve(array $seeds): array
+    {
+        $tracked = array_values(array_filter($this->ledger()[$this->extension] ?? [], static fn(array $item): bool => $item['kind'] === 'presets'));
+        $used = [];
+        foreach ($seeds as &$seed) {
+            if ($seed['kind'] !== 'presets') continue;
+            $matched = null;
+            foreach ($tracked as $entry) {
+                if (isset($entry['source']) ? $entry['source'] === ($seed['source'] ?? 'theme.json') : $entry['id'] === $seed['id']) {
+                    $matched = $entry['id'];
+                    break;
+                }
+            }
+            if ($matched === null) {
+                foreach ($this->site->themePresets() as $preset) {
+                    if ($preset['name'] === $seed['data']['name']) { $matched = $preset['id']; break; }
+                }
+            }
+            // Legacy theme.json shipped exactly one preset and had no source in its ledger.
+            if ($matched === null && ($seed['source'] ?? 'theme.json') === 'theme.json' && count($tracked) === 1 && !isset($tracked[0]['source'])) {
+                $matched = $tracked[0]['id'];
+            }
+            $seed['id'] = $matched ?? SiteRepository::componentId($seed['data']['name'], fn(string $id): bool => $this->site->themePreset($id) !== null || isset($used[$id]));
+            if (isset($used[$seed['id']])) throw ExtensionException::single(self::file($seed), 'Theme presets must resolve to distinct site presets.');
+            $used[$seed['id']] = true;
+        }
+        unset($seed);
+        return $seeds;
+    }
+
+    /**
+     * What installing would do with each seed. Items this extension seeded
+     * and nobody edited since are refreshed by default; anything edited or
+     * owned elsewhere is kept unless explicitly overwritten.
+     *
+     * @return list<array{kind: string, id: string, name: string, exists: bool, tracked: bool, modified: bool, default: string}>
+     */
+    public function plan(array $seeds): array
+    {
+        $tracked = [];
+        foreach ($this->ledger()[$this->extension] ?? [] as $entry) $tracked[self::key($entry)] = $entry;
+        return array_map(function (array $seed) use ($tracked): array {
+            $entry = $tracked[self::key($seed)] ?? null;
+            $exists = $entry !== null || $this->exists($seed);
+            $modified = $entry !== null && $this->hash($entry) !== $entry['hash'];
+            return array_intersect_key($seed, array_flip(['kind', 'id', 'name'])) + [
+                'exists' => $exists,
+                'tracked' => $entry !== null,
+                'modified' => $modified,
+                'default' => !$exists ? 'create' : ($entry !== null && !$modified ? 'overwrite' : 'skip'),
+            ];
+        }, $this->resolve($seeds));
+    }
+
+    private function exists(array $seed): bool
+    {
+        return match ($seed['kind']) {
+            'content_types' => $this->types->exists($seed['id']),
+            'components' => $this->site->component($seed['id']) !== null,
+            'templates' => $this->templateExists($seed['id']),
+            'presets' => $this->site->themePreset($seed['id']) !== null,
+            'fonts' => isset($this->fonts->families()[$seed['id']]),
+        };
+    }
+
+    private function templateExists(string $id): bool
+    {
+        [$type, $variant] = explode('/', $id);
+        return $this->types->exists($type) && $this->site->hasTemplate($type, $variant, SiteRepository::DEFAULT_TEMPLATE);
+    }
+
+    /** Normalize all seeds against the site's schema plus the seeds being installed, without writes. */
+    public function validate(array $seeds): array
+    {
+        $errors = [];
+        $types = $this->site->types();
+        $components = array_column($this->site->components(), null, 'id');
+        $blocks = $this->blocks ?? $this->site->blocks();
+        $normalized = [];
+        $validate = function (array $seed, callable $operation) use (&$errors, &$normalized): void {
+            try {
+                $normalized[self::key($seed)] = array_replace($seed, ['data' => $operation()]);
+            } catch (\Throwable $e) {
+                $messages = $e instanceof ValidationException ? array_values($e->fields()) : [$e->getMessage()];
+                foreach ($messages as $message) $errors[] = ['file' => self::file($seed), 'line' => null, 'message' => (string) $message];
+            }
+        };
+        foreach ($seeds as $seed) {
+            if ($seed['kind'] !== 'content_types') continue;
+            $validate($seed, function () use ($seed, &$types): array {
+                $data = $this->types->normalize($seed['id'], $seed['data'] + ['name' => $seed['id']]);
+                unset($data['revision']);
+                return $types[$seed['id']] = $data;
+            });
+        }
+        foreach ($seeds as $seed) {
+            if ($seed['kind'] === 'components') $components[$seed['id']] = $seed['data'] + ['id' => $seed['id']];
+        }
+        foreach ($seeds as $seed) {
+            if ($seed['kind'] !== 'components') continue;
+            $validate($seed, function () use ($seed, $types, &$components, $blocks): array {
+                $this->validateNodes($seed['data']['nodes'] ?? [], $blocks, $components, $seed['data']['type'] ?? '');
+                $data = $this->site->normalizeExtensionComponent($seed['id'], $seed['data'], $types, $components, $blocks);
+                return $components[$seed['id']] = $data;
+            });
+        }
+        // A cycle can span several components, including an existing component being overwritten.
+        $visiting = [];
+        $visited = [];
+        $visit = function (string $id) use (&$visit, &$visiting, &$visited, $components): void {
+            if (isset($visiting[$id])) throw new ValidationException(['nodes' => 'Components cannot contain each other in a cycle.']);
+            if (isset($visited[$id])) return;
+            $visiting[$id] = true;
+            $component = $components[$id] ?? null;
+            $nodes = $component['nodes'] ?? $this->site->component($id)['nodes'] ?? [];
+            foreach (LayoutSchema::componentRefs($nodes) as $ref) $visit($ref);
+            unset($visiting[$id]);
+            $visited[$id] = true;
+        };
+        foreach ($seeds as $seed) {
+            if ($seed['kind'] === 'components') $validate($seed, function () use ($seed, $visit, &$normalized): array {
+                $visit($seed['id']);
+                return $normalized[self::key($seed)]['data'] ?? $seed['data'];
+            });
+            if ($seed['kind'] === 'templates') $validate($seed, function () use ($seed, $types, $components, $blocks): array {
+                [$type, $variant] = explode('/', $seed['id']);
+                $data = $seed['data'];
+                $list = $this->site->validateTemplates([$type => [$variant => $data['templates'] ?? null]], $types, $components)[$type][$variant];
+                $layouts = $data['layouts'] ?? [];
+                if (!is_array($layouts)) throw new ValidationException(['layouts' => 'Layouts must be keyed by template id.']);
+                foreach ($layouts as $area => &$nodes) {
+                    if (!in_array($area, array_column($list, 'id'), true) || !is_array($nodes)) throw new ValidationException(['layouts' => 'Each layout must belong to a template in this list.']);
+                    $this->validateNodes($nodes, $blocks, $components, $type);
+                    $nodes = LayoutSchema::normalize($nodes, $variant === 'detail', $blocks);
+                }
+                unset($nodes);
+                return ['templates' => $list, 'layouts' => $layouts];
+            });
+            if ($seed['kind'] === 'presets') $validate($seed, function () use ($seed): array {
+                if (!is_array($seed['data']['theme'] ?? null)) throw new ValidationException(['theme' => 'A preset needs a theme.']);
+                return ['name' => $seed['data']['name'], 'theme' => Theme::normalize($seed['data']['theme'])];
+            });
+            // Extension::compile already checked the faces against their WOFF2 files.
+            if ($seed['kind'] === 'fonts') $validate($seed, static fn(): array => $seed['data']);
+        }
+        if ($errors !== []) throw new ExtensionException($errors);
+        return array_values($normalized);
+    }
+
+    private function validateNodes(mixed $nodes, ExtensionRegistry $blocks, array $components, mixed $type): void
+    {
+        if (!is_array($nodes)) throw new ValidationException(['nodes' => 'Nodes must be a list.']);
+        foreach ($nodes as $node) {
+            if (!is_array($node)) throw new ValidationException(['nodes' => 'Invalid layout node.']);
+            $kind = $node['kind'] ?? '';
+            if (is_string($kind) && str_starts_with($kind, 'block:') && $blocks->get($kind) === null) {
+                throw new ValidationException(['nodes' => 'Unknown extension block: ' . $kind]);
+            }
+            if ($kind === LayoutSchema::COMPONENT) {
+                $id = $node['props']['component'] ?? '';
+                $component = is_string($id) ? ($components[$id] ?? null) : null;
+                if ($component === null || ($node['props']['root'] ?? 'section') !== $component['root']
+                    || (($component['type'] ?? '') !== '' && $component['type'] !== $type)) {
+                    throw new ValidationException(['nodes' => 'Unknown or incompatible component reference: ' . (is_string($id) ? $id : '')]);
+                }
+            }
+            $this->validateNodes($node['children'] ?? [], $blocks, $components, $type);
+        }
+    }
+
+    private static function file(array $seed): string
+    {
+        if (isset($seed['source'])) return $seed['source'];
+        return match ($seed['kind']) {
+            'content_types' => 'content-types/' . $seed['id'] . '.json',
+            'components', 'templates' => $seed['kind'] . '/' . $seed['id'] . '.json',
+            'presets' => 'theme.json',
+            'fonts' => 'fonts/' . $seed['id'] . '.json',
+        };
+    }
+
+    /** Validate choices again against current data, so a concurrent install cannot silently overwrite it. */
+    public function selected(array $seeds, array $choices): array
+    {
+        $seeds = $this->resolve($seeds);
+        $plan = $this->plan($seeds);
+        $known = array_map(self::key(...), $plan);
+        if (array_diff(array_keys($choices), $known) !== []) throw ExtensionException::single('', 'Unknown seed choice.');
+        $selected = [];
+        foreach ($seeds as $index => $seed) {
+            $choice = $choices[self::key($seed)] ?? $plan[$index]['default'];
+            if (!in_array($choice, ['create', 'overwrite', 'skip'], true) || ($choice === 'create' && $plan[$index]['exists'])) {
+                throw ExtensionException::single(self::file($seed), 'Choose skip or overwrite for an existing item.');
+            }
+            if ($choice !== 'skip') $selected[] = $seed;
+        }
+        $newPresets = array_filter($selected, fn(array $seed): bool => $seed['kind'] === 'presets' && $this->site->themePreset($seed['id']) === null);
+        if ($newPresets !== [] && count($this->site->themePresets()) + count($newPresets) > SiteRepository::MAX_THEME_PRESETS) {
+            throw ExtensionException::single(self::file(reset($newPresets)), 'The site has reached its theme preset limit.');
+        }
+        return $selected;
+    }
+
+    /** Write in dependency order and record hashes only after every write succeeds. */
+    public function apply(array $seeds, array $choices): array
+    {
+        // Read the newly installed extension files rather than a preflight registry cached on the site.
+        $this->site = new SiteRepository($this->workspace, $this->types, includeDisabled: true);
+        $seeds = $this->validate($this->selected($seeds, $choices));
+        $ledger = $this->ledger();
+        $entries = [];
+        foreach ($ledger[$this->extension] ?? [] as $entry) $entries[self::key($entry)] = $entry;
+        $components = array_column($this->site->components(), null, 'id');
+        foreach ($seeds as $seed) if ($seed['kind'] === 'components') $components[$seed['id']] = $seed['data'];
+        $snapshots = $this->snapshot($seeds);
+        $written = [];
+        try {
+            foreach (array_keys(self::KINDS) as $kind) {
+                foreach ($seeds as $seed) {
+                    if ($seed['kind'] !== $kind) continue;
+                    $data = $seed['data'];
+                    switch ($kind) {
+                        case 'content_types':
+                            $this->types->save($data);
+                            $this->site = new SiteRepository($this->workspace, $this->types, includeDisabled: true);
+                            break;
+                        case 'components':
+                            $this->site->seedComponent($seed['id'], $data, $components);
+                            break;
+                        case 'templates':
+                            [$type, $variant] = explode('/', $seed['id']);
+                            $this->site->saveTemplates([$type => [$variant => $data['templates']]]);
+                            foreach ($data['layouts'] as $area => $nodes) $this->site->saveLayout($type, $variant, $nodes, area: $area);
+                            break;
+                        case 'fonts':
+                            $this->seedFont($seed['id'], $data);
+                            break;
+                        case 'presets':
+                            $previous = $this->site->themePreset($seed['id']);
+                            if ($previous !== null) $this->site->deleteThemePreset($previous['id']);
+                            $preset = $this->site->createThemePreset($data['name'], $data['theme']);
+                            unset($entries[self::key($seed)]);
+                            $seed['id'] = $preset['id'];
+                            break;
+                    }
+                    $written[] = $seed;
+                    $entries[self::key($seed)] = ['kind' => $kind, 'id' => $seed['id'], 'hash' => '', 'seeded_at' => Security::now()];
+                    if ($kind === 'presets') $entries[self::key($seed)]['source'] = $seed['source'] ?? 'theme.json';
+                }
+            }
+            // Layout saves can add page fields to types. Hash the final stored items.
+            foreach ($written as $seed) {
+                $entries[self::key($seed)]['hash'] = $this->hash($seed);
+                // An explicit overwrite transfers tracking; an older importer must not
+                // hide or delete content now maintained by a different extension.
+                foreach ($ledger as $owner => $items) {
+                    if ($owner === $this->extension) continue;
+                    $ledger[$owner] = array_values(array_filter($items, static fn(array $item): bool => self::key($item) !== self::key($seed)));
+                    if ($ledger[$owner] === []) unset($ledger[$owner]);
+                }
+            }
+            if ($entries !== []) $ledger[$this->extension] = array_values($entries);
+            $this->store->write($ledger, 'extensions-seeded');
+        } catch (\Throwable $e) {
+            $this->restore($snapshots);
+            throw $e;
+        }
+        return array_values($entries);
+    }
+
+    /** Copy the installed extension's WOFF2 files into the font library, then register the family. */
+    private function seedFont(string $id, array $font): void
+    {
+        $source = (new ExtensionRegistry($this->workspace))->directory() . '/' . $this->extension . '/';
+        $this->fonts->locked(function () use ($id, $font, $source): void {
+            $faces = [];
+            foreach ($font['faces'] as $face) {
+                $target = $this->fonts->directory() . '/files/' . $face['hash'] . '.woff2';
+                if (!is_file($target)) {
+                    $bytes = is_file($source . $face['file']) ? (string) file_get_contents($source . $face['file']) : '';
+                    if ($bytes === '' || FontFiles::validate($bytes) !== $face['hash']) throw new \RuntimeException('The font file ' . $face['file'] . ' changed during installation.');
+                    FontFiles::write($target, $bytes);
+                }
+                unset($face['file']);
+                $faces[] = $face;
+            }
+            $this->fonts->save([
+                'id' => $id, 'name' => $font['name'], 'source' => 'custom', 'category' => $font['category'],
+                'license' => $font['license'], 'version' => '1', 'subsets' => array_values(array_unique(array_column($faces, 'subset'))),
+                'faces' => $faces, 'extension' => $this->extension,
+            ]);
+        });
+    }
+
+    public function seeded(): array
+    {
+        $items = [];
+        foreach ($this->ledger()[$this->extension] ?? [] as $entry) {
+            $name = match ($entry['kind']) {
+                'content_types' => $this->types->find($entry['id'])['label'],
+                'components' => $this->site->component($entry['id'])['name'] ?? $entry['id'],
+                'presets' => $this->site->themePreset($entry['id'])['name'] ?? $entry['id'],
+                'fonts' => $this->fonts->families()[$entry['id']]['name'] ?? $entry['id'],
+                default => $entry['id'],
+            };
+            $item = ['kind' => $entry['kind'], 'id' => $entry['id'], 'name' => $name, 'modified' => $this->hash($entry) !== $entry['hash']];
+            if ($entry['kind'] === 'content_types') $item['entry_count'] = count(ContentRepository::make($this->workspace, includeDisabled: true)->all($entry['id']));
+            $items[] = $item;
+        }
+        return $items;
+    }
+
+    /** Only explicitly selected ledger entries may be removed; the rest become ordinary site data. */
+    public function remove(array $remove): void
+    {
+        $ledger = $this->ledger();
+        $entries = $ledger[$this->extension] ?? [];
+        if (array_diff($remove, array_map(self::key(...), $entries)) !== []) throw new \InvalidArgumentException('Unknown seeded item selected for removal.');
+        foreach (['templates', 'components', 'content_types', 'presets', 'fonts'] as $kind) {
+            foreach ($entries as $entry) {
+                if ($entry['kind'] !== $kind || !in_array(self::key($entry), $remove, true)) continue;
+                switch ($kind) {
+                    case 'templates':
+                        [$type, $variant] = explode('/', $entry['id']);
+                        $this->site->deleteTemplateSet($type, $variant);
+                        break;
+                    case 'components':
+                        if ($this->site->component($entry['id']) !== null) $this->site->deleteComponent($entry['id']);
+                        break;
+                    case 'content_types':
+                        $this->types->delete($entry['id']);
+                        break;
+                    case 'presets':
+                        $preset = $this->site->themePreset($entry['id']);
+                        if ($preset !== null) $this->site->deleteThemePreset($preset['id']);
+                        break;
+                    case 'fonts':
+                        // A font a theme still uses stays behind as ordinary site data.
+                        // Extension bookkeeping (this ledger, compiled indexes) names the font without using it.
+                        $uses = array_filter($this->fonts->usages($entry['id']), static fn(string $path): bool => !str_starts_with($path, 'extensions'));
+                        if (isset($this->fonts->families()[$entry['id']]) && $uses === []) {
+                            unlink($this->fonts->directory() . '/' . $entry['id'] . '.json');
+                            $this->site->clearCache();
+                        }
+                        break;
+                }
+            }
+        }
+        unset($ledger[$this->extension]);
+        $this->store->write($ledger, 'extensions-seeded');
+    }
+
+    /** Hash the JSON bytes as written, including every layout in a template set. */
+    private function hash(array $entry): string
+    {
+        $root = $this->workspace->path('site') . '/theme';
+        $paths = match ($entry['kind']) {
+            'content_types' => [$this->workspace->path('content-types') . '/' . $entry['id'] . '.json'],
+            'components' => [$root . '/components/' . $entry['id'] . '.json'],
+            'templates' => [$root . '/templates/' . $entry['id'] . '.json', ...glob($root . '/content/' . $entry['id'] . '/*.json') ?: []],
+            'presets' => [$root . '/presets/' . $entry['id'] . '.json'],
+            'fonts' => [$root . '/fonts/' . $entry['id'] . '.json'],
+        };
+        sort($paths);
+        $hash = hash_init('sha256');
+        foreach ($paths as $path) {
+            $bytes = is_file($path) ? (string) file_get_contents($path) : '<missing>';
+            if ($entry['kind'] === 'templates') hash_update($hash, basename($path) . ':' . strlen($bytes) . ':');
+            hash_update($hash, $bytes);
+        }
+        return hash_final($hash);
+    }
+
+    /** Journal just the destinations this install may change, including layout revisions and type order. */
+    private function snapshot(array $seeds): array
+    {
+        $root = $this->workspace->path('site');
+        $paths = [$root . '/extensions-seeded.json', COMET_STORAGE . '/settings.json'];
+        foreach ($seeds as $seed) {
+            switch ($seed['kind']) {
+                case 'content_types': $paths[] = $this->workspace->path('content-types') . '/' . $seed['id'] . '.json'; break;
+                case 'components': $paths[] = $root . '/theme/components/' . $seed['id'] . '.json'; break;
+                case 'templates':
+                    [$type] = explode('/', $seed['id']);
+                    $paths[] = $this->workspace->path('content-types') . '/' . $type . '.json';
+                    $paths[] = $root . '/theme/templates/' . $seed['id'] . '.json';
+                    $paths[] = $root . '/theme/content/' . $seed['id'];
+                    $paths[] = $this->workspace->path('revisions') . '/site/content/' . $seed['id'];
+                    break;
+                case 'presets': $paths[] = $root . '/theme/presets'; break;
+                // Face files are content-addressed and never overwritten, so only the family is journaled.
+                case 'fonts': $paths[] = $root . '/theme/fonts/' . $seed['id'] . '.json'; break;
+            }
+        }
+        $snapshots = [];
+        foreach (array_unique($paths) as $path) {
+            for ($parent = dirname($path); $parent !== dirname($parent); $parent = dirname($parent)) {
+                if (is_link($parent)) throw new \RuntimeException('Seed destinations cannot be symbolic links.');
+            }
+            $snapshots[$path] = $this->capture($path);
+        }
+        return $snapshots;
+    }
+
+    private function capture(string $path): array|string|null
+    {
+        if (is_link($path)) throw new \RuntimeException('Seed destinations cannot be symbolic links.');
+        if (is_file($path)) return (string) file_get_contents($path);
+        if (!is_dir($path)) return null;
+        $files = [];
+        foreach (scandir($path) ?: [] as $file) if ($file !== '.' && $file !== '..') $files[$file] = $this->capture($path . '/' . $file);
+        return $files;
+    }
+
+    private function restore(array $snapshots): void
+    {
+        foreach ($snapshots as $path => $snapshot) {
+            ExtensionRegistry::remove($path);
+            $this->restorePath($path, $snapshot);
+        }
+    }
+
+    private function restorePath(string $path, array|string|null $snapshot): void
+    {
+        if ($snapshot === null) return;
+        if (!is_dir(dirname($path))) mkdir(dirname($path), 0775, true);
+        if (is_string($snapshot)) { file_put_contents($path, $snapshot, LOCK_EX); return; }
+        if (!is_dir($path)) mkdir($path, 0775, true);
+        foreach ($snapshot as $name => $value) $this->restorePath($path . '/' . $name, $value);
+    }
+}

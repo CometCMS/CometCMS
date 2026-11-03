@@ -1,0 +1,103 @@
+{
+  "$schema": "../../../../../schemas/block.schema.json",
+  "title": "Navigation Cards",
+  "description": "A responsive grid of clickable navigation cards with icons, numbers and nested links.",
+  "icon": "mdi:view-grid-outline",
+  "category": "Navigation",
+  "keywords": [
+    "menu",
+    "tiles",
+    "grid"
+  ],
+  "props": {
+    "navigation": {
+      "use": "navigation"
+    },
+    "style": {
+      "type": "enum",
+      "label": "Style",
+      "options": [
+        "outline",
+        "filled",
+        "elevated",
+        "stripe"
+      ],
+      "default": "outline",
+      "option_labels": {
+        "outline": "Outline",
+        "filled": "Filled",
+        "elevated": "Elevated",
+        "stripe": "Stripe"
+      }
+    },
+    "columns": {
+      "type": "enum",
+      "label": "Desktop columns",
+      "options": [
+        "auto",
+        "two",
+        "three",
+        "four"
+      ],
+      "default": "three",
+      "option_labels": {
+        "auto": "Auto-fit",
+        "two": "2",
+        "three": "3",
+        "four": "4"
+      },
+      "group": "Layout"
+    },
+    "height": {
+      "type": "enum",
+      "label": "Card height",
+      "options": [
+        "auto",
+        "tall"
+      ],
+      "default": "auto",
+      "option_labels": {
+        "auto": "Fit content",
+        "tall": "Tall"
+      },
+      "group": "Layout"
+    },
+    "alignment": {
+      "type": "enum",
+      "label": "Text alignment",
+      "options": [
+        "start",
+        "center"
+      ],
+      "default": "start",
+      "option_labels": {
+        "start": "Start",
+        "center": "Center"
+      },
+      "group": "Layout"
+    },
+    "arrows": {
+      "type": "bool",
+      "label": "Show arrows",
+      "default": true,
+      "group": "Layout"
+    },
+    "numbers": {
+      "type": "bool",
+      "label": "Show numbers",
+      "group": "Layout"
+    },
+    "accent": {
+      "use": "accent"
+    },
+    "surface": {
+      "use": "surface"
+    },
+    "corners": {
+      "use": "corners"
+    },
+    "density": {
+      "use": "density"
+    }
+  }
+}

@@ -1,7 +1,8 @@
 <template>
   <div>
     <div class="editor-sticky-header flex flex-wrap items-center gap-3">
-      <div class="min-w-0 flex-1">
+      <!-- The minimum width wraps the actions below the title on phones. -->
+      <div class="min-w-[min(100%,18rem)] flex-1">
         <div class="flex items-center gap-2">
           <h1 class="page-title">{{ showsWorkspaces ? t("workspaces.title") : t("website.title") }}</h1>
           <span
@@ -13,7 +14,7 @@
             {{ !site.data.settings.enabled ? t("site.status.off") : site.data.settings.maintenance ? t("site.status.maintenance") : t("site.status.live") }}
           </span>
         </div>
-        <p v-if="!showsWorkspaces" class="mt-0.5 text-sm text-slate-500">{{ t("website.description") }}</p>
+        <p class="mt-0.5 text-sm text-slate-500">{{ t(showsWorkspaces ? "workspaces.description" : "website.description") }}</p>
       </div>
 
       <a
@@ -27,7 +28,7 @@
         {{ t("site.openWebsite") }}
       </a>
       <button
-        v-if="editsSite && site.draft"
+        v-if="editsSite && activeTab !== 'extensions' && site.draft"
         type="button"
         class="btn-primary relative"
         :disabled="site.saving || !isDirty"
@@ -49,10 +50,11 @@
       :aria-label="t('website.navigation')"
     >
       <!-- One language switcher for every localized field on the page -->
-      <template v-if="editsSite && site.draft" #end><LanguageTabs /></template>
+      <template v-if="editsSite && activeTab !== 'extensions' && site.draft" #end><LanguageTabs /></template>
     </TabNavigation>
 
     <WorkspacesPanel v-if="showsWorkspaces" />
+    <ExtensionLibrary v-else-if="editsSite && activeTab === 'extensions'" />
 
     <template v-else-if="editsSite">
       <div v-if="site.loading && !site.draft" class="flex justify-center py-16">
@@ -118,6 +120,7 @@ import WorkspacesPanel from "../components/WorkspacesPanel.vue";
 import SiteGeneralPanel from "../components/site/SiteGeneralPanel.vue";
 import SiteSeoPanel from "../components/site/SiteSeoPanel.vue";
 import SiteFormsPanel from "../components/site/SiteFormsPanel.vue";
+import ExtensionLibrary from "../components/site/ExtensionLibrary.vue";
 import { useUnsavedChangesGuard } from "../composables/useUnsavedChangesGuard.js";
 import { useAuthStore } from "../stores/auth.js";
 import { useContentTypesStore } from "../stores/contentTypes.js";
@@ -147,6 +150,7 @@ const tabs = computed(() =>
         ...(site.data?.types?.some((type) => type.allow_submissions)
           ? [{ value: "forms", label: t("website.tab.forms"), icon: "mdi:form-select", to: "/website/forms" }]
           : []),
+        { value: "extensions", label: t("site.extensions.title"), icon: "mdi:puzzle-outline", to: "/website/extensions" },
       ]
     : [],
 );

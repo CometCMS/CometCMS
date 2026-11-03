@@ -46,7 +46,12 @@ export function componentIcon(component) {
   return component?.icon || KIND_ICONS.component
 }
 
-export function nodeIcon(node, stacked = false, component = null) {
+/** A kind's icon; extensions bring their own, as an Iconify name or an image. */
+export function kindIcon(kind, spec = null) {
+  return KIND_ICONS[kind] || spec?.kinds?.[kind]?.icon || (kind?.startsWith('block:') ? 'mdi:cube-outline' : 'mdi:shape-outline')
+}
+
+export function nodeIcon(node, stacked = false, component = null, spec = null) {
   if (node?.kind === 'component') return componentIcon(component)
-  return (stacked && STACKED_ICONS[node?.kind]) || KIND_ICONS[node?.kind] || 'mdi:shape-outline'
+  return (stacked && STACKED_ICONS[node?.kind]) || kindIcon(node?.kind, spec)
 }

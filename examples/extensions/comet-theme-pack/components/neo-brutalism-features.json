@@ -1,0 +1,295 @@
+{
+  "name": "Neo-Brutalism feature cards",
+  "root": "section",
+  "type": "",
+  "nodes": [
+    {
+      "id": "neo-features",
+      "kind": "section",
+      "props": {},
+      "style": {
+        "padding_top": "xl",
+        "padding_bottom": "xl"
+      },
+      "children": [
+        {
+          "id": "neo-features-heading-row",
+          "kind": "row",
+          "props": {},
+          "style": {
+            "margin_bottom": "lg"
+          },
+          "children": [
+            {
+              "id": "neo-features-heading-column",
+              "kind": "column",
+              "props": {
+                "span": {
+                  "mobile": 12,
+                  "tablet": 12,
+                  "desktop": 12
+                },
+                "spacing": "md"
+              },
+              "style": {},
+              "children": [
+                {
+                  "id": "neo-features-eyebrow",
+                  "kind": "text",
+                  "props": {
+                    "html": "<p>BUILT WITH INTENTION</p>"
+                  },
+                  "style": {
+                    "font_family": "monospace",
+                    "font_size": "sm",
+                    "font_weight": "bold"
+                  },
+                  "children": []
+                },
+                {
+                  "id": "neo-features-title",
+                  "kind": "heading",
+                  "props": {
+                    "text": "Good looks. Strong opinions.",
+                    "level": "h2"
+                  },
+                  "style": {},
+                  "children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "neo-features-cards",
+          "kind": "row",
+          "props": {
+            "gap": "lg"
+          },
+          "style": {},
+          "children": [
+            {
+              "id": "neo-feature-01",
+              "kind": "column",
+              "props": {
+                "span": {
+                  "mobile": 12,
+                  "tablet": 12,
+                  "desktop": 4
+                },
+                "spacing": "md"
+              },
+              "style": {
+                "background": "primary",
+                "border": [
+                  "left",
+                  "top",
+                  "right",
+                  "bottom"
+                ],
+                "border_width": 3,
+                "border_color": "border",
+                "radius": "none",
+                "shadow": "hard",
+                "padding_top": "lg",
+                "padding_right": "lg",
+                "padding_bottom": "lg",
+                "padding_left": "lg"
+              },
+              "children": [
+                {
+                  "id": "neo-feature-01-number",
+                  "kind": "text",
+                  "props": {
+                    "html": "<p>01 / THE GOOD STUFF</p>"
+                  },
+                  "style": {
+                    "font_family": "monospace",
+                    "font_size": "sm",
+                    "font_weight": "bold"
+                  },
+                  "children": []
+                },
+                {
+                  "id": "neo-feature-01-title",
+                  "kind": "heading",
+                  "props": {
+                    "text": "Stand out.",
+                    "level": "h3"
+                  },
+                  "style": {},
+                  "children": []
+                },
+                {
+                  "id": "neo-feature-01-text",
+                  "kind": "text",
+                  "props": {
+                    "html": "<p>Give your ideas room to be seen. Confident color and strong type do the talking.</p>"
+                  },
+                  "style": {},
+                  "children": []
+                }
+              ],
+              "responsive": {
+                "mobile": {
+                  "style": {
+                    "padding_top": "md",
+                    "padding_right": "md",
+                    "padding_bottom": "md",
+                    "padding_left": "md"
+                  }
+                }
+              }
+            },
+            {
+              "id": "neo-feature-02",
+              "kind": "column",
+              "props": {
+                "span": {
+                  "mobile": 12,
+                  "tablet": 12,
+                  "desktop": 4
+                },
+                "spacing": "md"
+              },
+              "style": {
+                "background": "secondary",
+                "border": [
+                  "left",
+                  "top",
+                  "right",
+                  "bottom"
+                ],
+                "border_width": 3,
+                "border_color": "border",
+                "radius": "none",
+                "shadow": "hard",
+                "padding_top": "lg",
+                "padding_right": "lg",
+                "padding_bottom": "lg",
+                "padding_left": "lg"
+              },
+              "children": [
+                {
+                  "id": "neo-feature-02-number",
+                  "kind": "text",
+                  "props": {
+                    "html": "<p>02 / THE GOOD STUFF</p>"
+                  },
+                  "style": {
+                    "font_family": "monospace",
+                    "font_size": "sm",
+                    "font_weight": "bold"
+                  },
+                  "children": []
+                },
+                {
+                  "id": "neo-feature-02-title",
+                  "kind": "heading",
+                  "props": {
+                    "text": "Keep it clear.",
+                    "level": "h3"
+                  },
+                  "style": {},
+                  "children": []
+                },
+                {
+                  "id": "neo-feature-02-text",
+                  "kind": "text",
+                  "props": {
+                    "html": "<p>Say what matters. Simple layouts put your message first and make the next step obvious.</p>"
+                  },
+                  "style": {},
+                  "children": []
+                }
+              ],
+              "responsive": {
+                "mobile": {
+                  "style": {
+                    "padding_top": "md",
+                    "padding_right": "md",
+                    "padding_bottom": "md",
+                    "padding_left": "md"
+                  }
+                }
+              }
+            },
+            {
+              "id": "neo-feature-03",
+              "kind": "column",
+              "props": {
+                "span": {
+                  "mobile": 12,
+                  "tablet": 12,
+                  "desktop": 4
+                },
+                "spacing": "md"
+              },
+              "style": {
+                "background": "accent",
+                "border": [
+                  "left",
+                  "top",
+                  "right",
+                  "bottom"
+                ],
+                "border_width": 3,
+                "border_color": "border",
+                "radius": "none",
+                "shadow": "hard",
+                "padding_top": "lg",
+                "padding_right": "lg",
+                "padding_bottom": "lg",
+                "padding_left": "lg"
+              },
+              "children": [
+                {
+                  "id": "neo-feature-03-number",
+                  "kind": "text",
+                  "props": {
+                    "html": "<p>03 / THE GOOD STUFF</p>"
+                  },
+                  "style": {
+                    "font_family": "monospace",
+                    "font_size": "sm",
+                    "font_weight": "bold"
+                  },
+                  "children": []
+                },
+                {
+                  "id": "neo-feature-03-title",
+                  "kind": "heading",
+                  "props": {
+                    "text": "Make it yours.",
+                    "level": "h3"
+                  },
+                  "style": {},
+                  "children": []
+                },
+                {
+                  "id": "neo-feature-03-text",
+                  "kind": "text",
+                  "props": {
+                    "html": "<p>Change every word, color and detail. Build something with a personality all its own.</p>"
+                  },
+                  "style": {},
+                  "children": []
+                }
+              ],
+              "responsive": {
+                "mobile": {
+                  "style": {
+                    "padding_top": "md",
+                    "padding_right": "md",
+                    "padding_bottom": "md",
+                    "padding_left": "md"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

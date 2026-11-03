@@ -1,0 +1,16 @@
+{
+  "title": "Before / after",
+  "description": "Compare two images with a draggable divider and a keyboard-accessible slider.",
+  "icon": "mdi:compare-horizontal",
+  "props": {
+    "before_image": { "type": "media", "label": "Before image" },
+    "after_image": { "type": "media", "label": "After image" },
+    "before_label": { "type": "string", "label": "Before label", "max": 80, "default": "Before" },
+    "after_label": { "type": "string", "label": "After label", "max": 80, "default": "After" },
+    "caption": { "type": "text", "label": "Caption", "max": 1000 },
+    "position": { "type": "int", "label": "Initial split (%)", "min": 0, "max": 100, "default": 50, "control": "slider" },
+    "ratio": { "type": "enum", "label": "Image ratio", "options": ["landscape", "wide", "square", "portrait"], "default": "landscape" },
+    "slider_label": { "type": "string", "label": "Slider label", "max": 120, "default": "Comparison position" },
+    "empty_label": { "type": "string", "label": "Missing image message", "max": 160, "default": "Choose an image to compare." }
+  }
+}

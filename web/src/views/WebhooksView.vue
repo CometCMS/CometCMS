@@ -1,23 +1,15 @@
 <template>
   <div>
-    <div
-      class="flex items-center justify-between"
-      :class="embedded ? 'mb-4' : 'mb-6'"
-    >
-      <component
-        :is="embedded ? 'h2' : 'h1'"
-        class="font-bold text-slate-900"
-        :class="embedded ? 'text-lg' : 'text-2xl'"
-      >
-        {{ t("webhooks.title") }}
-      </component>
-    </div>
+    <!-- Embedded under the "Webhooks" tab, the card heading already names the page. -->
+    <h1 v-if="!embedded" class="mb-6 text-2xl font-bold text-slate-900">
+      {{ t("webhooks.title") }}
+    </h1>
 
     <LoadingSpinner v-if="loading" />
 
     <template v-else>
       <div class="card p-6 mb-6">
-        <div class="flex items-center justify-between mb-4">
+        <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h3 class="text-base font-semibold text-slate-800">
               {{ t("webhooks.outbound") }}
@@ -32,16 +24,22 @@
               >
             </p>
           </div>
-          <button @click="addWebhook" class="btn-secondary text-sm">
+          <button v-if="webhooks.length > 0" @click="addWebhook" class="btn-secondary shrink-0 text-sm">
+            <Icon icon="mdi:plus" class="h-4 w-4" />
             {{ t("webhooks.add") }}
           </button>
         </div>
 
         <div
           v-if="webhooks.length === 0"
-          class="text-sm text-slate-400 italic py-2"
+          class="rounded-lg border border-dashed border-slate-200"
         >
-          {{ t("webhooks.empty") }}
+          <EmptyState compact icon="mdi:webhook" :title="t('webhooks.empty')" :description="t('webhooks.emptyHint')">
+            <button type="button" class="btn-primary" @click="addWebhook">
+              <Icon icon="mdi:plus" class="h-4 w-4" />
+              {{ t("webhooks.add") }}
+            </button>
+          </EmptyState>
         </div>
 
         <div v-else class="space-y-5">
@@ -157,7 +155,7 @@
           {{ saveError }}
         </div>
 
-        <div class="mt-5 flex items-center gap-3">
+        <div v-if="webhooks.length > 0 || storedCount > 0" class="mt-5 flex items-center gap-3">
           <button @click="handleSave" :disabled="saving" class="btn-primary">
             {{ saving ? t("common.saving") : t("webhooks.save") }}
           </button>
@@ -176,6 +174,7 @@
 import { ref, onMounted } from "vue";
 import { api } from "../api/index.js";
 import { useToastStore } from "../stores/toast.js";
+import EmptyState from "../components/EmptyState.vue";
 import LoadingSpinner from "../components/LoadingSpinner.vue";
 import ToggleSwitch from "../components/ToggleSwitch.vue";
 import { Icon } from "@iconify/vue";
@@ -203,12 +202,15 @@ const saving = ref(false);
 const saved = ref(false);
 const saveError = ref("");
 const webhooks = ref([]);
+// Saving stays possible after removing the last stored webhook.
+const storedCount = ref(0);
 const runningWebhooks = ref({});
 
 onMounted(async () => {
   try {
     const res = await api.webhooks.get();
     webhooks.value = (res.data?.webhooks ?? []).map(normalizeHook);
+    storedCount.value = webhooks.value.length;
   } catch {
     toast.error(t("webhooks.loadFailed"));
   } finally {
@@ -256,6 +258,7 @@ async function handleSave() {
   try {
     const res = await api.webhooks.update({ webhooks: webhooks.value });
     webhooks.value = (res.data?.webhooks ?? []).map(normalizeHook);
+    storedCount.value = webhooks.value.length;
     saved.value = true;
     toast.success(t("webhooks.saved"));
     setTimeout(() => {

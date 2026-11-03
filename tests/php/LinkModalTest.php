@@ -12,6 +12,7 @@ use CometCMS\Site\SmartValue;
 
 test('internal page modal links survive saving and render across all link elements', function (): void {
     $site = comet_site_test_setup();
+    $site->blocks()->installFiles(comet_block_files(), allowScripts: true);
     file_put_contents(comet_test_workspace_path() . '/media/photo.svg', '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="40"></svg>');
     $ctx = SiteContext::make($site, '/cms', 'https://example.test');
     $state = ['entry' => $ctx->findEntry('blog', 'hello'), 'type' => $ctx->type('blog')];
@@ -23,7 +24,7 @@ test('internal page modal links survive saving and render across all link elemen
     ];
     $nodes = [];
     foreach ($destinations as $destination) {
-        foreach (['button', 'heading', 'icon', 'image', 'field', 'gallery'] as $kind) {
+        foreach (['button', 'heading', 'icon', 'image', 'field', 'gallery', 'block:cometcms/callout', 'block:cometcms/card'] as $kind) {
             $props = ['link' => $destination + ['open_modal' => true, 'new_tab' => true]];
             if ($kind === 'image') $props['media'] = 'photo.svg';
             if ($kind === 'gallery') $props['media'] = ['photo.svg'];

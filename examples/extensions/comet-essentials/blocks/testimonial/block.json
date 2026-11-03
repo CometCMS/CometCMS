@@ -1,0 +1,15 @@
+{
+  "title": "Testimonial",
+  "description": "A customer quote with an optional portrait, role, company and rating.",
+  "icon": "mdi:format-quote-close",
+  "props": {
+    "quote": { "type": "text", "label": "Quote", "max": 3000, "default": "A thoughtful team that made the whole process feel simple. We are delighted with the result." },
+    "name": { "type": "string", "label": "Name", "max": 120, "default": "Alex Morgan" },
+    "role": { "type": "string", "label": "Role", "max": 120, "default": "Founder" },
+    "company": { "type": "string", "label": "Company", "max": 160, "default": "Example Studio" },
+    "portrait": { "type": "media", "label": "Portrait" },
+    "rating": { "type": "enum", "label": "Rating", "options": ["none", "1", "2", "3", "4", "5"], "default": "none" },
+    "rating_label": { "type": "string", "label": "Rating label", "max": 80, "default": "Rating" },
+    "layout": { "type": "enum", "label": "Layout", "options": ["left", "centered"], "default": "left" }
+  }
+}

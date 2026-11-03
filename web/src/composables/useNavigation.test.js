@@ -46,6 +46,24 @@ describe('admin navigation', () => {
     expect(item('website-settings')).toBeDefined()
   })
 
+  it('mirrors website settings tabs and highlights forms and extensions', () => {
+    const site = useSiteStore()
+    expect(item('website-settings').children.map((entry) => entry.to)).toEqual([
+      '/website/general', '/website/seo', '/website/extensions',
+    ])
+    site.data = { ...site.data, types: [{ name: 'contact', allow_submissions: true }] }
+    const settings = item('website-settings')
+    expect(settings.children.map((entry) => entry.to)).toEqual([
+      '/website/general', '/website/seo', '/website/forms', '/website/extensions',
+    ])
+    for (const path of ['/website/forms', '/website/extensions']) {
+      expect(navigation.isActive(settings, path)).toBe(true)
+      expect(navigation.isActive(settings.children.find((entry) => entry.to === path), path)).toBe(true)
+    }
+    site.data.types[0].allow_submissions = false
+    expect(item('website-settings').children.some((entry) => entry.key === 'website-forms')).toBe(false)
+  })
+
   it('hides unavailable setup options and simplifies a section with one permitted destination', () => {
     grant('content.read', 'users.read')
     expect(item('content-types')).toBeUndefined()
