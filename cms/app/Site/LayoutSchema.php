@@ -183,6 +183,9 @@ final class LayoutSchema
     /** Entrance animation and its timing; the timing only applies to an animation. */
     private const ANIMATION_KEYS = ['animation', 'animation_trigger', 'animation_duration', 'animation_delay'];
 
+    /** Cropping a node to a shape (see Shapes::masks()); how it fits and turns only applies to a shape. */
+    private const MASK_KEYS = ['mask', 'mask_fit', 'mask_flip_x', 'mask_flip_y'];
+
     /** Taking an element out of the flow, pinned to its section or the viewport. */
     private const POSITION_KEYS = ['position', 'pin', 'offset_x', 'offset_y'];
 
@@ -261,6 +264,11 @@ final class LayoutSchema
             'border_style' => ['type' => 'enum', 'options' => ['solid', 'dashed', 'dotted', 'double'], 'default' => 'solid'],
             'border_color' => ['type' => 'color', 'options' => ['', ...Theme::COLOR_KEYS], 'default' => ''],
             'max_width' => ['type' => 'enum', 'options' => ['', 'narrow', 'prose'], 'default' => ''],
+            // Stretch fills the node's box with the shape; fit keeps its proportions, centered.
+            'mask' => ['type' => 'enum', 'options' => Shapes::masks(), 'default' => 'none', 'picker' => 'mask'],
+            'mask_fit' => ['type' => 'enum', 'options' => ['stretch', 'contain'], 'default' => 'stretch'],
+            'mask_flip_x' => ['type' => 'bool', 'default' => false],
+            'mask_flip_y' => ['type' => 'bool', 'default' => false],
             'animation' => ['type' => 'enum', 'options' => ['none', 'fade', 'fade-up', 'fade-down', 'fade-left', 'fade-right', 'zoom-in', 'zoom-out', 'blur'], 'default' => 'none'],
             // Entrance animations play on scroll or load; hover effects live in states.hover.style.
             'animation_trigger' => ['type' => 'enum', 'options' => ['scroll', 'load'], 'default' => 'scroll'],
@@ -288,13 +296,13 @@ final class LayoutSchema
     public static function styleKeys(string $kind): array
     {
         return match ($kind) {
-            'section' => [...self::SPACING_KEYS, 'background', 'background_gradient', ...self::BACKGROUND_IMAGE_KEYS, 'text_color', 'link_color', 'align', ...self::BORDER_KEYS, 'radius', 'shadow', ...self::ANIMATION_KEYS, 'z_index', 'opacity', 'class', 'anchor', 'hide_on', 'visible_if'],
-            'row' => [...self::SPACING_KEYS, 'background', 'background_gradient', ...self::BACKGROUND_IMAGE_KEYS, 'text_color', 'link_color', 'radius', 'shadow', ...self::BORDER_KEYS, ...self::ANIMATION_KEYS, 'z_index', 'opacity', 'class', 'anchor', 'hide_on', 'visible_if'],
+            'section' => [...self::SPACING_KEYS, 'background', 'background_gradient', ...self::BACKGROUND_IMAGE_KEYS, 'text_color', 'link_color', 'align', ...self::BORDER_KEYS, 'radius', 'shadow', ...self::MASK_KEYS, ...self::ANIMATION_KEYS, 'z_index', 'opacity', 'class', 'anchor', 'hide_on', 'visible_if'],
+            'row' => [...self::SPACING_KEYS, 'background', 'background_gradient', ...self::BACKGROUND_IMAGE_KEYS, 'text_color', 'link_color', 'radius', 'shadow', ...self::BORDER_KEYS, ...self::MASK_KEYS, ...self::ANIMATION_KEYS, 'z_index', 'opacity', 'class', 'anchor', 'hide_on', 'visible_if'],
             self::COMPONENT, self::PAGE_CONTENT, self::COMPONENT_AREA, self::AREA_CONTENT => [],
             self::MODAL => [...self::SPACING_KEYS, 'background', 'background_gradient', ...self::BACKGROUND_IMAGE_KEYS, 'text_color', 'link_color', 'align', ...self::BORDER_KEYS, 'radius', 'shadow', 'class'],
             self::SITE_CONTENT => [...self::SPACING_KEYS, 'background', ...self::BORDER_KEYS, 'radius', 'shadow', 'class'],
-            'column' => [...self::SPACING_KEYS, 'background', 'background_gradient', ...self::BACKGROUND_IMAGE_KEYS, 'text_color', 'link_color', 'align', 'radius', 'shadow', ...self::BORDER_KEYS, ...self::POSITION_KEYS, ...self::ANIMATION_KEYS, 'z_index', 'opacity', 'class', 'hide_on', 'visible_if'],
-            default => [...self::SPACING_KEYS, 'background', 'background_gradient', ...self::BACKGROUND_IMAGE_KEYS, 'text_color', ...($kind === 'button' ? [] : ['link_color']), 'align', 'font_size', 'font_weight', 'font_family', ...(in_array($kind, ['text', 'heading'], true) ? ['text_gradient', 'text_shadow'] : []), 'radius', 'shadow', ...self::BORDER_KEYS, 'max_width', ...self::POSITION_KEYS, 'z_index', 'opacity', ...self::ANIMATION_KEYS, 'class', 'anchor', 'hide_on', 'visible_if'],
+            'column' => [...self::SPACING_KEYS, 'background', 'background_gradient', ...self::BACKGROUND_IMAGE_KEYS, 'text_color', 'link_color', 'align', 'radius', 'shadow', ...self::BORDER_KEYS, ...self::MASK_KEYS, ...self::POSITION_KEYS, ...self::ANIMATION_KEYS, 'z_index', 'opacity', 'class', 'hide_on', 'visible_if'],
+            default => [...self::SPACING_KEYS, 'background', 'background_gradient', ...self::BACKGROUND_IMAGE_KEYS, 'text_color', ...($kind === 'button' ? [] : ['link_color']), 'align', 'font_size', 'font_weight', 'font_family', ...(in_array($kind, ['text', 'heading'], true) ? ['text_gradient', 'text_shadow'] : []), 'radius', 'shadow', ...self::BORDER_KEYS, ...self::MASK_KEYS, 'max_width', ...self::POSITION_KEYS, 'z_index', 'opacity', ...self::ANIMATION_KEYS, 'class', 'anchor', 'hide_on', 'visible_if'],
         };
     }
 
@@ -1625,6 +1633,9 @@ final class LayoutSchema
         }
         if (!isset($normalized['animation'])) {
             unset($normalized['animation_trigger'], $normalized['animation_duration'], $normalized['animation_delay']);
+        }
+        if (!isset($normalized['mask'])) {
+            unset($normalized['mask_fit'], $normalized['mask_flip_x'], $normalized['mask_flip_y']);
         }
 
         return $normalized;

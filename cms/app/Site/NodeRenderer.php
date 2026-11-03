@@ -2379,8 +2379,9 @@ final class NodeRenderer
 
     private function attributes(array $node, array $classes, string $style = ''): string
     {
-        $classes = [...$classes, ...$this->overrideClasses($node)];
-        $style = implode(';', array_filter([$style, $this->offsetStyle($node), $this->shadowStyle($node)]));
+        $mask = $this->mask($node['style'] ?? []);
+        $classes = [...$classes, ...$this->overrideClasses($node), ...$mask['classes']];
+        $style = implode(';', array_filter([$style, $this->offsetStyle($node), $this->shadowStyle($node), $mask['style']]));
         $attributes = ' class="' . Security::e(implode(' ', array_unique(array_filter($classes)))) . '"';
 
         if (($node['style']['anchor'] ?? '') !== '') {
@@ -2435,7 +2436,26 @@ final class NodeRenderer
         return $classes;
     }
 
-    /** Each variant owns its variable, so its settings never overwrite another variant. */
+    /**
+     * A node cropped to a shape: the shape is the node's CSS mask image, so
+     * everything inside it, its background and border included, is cut to it.
+     *
+     * @return array{classes: list<string>, style: string}
+     */
+    private function mask(array $style): array
+    {
+        $image = Shapes::maskImage((string) ($style['mask'] ?? 'none'), ($style['mask_flip_x'] ?? false) === true, ($style['mask_flip_y'] ?? false) === true);
+        if ($image === '') {
+            return ['classes' => [], 'style' => ''];
+        }
+
+        return [
+            'classes' => ['c-mask', ...(($style['mask_fit'] ?? 'stretch') === 'contain' ? ['c-mask-contain'] : [])],
+            'style' => '--c-mask:' . $image,
+        ];
+    }
+
+        /** Each variant owns its variable, so its settings never overwrite another variant. */
     private function shadowStyle(array $node): string
     {
         $declarations = [];

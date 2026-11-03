@@ -95,6 +95,9 @@ code, pre { font-family: ui-monospace, "Cascadia Code", Menlo, Consolas, monospa
 .c-shape-tiled { background: currentColor; -webkit-mask: var(--c-shape-mask) center / calc(var(--c-shape-w, 100) * 1%) 100% repeat-x; mask: var(--c-shape-mask) center / calc(var(--c-shape-w, 100) * 1%) 100% repeat-x; }
 @media (max-width: 1023px) { .c-shape { height: calc(var(--c-t-shape-h, var(--c-shape-h)) * 1px); } .c-shape-tiled { -webkit-mask-size: calc(var(--c-t-shape-w, var(--c-shape-w, 100)) * 1%) 100%; mask-size: calc(var(--c-t-shape-w, var(--c-shape-w, 100)) * 1%) 100%; } }
 @media (max-width: 767px) { .c-shape { height: calc(var(--c-m-shape-h, var(--c-t-shape-h, var(--c-shape-h))) * 1px); } .c-shape-tiled { -webkit-mask-size: calc(var(--c-m-shape-w, var(--c-t-shape-w, var(--c-shape-w, 100))) * 1%) 100%; mask-size: calc(var(--c-m-shape-w, var(--c-t-shape-w, var(--c-shape-w, 100))) * 1%) 100%; } }
+/* Masks crop a node to a shape (see Shapes::maskSvg()), stretched to its box or fitted inside it. */
+.c-mask { -webkit-mask: var(--c-mask) center / 100% 100% no-repeat; mask: var(--c-mask) center / 100% 100% no-repeat; }
+.c-mask-contain { -webkit-mask-size: contain; mask-size: contain; }
 .c-min-h-quarter { min-height: 25vh; }
 .c-min-h-half { min-height: 50vh; }
 .c-min-h-three-quarter { min-height: 75vh; }

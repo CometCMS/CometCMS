@@ -16,6 +16,7 @@ const ICONS = {
   'style.border': { left: 'mdi:border-left-variant', top: 'mdi:border-top-variant', right: 'mdi:border-right-variant', bottom: 'mdi:border-bottom-variant' },
   'style.radius': { none: 'mdi:square-outline', theme: 'mdi:square-rounded-outline', full: 'mdi:circle-outline' },
   'style.max_width': { narrow: 'mdi:arrow-collapse-horizontal', prose: 'mdi:text-long' },
+  'style.mask_fit': { stretch: 'mdi:arrow-expand-all', contain: 'mdi:fit-to-screen-outline' },
   'props.orientation': { horizontal: 'mdi:dots-horizontal', vertical: 'mdi:dots-vertical' },
   'props.sort_order': { desc: 'mdi:sort-descending', asc: 'mdi:sort-ascending' },
   'props.fit': { cover: 'mdi:crop', contain: 'mdi:fit-to-screen-outline' },

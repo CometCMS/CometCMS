@@ -138,6 +138,12 @@ Scroll inside the preview to test entry animations. Each preview update creates 
 
 **Shadow** offers the editable sizes **S**, **M** and **L** and the site's **theme shadows** (by default **Block**, **Glow** and **Inset**; see *Design settings → Shadows*). **Text shadow** offers soft sizes, **Block** and **Glow**. Choose a preset, then expand **Customize** to adjust its palette color, horizontal and vertical offset, blur and opacity. Box shadows also have spread and an inset toggle. Editing a value switches to **Custom**, which keeps the settings visible. For block-style depth, use zero blur and an offset with a contrasting color; for a glow, use zero offset and increase blur. Colors follow the site's light and dark palettes; **Black** stays black in both. **None** explicitly removes a shadow, including on a device or state override; **Default** follows the normal or larger-screen value.
 
+### Masks
+
+**Style → Mask** crops an element, column, row or section to a shape: everything inside it, its background and background image included, is cut away outside the shape. Pick a shape from the grid: basic forms (**Circle**, **Squircle**, **Arch**, **Leaf**), polygons (**Triangle**, **Diamond**, **Pentagon**, **Hexagon**, **Octagon**, **Parallelogram**, **Chevron**, **Cross**), decorative shapes (**Star**, **Heart**, **Shield**, **Speech bubble**, **Badge**, **Flower** and two **Blobs**) and edges that only shape one side (**Wave edge**, **Slanted edge**, **Pointed edge**). Each preview shows the shape the way the current options draw it.
+
+**Stretch** fills the whole box with the shape, so a circle on a wide image becomes an ellipse; **Keep proportions** keeps the shape as drawn and centers it. **Flip horizontally** and **Flip vertically** mirror the shape, for example to put an edge shape at the top or a speech bubble's tail on the other side. Shadows and borders lie inside the mask and are cropped with the element; for a round image with a border, use **Corners → Full** instead.
+
 ### Positioning
 
 Elements and columns offer **Style → Position**. **Free** takes the selection out of the flow and pins it to its section or enclosing positioned column. **Fixed** pins it to the browser window, keeping it visible as the page scrolls. Choose one of nine points under **Pinned to**, then adjust **Move right** and **Move down**, or drag the move grip on the selection in the preview. Hold Shift to move along one axis. Offsets use percentages of the page width on both axes. **Layer** controls overlapping elements.
