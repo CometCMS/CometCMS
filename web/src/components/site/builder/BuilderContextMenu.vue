@@ -238,15 +238,15 @@ onBeforeUnmount(() => {
   background-color: #fef2f2;
 }
 
-:root[data-theme="dark"] .builder-menu-action:enabled:is(:hover, :focus) {
+:root[data-mode="dark"] .builder-menu-action:enabled:is(:hover, :focus) {
   background-color: rgb(var(--color-slate-100));
 }
 
-:root[data-theme="dark"] .builder-menu-action-danger:enabled:is(:hover, :focus) {
+:root[data-mode="dark"] .builder-menu-action-danger:enabled:is(:hover, :focus) {
   background-color: rgb(127 29 29 / 0.35);
 }
 
-:root[data-theme="dark"] .builder-menu-action:enabled:is(:hover, :focus) :is(svg, kbd) {
+:root[data-mode="dark"] .builder-menu-action:enabled:is(:hover, :focus) :is(svg, kbd) {
   color: inherit;
 }
 </style>

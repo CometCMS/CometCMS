@@ -11,16 +11,20 @@ test('preview admin bar uses the saved user theme independently of the website',
     $context = \CometCMS\Site\SiteContext::make(new \CometCMS\Site\SiteRepository());
     $bar = new \CometCMS\Site\PreviewAdminBar($context);
     $websiteTheme = $context->theme();
-    foreach (['blue', 'green', 'purple', 'orange', 'red', 'cyan', 'dark'] as $theme) {
-        $context->adminUser = ['username' => 'admin', 'theme' => $theme];
-        $html = $bar->render([]);
-        assert_true(str_contains($html, 'data-admin-theme="' . $theme . '"'));
-        preg_match('#src="data:image/png;base64,([^"]+)"#', $html, $logo);
-        assert_true(str_starts_with(base64_decode($logo[1]), "\x89PNG"));
-        assert_same($websiteTheme, $context->theme());
+    foreach (['blue', 'green', 'purple', 'orange', 'red', 'cyan'] as $theme) {
+        foreach (['light', 'dark', 'auto'] as $mode) {
+            $context->adminUser = ['username' => 'admin', 'theme' => $theme, 'color_mode' => $mode];
+            $html = $bar->render([]);
+            assert_true(str_contains($html, 'data-admin-theme="' . $theme . '" data-admin-mode="' . $mode . '"'));
+            preg_match('#src="data:image/png;base64,([^"]+)"#', $html, $logo);
+            assert_true(str_starts_with(base64_decode($logo[1]), "\x89PNG"));
+            assert_same($websiteTheme, $context->theme());
+        }
     }
-    $context->adminUser = ['theme' => '" onmouseover="alert(1)'];
-    assert_true(str_contains($bar->render([]), 'data-admin-theme="blue"'));
+    $context->adminUser = ['theme' => 'dark'];
+    assert_true(str_contains($bar->render([]), 'data-admin-theme="blue" data-admin-mode="dark"'));
+    $context->adminUser = ['theme' => '" onmouseover="alert(1)', 'color_mode' => '" onclick="alert(1)'];
+    assert_true(str_contains($bar->render([]), 'data-admin-theme="blue" data-admin-mode="light"'));
 });
 
 test('full page previews allow bundled interactions and search only readable drafts and snapshots', function (): void {

@@ -10,6 +10,10 @@ use CometCMS\Storage\JsonStore;
 final class UserRepository
 {
     public const ADMIN_ROLE = 'admin';
+    /** Admin UI accent colors; each combines with any color mode. */
+    public const THEMES = ['blue', 'green', 'purple', 'orange', 'red', 'cyan'];
+    /** Admin UI color modes; auto follows the browser's preference. */
+    public const COLOR_MODES = ['light', 'dark', 'auto'];
     private const LAST_ADMIN_MESSAGE = 'At least one user must keep the Admin role. Give another user the Admin role first.';
 
     private JsonStore $store;
@@ -19,6 +23,24 @@ final class UserRepository
     {
         $this->store = new JsonStore(COMET_STORAGE . '/users');
         $this->roles = new RoleRepository();
+    }
+
+    /**
+     * The user's admin UI appearance as a valid accent color and color mode.
+     * Users saved before modes existed may hold the former "dark" theme,
+     * which is dark mode with the default color.
+     *
+     * @return array{theme: string, color_mode: string}
+     */
+    public static function appearance(array $user): array
+    {
+        $theme = strtolower((string) ($user['theme'] ?? ''));
+        $mode = strtolower((string) ($user['color_mode'] ?? ''));
+
+        return [
+            'theme' => in_array($theme, self::THEMES, true) ? $theme : 'blue',
+            'color_mode' => in_array($mode, self::COLOR_MODES, true) ? $mode : ($theme === 'dark' ? 'dark' : 'light'),
+        ];
     }
 
     public function hasUsers(): bool
@@ -78,6 +100,7 @@ final class UserRepository
             'password_hash' => password_hash($password, PASSWORD_DEFAULT),
             'role' => $role,
             'theme' => 'blue',
+            'color_mode' => 'light',
             'language' => 'en',
             'show_api_footer' => true,
             'created_at' => Security::now(),
@@ -132,12 +155,28 @@ final class UserRepository
             $user['role'] = (string) $data['role'];
         }
 
+        if (isset($data['theme']) || isset($data['color_mode'])) {
+            $user = array_replace($user, self::appearance($user));
+        }
+
         if (isset($data['theme'])) {
             $theme = (string) $data['theme'];
-            if (!in_array($theme, ['blue', 'green', 'purple', 'orange', 'red', 'cyan', 'dark'], true)) {
+            if ($theme === 'dark') {
+                // Former combined theme, still accepted from older clients.
+                $user['color_mode'] = 'dark';
+            } elseif (in_array($theme, self::THEMES, true)) {
+                $user['theme'] = $theme;
+            } else {
                 throw new \InvalidArgumentException('Invalid theme.');
             }
-            $user['theme'] = $theme;
+        }
+
+        if (isset($data['color_mode'])) {
+            $mode = (string) $data['color_mode'];
+            if (!in_array($mode, self::COLOR_MODES, true)) {
+                throw new \InvalidArgumentException('Invalid color mode.');
+            }
+            $user['color_mode'] = $mode;
         }
 
         if (isset($data['language'])) {

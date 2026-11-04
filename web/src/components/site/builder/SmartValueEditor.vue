@@ -197,7 +197,7 @@ function clear() {
 .smart-editor :deep(mark) { background: rgb(253 224 71 / 0.6); color: inherit; border-radius: 0.15rem; padding: 0 0.1rem; }
 .smart-editor :deep(a) { color: rgb(79 70 229); text-decoration: underline; text-underline-offset: 2px; }
 .smart-editor :deep(.ProseMirror) { max-height: 36rem; overflow-y: auto; resize: vertical; }
-:root[data-theme="dark"] .smart-editor :deep(.smart-reference) { color: rgb(199 210 254); background: rgb(99 102 241 / 0.2); }
-:root[data-theme="dark"] .smart-editor :deep(a) { color: rgb(165 180 252); }
-:root[data-theme="dark"] .smart-editor :deep(mark) { background: rgb(250 204 21 / 0.3); }
+:root[data-mode="dark"] .smart-editor :deep(.smart-reference) { color: rgb(199 210 254); background: rgb(99 102 241 / 0.2); }
+:root[data-mode="dark"] .smart-editor :deep(a) { color: rgb(165 180 252); }
+:root[data-mode="dark"] .smart-editor :deep(mark) { background: rgb(250 204 21 / 0.3); }
 </style>

@@ -1,7 +1,9 @@
 @layer base {
-  /* Dark: an inverted, slightly cool neutral scale plus distinct elevation
-     levels (app < sidebar < surface < raised) so panels read as layers. */
-  :root[data-theme="dark"] {
+  /* Dark mode: an inverted, slightly cool neutral scale plus distinct
+     elevation levels (app < sidebar < surface < raised) so panels read as
+     layers. It combines with any accent color (data-theme); the accent scale
+     here is the default (blue) and each color overrides it below. */
+  :root[data-mode="dark"] {
     color-scheme: dark;
     --color-theme-50: 14 36 56;
     --color-theme-100: 17 51 80;
@@ -29,7 +31,11 @@
     --color-sidebar-hover-text: 248 250 252;
     --color-sidebar-active-text: 255 255 255;
     --sidebar-active-bg: rgb(255 255 255 / 0.06);
+    --sidebar-hover-bg: rgb(255 255 255 / 0.05);
     --sidebar-indicator: rgb(var(--color-theme-400));
+    --sidebar-surface: rgb(255 255 255 / 0.04);
+    --sidebar-surface-border: rgb(255 255 255 / 0.08);
+    --sidebar-kbd: rgb(255 255 255 / 0.08);
 
     --color-slate-50: 24 28 38;
     --color-slate-100: 31 36 48;
@@ -45,10 +51,85 @@
   }
 }
 
+@layer base {
+  /* Dark accents: 50-300 become deep tints of the color for selected and
+     hover backgrounds, 400-900 keep the color's own shades for fills, and
+     accent text uses the light 300 shade. Blue keeps the sky scale above. */
+  :root[data-mode="dark"][data-theme="green"] {
+    --color-theme-50: 10 39 34;
+    --color-theme-100: 11 58 47;
+    --color-theme-200: 12 89 67;
+    --color-theme-300: 43 171 126;
+    --color-theme-400: 52 211 153;
+    --color-theme-500: 16 185 129;
+    --color-theme-600: 5 150 105;
+    --color-theme-700: 4 120 87;
+    --color-theme-800: 6 95 70;
+    --color-theme-900: 6 78 59;
+    --color-theme-text: 110 231 183;
+  }
+
+  :root[data-mode="dark"][data-theme="purple"] {
+    --color-theme-50: 30 24 53;
+    --color-theme-100: 44 33 78;
+    --color-theme-200: 68 47 120;
+    --color-theme-300: 135 113 203;
+    --color-theme-400: 167 139 250;
+    --color-theme-500: 139 92 246;
+    --color-theme-600: 124 58 237;
+    --color-theme-700: 109 40 217;
+    --color-theme-800: 91 33 182;
+    --color-theme-900: 76 29 149;
+    --color-theme-text: 196 181 253;
+  }
+
+  :root[data-mode="dark"][data-theme="orange"] {
+    --color-theme-50: 47 28 17;
+    --color-theme-100: 74 39 18;
+    --color-theme-200: 117 58 19;
+    --color-theme-300: 203 119 51;
+    --color-theme-400: 251 146 60;
+    --color-theme-500: 249 115 22;
+    --color-theme-600: 234 88 12;
+    --color-theme-700: 194 65 12;
+    --color-theme-800: 154 52 18;
+    --color-theme-900: 124 45 18;
+    --color-theme-text: 253 186 116;
+  }
+
+  :root[data-mode="dark"][data-theme="red"] {
+    --color-theme-50: 46 20 24;
+    --color-theme-100: 71 26 30;
+    --color-theme-200: 112 37 39;
+    --color-theme-300: 200 93 94;
+    --color-theme-400: 248 113 113;
+    --color-theme-500: 239 68 68;
+    --color-theme-600: 220 38 38;
+    --color-theme-700: 185 28 28;
+    --color-theme-800: 153 27 27;
+    --color-theme-900: 127 29 29;
+    --color-theme-text: 252 165 165;
+  }
+
+  :root[data-mode="dark"][data-theme="cyan"] {
+    --color-theme-50: 9 38 47;
+    --color-theme-100: 8 57 69;
+    --color-theme-200: 8 88 104;
+    --color-theme-300: 29 171 194;
+    --color-theme-400: 34 211 238;
+    --color-theme-500: 6 182 212;
+    --color-theme-600: 8 145 178;
+    --color-theme-700: 14 116 144;
+    --color-theme-800: 21 94 117;
+    --color-theme-900: 22 78 99;
+    --color-theme-text: 103 232 249;
+  }
+}
+
 @layer components {
   /* Dark component surfaces. :where() keeps specificity at a single class so
      utilities on the same element (hover:, focus:, border-*) still win. */
-  :where(:root[data-theme="dark"]) .card {
+  :where(:root[data-mode="dark"]) .card {
     background-color: rgb(var(--color-surface));
     border-color: rgb(255 255 255 / 0.07);
     box-shadow:
@@ -57,125 +138,125 @@
       0 8px 24px -12px rgb(0 0 0 / 0.5);
   }
 
-  :where(:root[data-theme="dark"]) .icon-btn {
+  :where(:root[data-mode="dark"]) .icon-btn {
     background-color: rgb(var(--color-raised));
   }
 
-  :where(:root[data-theme="dark"]) .card-header {
+  :where(:root[data-mode="dark"]) .card-header {
     border-color: rgb(255 255 255 / 0.07);
   }
 
-  :where(:root[data-theme="dark"]) .btn-primary {
+  :where(:root[data-mode="dark"]) .btn-primary {
     background-image: linear-gradient(180deg, rgb(255 255 255 / 0.1), transparent);
     box-shadow:
       inset 0 1px 0 rgb(255 255 255 / 0.12),
       0 4px 14px -6px rgb(var(--color-theme-500) / 0.7);
   }
 
-  :where(:root[data-theme="dark"]) .btn-primary:disabled {
+  :where(:root[data-mode="dark"]) .btn-primary:disabled {
     background-image: none;
     box-shadow: none;
   }
 
-  :where(:root[data-theme="dark"]) .btn-secondary,
-  :where(:root[data-theme="dark"]) .btn-danger-subtle {
+  :where(:root[data-mode="dark"]) .btn-secondary,
+  :where(:root[data-mode="dark"]) .btn-danger-subtle {
     background-color: rgb(var(--color-raised));
     border-color: rgb(var(--color-slate-200));
   }
 
-  :where(:root[data-theme="dark"]) .btn-secondary:hover {
+  :where(:root[data-mode="dark"]) .btn-secondary:hover {
     background-color: rgb(var(--color-slate-200));
   }
 
-  :where(:root[data-theme="dark"]) .btn-secondary:disabled {
+  :where(:root[data-mode="dark"]) .btn-secondary:disabled {
     background-color: rgb(var(--color-slate-50));
   }
 
-  :where(:root[data-theme="dark"]) .btn-danger-subtle {
+  :where(:root[data-mode="dark"]) .btn-danger-subtle {
     border-color: rgb(248 113 113 / 0.3);
     color: rgb(252 165 165);
   }
 
-  :where(:root[data-theme="dark"]) .btn-danger-subtle:hover {
+  :where(:root[data-mode="dark"]) .btn-danger-subtle:hover {
     background-color: rgb(127 29 29 / 0.35);
     border-color: rgb(248 113 113 / 0.5);
   }
 
-  :where(:root[data-theme="dark"]) :is(.form-input, .form-select, .form-textarea, .form-multiselect) {
+  :where(:root[data-mode="dark"]) :is(.form-input, .form-select, .form-textarea, .form-multiselect) {
     background-color: rgb(var(--color-inset));
     border-color: rgb(var(--color-slate-300));
     color: rgb(var(--color-slate-900));
   }
 
-  :where(:root[data-theme="dark"]) :is(.form-input, .form-textarea)::placeholder {
+  :where(:root[data-mode="dark"]) :is(.form-input, .form-textarea)::placeholder {
     color: rgb(var(--color-slate-400));
   }
 
-  :where(:root[data-theme="dark"]) :is(.form-input, .form-select, .form-textarea):disabled {
+  :where(:root[data-mode="dark"]) :is(.form-input, .form-select, .form-textarea):disabled {
     background-color: rgb(var(--color-slate-50));
     color: rgb(var(--color-slate-500));
   }
 
-  :where(:root[data-theme="dark"]) .form-select option {
+  :where(:root[data-mode="dark"]) .form-select option {
     background-color: rgb(var(--color-raised));
   }
 
-  :where(:root[data-theme="dark"]) :is(.form-checkbox, .form-radio):not(:checked) {
+  :where(:root[data-mode="dark"]) :is(.form-checkbox, .form-radio):not(:checked) {
     background-color: rgb(var(--color-inset));
     border-color: rgb(var(--color-slate-400));
   }
 
-  :where(:root[data-theme="dark"]) .editor-sticky-header {
+  :where(:root[data-mode="dark"]) .editor-sticky-header {
     background-color: rgb(var(--color-app-bg) / 0.85);
   }
 
-  :where(:root[data-theme="dark"]) .data-table thead tr {
+  :where(:root[data-mode="dark"]) .data-table thead tr {
     background-color: rgb(255 255 255 / 0.02);
   }
 
-  :where(:root[data-theme="dark"]) :is(.badge-published, .badge-scheduled, .badge-protected, .badge-archived, .badge-draft) {
+  :where(:root[data-mode="dark"]) :is(.badge-published, .badge-scheduled, .badge-protected, .badge-archived, .badge-draft) {
     --tw-ring-color: rgb(255 255 255 / 0.08);
   }
 
-  :where(:root[data-theme="dark"]) .api-endpoint-footer {
+  :where(:root[data-mode="dark"]) .api-endpoint-footer {
     background-color: rgb(var(--color-surface) / 0.92);
     border-color: rgb(255 255 255 / 0.08);
     color: rgb(var(--color-slate-500));
     box-shadow: 0 -10px 24px rgb(0 0 0 / 0.3);
   }
 
-  :where(:root[data-theme="dark"]) :is(.api-endpoint-footer-link, .api-endpoint-footer-icon, .api-endpoint-footer-dismiss) {
+  :where(:root[data-mode="dark"]) :is(.api-endpoint-footer-link, .api-endpoint-footer-icon, .api-endpoint-footer-dismiss) {
     color: rgb(var(--color-slate-500));
   }
 
-  :where(:root[data-theme="dark"]) :is(.api-endpoint-footer-link, .api-endpoint-footer-dismiss):hover {
+  :where(:root[data-mode="dark"]) :is(.api-endpoint-footer-link, .api-endpoint-footer-dismiss):hover {
     color: rgb(var(--color-slate-900));
   }
 
-  :where(:root[data-theme="dark"]) .api-endpoint-footer-badge {
+  :where(:root[data-mode="dark"]) .api-endpoint-footer-badge {
     background-color: rgb(var(--color-theme-50));
     color: rgb(var(--color-theme-text));
     --tw-ring-color: rgb(var(--color-theme-200));
   }
 
-  :where(:root[data-theme="dark"]) .api-endpoint-footer-url {
+  :where(:root[data-mode="dark"]) .api-endpoint-footer-url {
     background-color: rgb(var(--color-inset));
     border-color: rgb(var(--color-slate-200));
     color: rgb(var(--color-slate-700));
     box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.3);
   }
 
-  :where(:root[data-theme="dark"]) .api-endpoint-footer-method {
+  :where(:root[data-mode="dark"]) .api-endpoint-footer-method {
     color: rgb(var(--color-theme-text));
   }
 
-  :where(:root[data-theme="dark"]) .api-endpoint-footer-url .btn-secondary {
+  :where(:root[data-mode="dark"]) .api-endpoint-footer-url .btn-secondary {
     background-color: rgb(var(--color-raised));
     border-color: rgb(var(--color-slate-300));
     color: rgb(var(--color-slate-800));
   }
 
-  :where(:root[data-theme="dark"]) .api-endpoint-footer-url .btn-secondary:hover {
+  :where(:root[data-mode="dark"]) .api-endpoint-footer-url .btn-secondary:hover {
     background-color: rgb(var(--color-slate-200));
     color: rgb(var(--color-slate-950));
   }
@@ -188,113 +269,113 @@
 /* so state variants (hover:, focus:) on the same element still apply.       */
 /* ------------------------------------------------------------------------ */
 
-:root[data-theme="dark"] body,
-:root[data-theme="dark"] .app-shell {
+:root[data-mode="dark"] body,
+:root[data-mode="dark"] .app-shell {
   background-color: rgb(var(--color-app-bg));
   color: rgb(var(--color-slate-700));
 }
 
-:root[data-theme="dark"] main {
+:root[data-mode="dark"] main {
   background:
     radial-gradient(60rem 30rem at 100% -10%, rgb(var(--color-theme-500) / 0.09), transparent 70%),
     radial-gradient(40rem 24rem at -10% 110%, rgb(139 92 246 / 0.05), transparent 70%),
     rgb(var(--color-app-bg));
 }
 
-:root[data-theme="dark"] ::selection {
+:root[data-mode="dark"] ::selection {
   background-color: rgb(var(--color-theme-500) / 0.35);
 }
 
 /* White surfaces */
-:where(:root[data-theme="dark"]) .bg-white,
-:where(:root[data-theme="dark"]) .bg-white\/90,
-:where(:root[data-theme="dark"]) .hover\:bg-white:hover {
+:where(:root[data-mode="dark"]) .bg-white,
+:where(:root[data-mode="dark"]) .bg-white\/90,
+:where(:root[data-mode="dark"]) .hover\:bg-white:hover {
   background-color: rgb(var(--color-surface));
 }
 
-:where(:root[data-theme="dark"]) .hover\:bg-white\/70:hover,
-:where(:root[data-theme="dark"]) .hover\:bg-white\/60:hover {
+:where(:root[data-mode="dark"]) .hover\:bg-white\/70:hover,
+:where(:root[data-mode="dark"]) .hover\:bg-white\/60:hover {
   background-color: rgb(var(--color-raised) / 0.8);
 }
 
-:where(:root[data-theme="dark"]) .ring-white {
+:where(:root[data-mode="dark"]) .ring-white {
   --tw-ring-color: rgb(var(--color-surface));
 }
 
 /* Status tints */
-:where(:root[data-theme="dark"]) :is(.bg-amber-50, .bg-amber-100, .bg-yellow-100) {
+:where(:root[data-mode="dark"]) :is(.bg-amber-50, .bg-amber-100, .bg-yellow-100) {
   background-color: rgb(245 158 11 / 0.12);
 }
 
-:where(:root[data-theme="dark"]) :is(.bg-green-50, .bg-green-100, .bg-emerald-50, .bg-emerald-50\/60, .bg-emerald-100, .hover\:bg-emerald-50:hover) {
+:where(:root[data-mode="dark"]) :is(.bg-green-50, .bg-green-100, .bg-emerald-50, .bg-emerald-50\/60, .bg-emerald-100, .hover\:bg-emerald-50:hover) {
   background-color: rgb(16 185 129 / 0.12);
 }
 
-:where(:root[data-theme="dark"]) :is(.bg-sky-50, .bg-sky-100, .bg-blue-50) {
+:where(:root[data-mode="dark"]) :is(.bg-sky-50, .bg-sky-100, .bg-blue-50) {
   background-color: rgb(14 165 233 / 0.12);
 }
 
-:where(:root[data-theme="dark"]) :is(.bg-red-50, .bg-red-100, .hover\:bg-red-50:hover) {
+:where(:root[data-mode="dark"]) :is(.bg-red-50, .bg-red-100, .hover\:bg-red-50:hover) {
   background-color: rgb(239 68 68 / 0.12);
 }
 
-:where(:root[data-theme="dark"]) .hover\:bg-red-100:hover {
+:where(:root[data-mode="dark"]) .hover\:bg-red-100:hover {
   background-color: rgb(239 68 68 / 0.2);
 }
 
-:where(:root[data-theme="dark"]) :is(.bg-purple-100, .bg-violet-50, .bg-violet-100, .hover\:bg-violet-50:hover) {
+:where(:root[data-mode="dark"]) :is(.bg-purple-100, .bg-violet-50, .bg-violet-100, .hover\:bg-violet-50:hover) {
   background-color: rgb(139 92 246 / 0.15);
 }
 
-:where(:root[data-theme="dark"]) :is(.border-amber-200, .ring-amber-200) {
+:where(:root[data-mode="dark"]) :is(.border-amber-200, .ring-amber-200) {
   border-color: rgb(245 158 11 / 0.3);
   --tw-ring-color: rgb(245 158 11 / 0.3);
 }
 
-:where(:root[data-theme="dark"]) :is(.border-green-200, .border-emerald-200, .ring-emerald-200) {
+:where(:root[data-mode="dark"]) :is(.border-green-200, .border-emerald-200, .ring-emerald-200) {
   border-color: rgb(16 185 129 / 0.3);
   --tw-ring-color: rgb(16 185 129 / 0.3);
 }
 
-:where(:root[data-theme="dark"]) :is(.border-red-200, .ring-red-200) {
+:where(:root[data-mode="dark"]) :is(.border-red-200, .ring-red-200) {
   border-color: rgb(248 113 113 / 0.3);
   --tw-ring-color: rgb(248 113 113 / 0.3);
 }
 
-:where(:root[data-theme="dark"]) :is(.border-blue-200, .ring-blue-200, .ring-sky-100, .ring-sky-200) {
+:where(:root[data-mode="dark"]) :is(.border-blue-200, .ring-blue-200, .ring-sky-100, .ring-sky-200) {
   border-color: rgb(56 189 248 / 0.3);
   --tw-ring-color: rgb(56 189 248 / 0.3);
 }
 
-:where(:root[data-theme="dark"]) :is(.border-violet-200, .ring-violet-200) {
+:where(:root[data-mode="dark"]) :is(.border-violet-200, .ring-violet-200) {
   border-color: rgb(167 139 250 / 0.3);
   --tw-ring-color: rgb(167 139 250 / 0.3);
 }
 
 /* Status text */
-:where(:root[data-theme="dark"]) :is(.text-amber-900, .text-amber-800, .text-amber-700, .text-amber-600, .text-yellow-700, .text-yellow-600, .hover\:text-amber-900:hover) {
+:where(:root[data-mode="dark"]) :is(.text-amber-900, .text-amber-800, .text-amber-700, .text-amber-600, .text-yellow-700, .text-yellow-600, .hover\:text-amber-900:hover) {
   color: rgb(252 211 77);
 }
 
-:where(:root[data-theme="dark"]) :is(.text-green-900, .text-green-800, .text-green-700, .text-green-600, .text-emerald-800, .text-emerald-700, .text-emerald-600) {
+:where(:root[data-mode="dark"]) :is(.text-green-900, .text-green-800, .text-green-700, .text-green-600, .text-emerald-800, .text-emerald-700, .text-emerald-600) {
   color: rgb(110 231 183);
 }
 
-:where(:root[data-theme="dark"]) :is(.text-sky-800, .text-sky-700, .text-blue-800, .text-blue-600) {
+:where(:root[data-mode="dark"]) :is(.text-sky-800, .text-sky-700, .text-blue-800, .text-blue-600) {
   color: rgb(125 211 252);
 }
 
-:where(:root[data-theme="dark"]) :is(.text-red-700, .text-red-600, .hover\:text-red-700:hover, .hover\:text-red-600:hover, .hover\:text-red-500:hover) {
+:where(:root[data-mode="dark"]) :is(.text-red-700, .text-red-600, .hover\:text-red-700:hover, .hover\:text-red-600:hover, .hover\:text-red-500:hover) {
   color: rgb(252 165 165);
 }
 
-:where(:root[data-theme="dark"]) :is(.text-purple-700, .text-violet-700) {
+:where(:root[data-mode="dark"]) :is(.text-purple-700, .text-violet-700) {
   color: rgb(196 181 253);
 }
 
 /* Accent text: the dark theme's 600-900 shades are tuned for filled buttons,
    so text that uses them switches to a light accent instead. */
-:where(:root[data-theme="dark"]) :is(
+:where(:root[data-mode="dark"]) :is(
   .text-theme-900, .text-theme-800, .text-theme-700, .text-theme-600, .text-theme-500,
   .hover\:text-theme-800:hover, .hover\:text-theme-700:hover, .hover\:text-theme-600:hover, .hover\:text-theme-500:hover
 ) {
@@ -302,11 +383,11 @@
 }
 
 /* Page builder: a darker, dotted stage keeps the previewed page in focus. */
-:root[data-theme="dark"] .builder-shell {
+:root[data-mode="dark"] .builder-shell {
   background-color: rgb(var(--color-app-bg));
 }
 
-:root[data-theme="dark"] .builder-stage {
+:root[data-mode="dark"] .builder-stage {
   background:
     radial-gradient(circle at 1px 1px, rgb(255 255 255 / 0.05) 1px, transparent 0) 0 0 / 20px 20px,
     radial-gradient(70% 60% at 50% 0%, rgb(var(--color-theme-500) / 0.06), transparent 70%),
@@ -314,34 +395,34 @@
 }
 
 /* Rich text editor */
-:where(:root[data-theme="dark"]) .tiptap-content .ProseMirror pre {
+:where(:root[data-mode="dark"]) .tiptap-content .ProseMirror pre {
   background-color: rgb(var(--color-inset));
   box-shadow: inset 0 0 0 1px rgb(var(--color-slate-200));
 }
 
-:where(:root[data-theme="dark"]) :is(.shadow-sm, .shadow, .shadow-md, .shadow-lg, .shadow-xl) {
+:where(:root[data-mode="dark"]) :is(.shadow-sm, .shadow, .shadow-md, .shadow-lg, .shadow-xl) {
   --tw-shadow-color: rgb(0 0 0 / 0.45);
   --tw-shadow: var(--tw-shadow-colored);
 }
 
 /* Status badges compose their tints with @apply, so the utility remaps above
    do not reach them. */
-:where(:root[data-theme="dark"]) .badge-published {
+:where(:root[data-mode="dark"]) .badge-published {
   background-color: rgb(16 185 129 / 0.12);
   color: rgb(110 231 183);
 }
 
-:where(:root[data-theme="dark"]) .badge-scheduled {
+:where(:root[data-mode="dark"]) .badge-scheduled {
   background-color: rgb(var(--color-theme-500) / 0.14);
   color: rgb(var(--color-theme-text));
 }
 
-:where(:root[data-theme="dark"]) .badge-protected {
+:where(:root[data-mode="dark"]) .badge-protected {
   background-color: rgb(139 92 246 / 0.15);
   color: rgb(196 181 253);
 }
 
-:where(:root[data-theme="dark"]) .badge-archived {
+:where(:root[data-mode="dark"]) .badge-archived {
   background-color: rgb(245 158 11 / 0.12);
   color: rgb(252 211 77);
 }

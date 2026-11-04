@@ -220,7 +220,7 @@ abstract class BaseController
             'email' => $user['email'] ?? null,
             'role' => $user['role'],
             'capabilities' => $this->permissions->capabilities($user),
-            'theme' => $user['theme'] ?? 'blue',
+            ...UserRepository::appearance($user),
             'language' => $user['language'] ?? 'en',
             'show_api_footer' => $user['show_api_footer'] ?? true,
             'has_avatar' => $this->avatarPath((string) $user['id']) !== null,

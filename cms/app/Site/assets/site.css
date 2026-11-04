@@ -1238,8 +1238,16 @@ html:has(.c-menu-fullscreen > .c-menu-toggle:checked, .c-menu-drawer > .c-menu-t
 .c-preview-bar[data-admin-theme="purple"] { --c-admin-bg: #1b1332; --c-admin-panel: #2a1f48; --c-admin-accent: #7c3aed; --c-admin-accent-hover: #6d28d9; --c-admin-focus: #a78bfa; }
 .c-preview-bar[data-admin-theme="red"] { --c-admin-bg: #2c0e10; --c-admin-panel: #42181b; --c-admin-accent: #dc2626; --c-admin-accent-hover: #b91c1c; --c-admin-focus: #f87171; }
 .c-preview-bar[data-admin-theme="cyan"] { --c-admin-bg: #062430; --c-admin-panel: #0e3746; --c-admin-accent: #0e7490; --c-admin-accent-hover: #155e75; --c-admin-focus: #22d3ee; }
-.c-preview-bar[data-admin-theme="dark"] { --c-admin-bg: #0d1016; --c-admin-panel: #1b202b; --c-admin-accent: #0369a1; --c-admin-accent-hover: #075985; --c-admin-focus: #38bdf8; }
 .c-preview-bar[data-admin-theme="orange"] { --c-admin-bg: #fff; --c-admin-panel: #fff; --c-admin-text: #374151; --c-admin-strong: #111827; --c-admin-muted: #6b7280; --c-admin-border: #eae2da; --c-admin-hover: #00000009; --c-admin-avatar: #ffedd5; --c-admin-accent: #c2410c; --c-admin-accent-hover: #9a3412; --c-admin-focus: #c2410c; --c-admin-status-text: #92400e; --c-admin-published: #166534; --c-admin-protected: #6d28d9; --c-admin-preview: #1d4ed8; --c-admin-archived: #475569; color-scheme: light; }
+/* Dark mode keeps the color as accent on neutral dark surfaces; auto follows the browser. */
+.c-preview-bar[data-admin-mode="dark"] { --c-admin-bg: #0d1016; --c-admin-panel: #1b202b; --c-admin-text: #cbd5e1; --c-admin-strong: #f1f5f9; --c-admin-muted: #8c96a8; --c-admin-border: #ffffff14; --c-admin-hover: #ffffff10; --c-admin-avatar: #334155; --c-admin-status-text: #fde68a; --c-admin-published: #86efac; --c-admin-protected: #c4b5fd; --c-admin-preview: #93c5fd; --c-admin-archived: #cbd5e1; color-scheme: dark; }
+.c-preview-bar[data-admin-mode="dark"][data-admin-theme="blue"] { --c-admin-accent: #0369a1; --c-admin-accent-hover: #075985; --c-admin-focus: #38bdf8; }
+.c-preview-bar[data-admin-mode="dark"][data-admin-theme="orange"] { --c-admin-focus: #fb923c; }
+@media (prefers-color-scheme: dark) {
+  .c-preview-bar[data-admin-mode="auto"] { --c-admin-bg: #0d1016; --c-admin-panel: #1b202b; --c-admin-text: #cbd5e1; --c-admin-strong: #f1f5f9; --c-admin-muted: #8c96a8; --c-admin-border: #ffffff14; --c-admin-hover: #ffffff10; --c-admin-avatar: #334155; --c-admin-status-text: #fde68a; --c-admin-published: #86efac; --c-admin-protected: #c4b5fd; --c-admin-preview: #93c5fd; --c-admin-archived: #cbd5e1; color-scheme: dark; }
+  .c-preview-bar[data-admin-mode="auto"][data-admin-theme="blue"] { --c-admin-accent: #0369a1; --c-admin-accent-hover: #075985; --c-admin-focus: #38bdf8; }
+  .c-preview-bar[data-admin-mode="auto"][data-admin-theme="orange"] { --c-admin-focus: #fb923c; }
+}
 /* Narrower screens keep one row: secondary labels, then names, collapse to icons with tooltips. */
 @media (max-width: 1280px) {
   .c-preview-actions .c-admin-action:not(.c-admin-action-primary) .c-admin-label,

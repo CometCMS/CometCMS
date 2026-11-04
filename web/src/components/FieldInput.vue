@@ -1337,7 +1337,7 @@ const subFieldGridCols = computed(() => {
   padding: 0 0.1rem;
 }
 
-:root[data-theme="dark"] .tiptap-content :deep(.ProseMirror mark) {
+:root[data-mode="dark"] .tiptap-content :deep(.ProseMirror mark) {
   background: rgb(250 204 21 / 0.3);
 }
 </style>

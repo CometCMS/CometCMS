@@ -8,7 +8,7 @@
   background-size: cover, auto 100%;
 }
 
-:root[data-theme="dark"] .page-builder-cta {
+:root[data-mode="dark"] .page-builder-cta {
   background-color: rgb(var(--color-surface));
   background-image:
     linear-gradient(
@@ -21,7 +21,7 @@
     url("../../assets/page-builder-background-dark.svg");
 }
 
-:root[data-theme="dark"] .page-builder-cta-description {
+:root[data-mode="dark"] .page-builder-cta-description {
   color: rgb(var(--color-slate-700));
 }
 
@@ -127,11 +127,11 @@
   height: 2.5rem;
 }
 
-:root[data-theme="dark"] .page-builder-overview {
+:root[data-mode="dark"] .page-builder-overview {
   background-image: none;
 }
 
-:root[data-theme="dark"] .page-builder-overview-illustration {
+:root[data-mode="dark"] .page-builder-overview-illustration {
   background-image: url("../../assets/page-builder-background-dark.svg");
 }
 

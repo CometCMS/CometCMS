@@ -14,6 +14,41 @@ test('users store a red theme preference', function (): void {
     assert_same('red', $users->find((string) $user['id'])['theme'] ?? null);
 });
 
+test('users combine any theme color with a light, dark or auto color mode', function (): void {
+    $users = new UserRepository();
+    $user = $users->create('admin', 'secret-password', 'admin');
+
+    assert_same(['theme' => 'blue', 'color_mode' => 'light'], UserRepository::appearance($user));
+
+    $updated = $users->update((string) $user['id'], ['theme' => 'green', 'color_mode' => 'dark']);
+    assert_same(['theme' => 'green', 'color_mode' => 'dark'], UserRepository::appearance($updated));
+
+    $updated = $users->update((string) $user['id'], ['color_mode' => 'auto']);
+    assert_same(['theme' => 'green', 'color_mode' => 'auto'], UserRepository::appearance($users->find((string) $user['id'])));
+
+    assert_throws(\InvalidArgumentException::class, fn() => $users->update((string) $user['id'], ['color_mode' => 'sepia']));
+    assert_throws(\InvalidArgumentException::class, fn() => $users->update((string) $user['id'], ['theme' => 'pink']));
+});
+
+test('the former dark theme becomes dark mode with the default color', function (): void {
+    $users = new UserRepository();
+    $user = $users->create('admin', 'secret-password', 'admin');
+    $user['theme'] = 'dark';
+    unset($user['color_mode']);
+    $users->save($user);
+
+    assert_same(['theme' => 'blue', 'color_mode' => 'dark'], UserRepository::appearance($user));
+
+    // Picking a color keeps the dark mode the user had chosen.
+    $updated = $users->update((string) $user['id'], ['theme' => 'red']);
+    assert_same('red', $updated['theme']);
+    assert_same('dark', $updated['color_mode']);
+
+    // Older clients may still send the combined theme.
+    $updated = $users->update((string) $user['id'], ['theme' => 'dark', 'color_mode' => null]);
+    assert_same(['theme' => 'red', 'color_mode' => 'dark'], UserRepository::appearance($updated));
+});
+
 test('users store an admin language preference', function (): void {
     $users = new UserRepository();
     $user = $users->create('admin', 'secret-password', 'admin');

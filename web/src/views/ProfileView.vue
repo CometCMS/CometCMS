@@ -66,6 +66,15 @@
             />
           </div>
           <div>
+            <div id="profile-color-mode-label" class="form-label">{{ t("profile.colorMode") }}</div>
+            <div class="max-w-xs" role="group" aria-labelledby="profile-color-mode-label">
+              <SegmentedControl
+                v-model="profileForm.color_mode"
+                :options="MODES.map((mode) => ({ value: mode, label: t(`colorMode.${mode}`), icon: modeIcons[mode], showLabel: true }))"
+              />
+            </div>
+          </div>
+          <div>
             <div id="profile-theme-label" class="form-label">{{ t("profile.theme") }}</div>
             <div role="group" aria-labelledby="profile-theme-label" class="flex items-center gap-3">
               <div class="flex gap-2">
@@ -207,7 +216,14 @@ import { api } from "../api/index.js";
 import { useAuthStore } from "../stores/auth.js";
 import { useToastStore } from "../stores/toast.js";
 import { useApiEndpointStore } from "../stores/apiEndpoint.js";
-import { applyTheme, DEFAULT_THEME, THEMES } from "../theme.js";
+import SegmentedControl from "../components/site/SegmentedControl.vue";
+import { applyTheme, DEFAULT_MODE, DEFAULT_THEME, MODES, THEMES } from "../theme.js";
+
+const modeIcons = {
+  light: "mdi:white-balance-sunny",
+  dark: "mdi:weather-night",
+  auto: "mdi:theme-light-dark",
+};
 
 const themeColors = {
   blue: "bg-blue-500",
@@ -216,7 +232,6 @@ const themeColors = {
   orange: "bg-orange-500",
   red: "bg-red-500",
   cyan: "bg-cyan-500",
-  dark: "bg-ink-800",
 };
 import { DEFAULT_ADMIN_LOCALE, setLocale, useI18n } from "../i18n/index.js";
 import { userAdminEndpoint } from "../composables/apiEndpoint.js";
@@ -240,6 +255,7 @@ const profileForm = ref({
   display_name: "",
   email: "",
   theme: DEFAULT_THEME,
+  color_mode: DEFAULT_MODE,
   language: DEFAULT_ADMIN_LOCALE,
   show_api_footer: true,
 });
@@ -254,6 +270,7 @@ onMounted(() => {
   profileForm.value.display_name = auth.user?.display_name ?? "";
   profileForm.value.email = auth.user?.email ?? "";
   profileForm.value.theme = auth.user?.theme ?? DEFAULT_THEME;
+  profileForm.value.color_mode = auth.user?.color_mode ?? DEFAULT_MODE;
   profileForm.value.language = auth.user?.language ?? DEFAULT_ADMIN_LOCALE;
   profileForm.value.show_api_footer = auth.user?.show_api_footer ?? true;
 
@@ -305,6 +322,7 @@ async function handleSaveProfile() {
       display_name: profileForm.value.display_name,
       email: profileForm.value.email,
       theme: profileForm.value.theme,
+      color_mode: profileForm.value.color_mode,
       language: profileForm.value.language,
       show_api_footer: profileForm.value.show_api_footer,
     });
@@ -312,9 +330,10 @@ async function handleSaveProfile() {
       auth.user.display_name = res.data.display_name;
       auth.user.email = res.data.email;
       auth.user.theme = res.data.theme;
+      auth.user.color_mode = res.data.color_mode;
       auth.user.language = res.data.language;
       auth.user.show_api_footer = res.data.show_api_footer;
-      applyTheme(res.data.theme);
+      applyTheme(res.data.theme, res.data.color_mode);
       setLocale(res.data.language);
     }
     toast.success(t("profile.saved"));

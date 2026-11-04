@@ -389,7 +389,7 @@ import {
   setActiveWorkspace,
   setDefaultWorkspace,
 } from "../api/index.js";
-import { logoForTheme } from "../theme.js";
+import { logoForTheme, resolvedMode } from "../theme.js";
 import { useI18n } from "../i18n/index.js";
 import ApiEndpointFooter from "./ApiEndpointFooter.vue";
 import ToastStack from "./ToastStack.vue";
@@ -515,7 +515,7 @@ function handleWorkspaceSync() {
 // Resolve against this module so dev assets stay on Vite's origin even though
 // PHP serves the document from a different port.
 const assetBase = adminAsset("");
-const logoSrc = computed(() => logoForTheme(auth.user?.theme, assetBase));
+const logoSrc = computed(() => logoForTheme(auth.user?.theme, resolvedMode.value, assetBase));
 
 // Types are refetched after creating, deleting or switching workspaces.
 watch(

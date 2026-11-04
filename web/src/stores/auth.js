@@ -24,7 +24,7 @@ export const useAuthStore = defineStore('auth', () => {
   function adoptUser(data) {
     user.value = data
     syncWorkspaceFromUser(data, allowsPermission(data?.capabilities?.permissions ?? [], 'workspaces.read', null))
-    applyTheme(user.value?.theme)
+    applyTheme(user.value?.theme, user.value?.color_mode)
     setLocale(user.value?.language)
     notSetUp.value = false
   }

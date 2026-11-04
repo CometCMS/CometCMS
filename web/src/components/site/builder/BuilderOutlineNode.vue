@@ -272,10 +272,10 @@ function onDrop() {
 .outline-accent-component {
   --outline-accent: 134 80 177;
 }
-:global(:root[data-theme="dark"]) .outline-accent-entry {
+:global(:root[data-mode="dark"]) .outline-accent-entry {
   --outline-accent: 94 190 214;
 }
-:global(:root[data-theme="dark"]) .outline-accent-component {
+:global(:root[data-mode="dark"]) .outline-accent-component {
   --outline-accent: 190 150 230;
 }
 .outline-accent {
