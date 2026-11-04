@@ -208,6 +208,8 @@
 
   :where(:root[data-mode="dark"]) .editor-sticky-header {
     background-color: rgb(var(--color-app-bg) / 0.85);
+    background-image: var(--app-glow);
+    background-attachment: fixed;
   }
 
   :where(:root[data-mode="dark"]) .data-table thead tr {
@@ -275,11 +277,17 @@
   color: rgb(var(--color-slate-700));
 }
 
-:root[data-mode="dark"] main {
-  background:
+/* Ambient glow behind the app content. Shared with the sticky editor header,
+   which repaints it viewport-fixed so the glow runs through the header
+   instead of being cut off by its tinted background. */
+:root[data-mode="dark"] {
+  --app-glow:
     radial-gradient(60rem 30rem at 100% -10%, rgb(var(--color-theme-500) / 0.09), transparent 70%),
-    radial-gradient(40rem 24rem at -10% 110%, rgb(139 92 246 / 0.05), transparent 70%),
-    rgb(var(--color-app-bg));
+    radial-gradient(40rem 24rem at -10% 110%, rgb(139 92 246 / 0.05), transparent 70%);
+}
+
+:root[data-mode="dark"] main {
+  background: var(--app-glow), rgb(var(--color-app-bg));
 }
 
 :root[data-mode="dark"] ::selection {
