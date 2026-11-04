@@ -1,0 +1,129 @@
+// Run after npm run web:build: node tests/browser/builder-settings.mjs (requires PHP and Chrome/Chromium).
+// Uses a temporary installation; no local workspace or user preferences are changed.
+import assert from 'node:assert/strict';
+import { spawn, execFileSync } from 'node:child_process';
+import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { createServer } from 'node:net';
+import { chromium } from 'playwright';
+
+const root = fileURLToPath(new URL('../../', import.meta.url));
+const directory = mkdtempSync(join(tmpdir(), 'cometcms-builder-settings-'));
+let php, browser;
+try {
+  for (const path of ['app', 'config', 'index.php']) cpSync(join(root, 'cms', path), join(directory, path), { recursive: true });
+  cpSync(join(root, 'dist/admin'), join(directory, 'admin'), { recursive: true });
+  writeFileSync(join(directory, 'router.php'), `<?php
+if (str_starts_with($_SERVER['REQUEST_URI'], '/admin/assets/') && is_file(__DIR__ . parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH))) return false;
+$_SERVER['SCRIPT_NAME'] = '/index.php';
+require __DIR__ . '/index.php';`);
+  writeFileSync(join(directory, 'seed.php'), `<?php
+require __DIR__ . '/app/bootstrap.php';
+$users = new \\CometCMS\\Auth\\UserRepository();
+$user = $users->create('settings-admin', 'secret-password', 'admin');
+unset($user['builder_preferences']); $users->save($user);
+$users->create('other-admin', 'secret-password', 'admin');
+(new \\CometCMS\\Workspaces\\WorkspaceRepository())->all();
+(new \\CometCMS\\Content\\ContentTypeRepository())->save(['name' => 'posts']);
+\\CometCMS\\Content\\ContentRepository::make()->save('posts', ['title' => 'Hierarchy', 'slug' => 'hierarchy'], ['id' => 'settings-admin']);
+$site = new \\CometCMS\\Site\\SiteRepository();
+$site->saveSettings(['routes' => ['posts' => ['enabled' => true, 'pattern' => '/posts/{slug}']]]);
+$node = \\CometCMS\\Site\\LayoutSchema::node(...);
+$heading = $node('heading', ['text' => 'Hover this heading']); $heading['id'] = 'test-heading';
+$sibling = $node('heading', ['text' => 'Sibling heading']); $sibling['id'] = 'test-sibling';
+$column = $node('column', [], [], [$heading, $sibling]); $column['id'] = 'test-column';
+$row = $node('row', [], [], [$column]); $row['id'] = 'test-row';
+$section = $node('section', [], [], [$row]); $section['id'] = 'test-section';
+$site->saveLayout('posts', 'detail', [$section]);
+foreach (['settings-admin', 'other-admin'] as $id) {
+    session_id($id . '-session'); session_start(); $_SESSION['user_id'] = $id; session_write_close();
+}`);
+  execFileSync('php', [join(directory, 'seed.php')]);
+  const port = await new Promise((resolve) => {
+    const server = createServer();
+    server.listen(0, '127.0.0.1', () => { const port = server.address().port; server.close(() => resolve(port)); });
+  });
+  const origin = `http://127.0.0.1:${port}`;
+  php = spawn('php', ['-S', `127.0.0.1:${port}`, join(directory, 'router.php')], { cwd: directory, stdio: 'ignore' });
+  browser = await chromium.launch({ executablePath: process.env.CHROME_BIN || '/usr/bin/google-chrome', args: ['--no-sandbox'] });
+  const page = await browser.newPage({ viewport: { width: 1600, height: 1000 } });
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.context().addCookies([{ name: 'cometcms_admin', value: 'settings-admin-session', url: origin }]);
+  await page.addInitScript(() => localStorage.setItem('cometcms-builder-guide-seen', '1'));
+  const url = origin + '/admin/page-builder/builder/layout/posts/detail';
+  await page.goto(url);
+  const canvas = page.frameLocator('.builder-stage iframe');
+  const heading = canvas.locator('[data-node="test-heading"]');
+  const cog = page.getByRole('button', { name: 'Page builder settings', exact: true });
+  const dialog = page.getByRole('dialog', { name: 'Page builder settings', exact: true });
+  const toggle = dialog.getByRole('switch', { name: 'Show parent outlines', exact: true });
+  const hoveredIds = () => canvas.locator('[data-builder-hover]').evaluateAll(elements => elements.map(el => el.dataset.node));
+  const waitForHover = async (ids) => {
+    await page.waitForFunction(expected => {
+      const doc = document.querySelector('.builder-stage iframe')?.contentDocument;
+      return doc && JSON.stringify([...doc.querySelectorAll('[data-builder-hover]')].map(el => el.dataset.node)) === JSON.stringify(expected);
+    }, ids);
+    assert.deepEqual(await hoveredIds(), ids);
+  };
+  await heading.hover();
+  await waitForHover(['test-heading']);
+  const rail = page.getByRole('navigation', { name: 'Builder panels', exact: true });
+  assert.equal(await rail.locator('button').last().getAttribute('aria-label'), 'Page builder settings');
+  const cogBox = await cog.boundingBox(), railBox = await rail.boundingBox();
+  assert(railBox.y + railBox.height - (cogBox.y + cogBox.height) < 20, 'Cog sits at the bottom of the rail');
+  await cog.click();
+  await waitForHover([]);
+  assert.equal(await toggle.getAttribute('aria-checked'), 'false', 'Legacy accounts retain the old default');
+  const setPreference = async (enabled) => {
+    const saved = page.waitForResponse(response => response.url().includes('/api/profile') && response.request().method() === 'PUT');
+    await toggle.click();
+    assert.equal((await saved).status(), 200);
+    await dialog.getByRole('button', { name: 'Close', exact: true }).last().click();
+    assert.equal(JSON.parse(readFileSync(join(directory, 'storage/users/settings-admin.json'), 'utf8')).builder_preferences.show_parent_outlines, enabled);
+  };
+  await setPreference(true);
+  await heading.hover();
+  await waitForHover(['test-section', 'test-row', 'test-column', 'test-heading']);
+  await heading.click();
+  assert.equal(await heading.getAttribute('data-builder-selected'), '');
+  await waitForHover(['test-section', 'test-row', 'test-column']);
+  assert.equal(await heading.evaluate(el => getComputedStyle(el).outlineStyle), 'solid');
+  await canvas.locator('[data-node="test-sibling"]').hover();
+  await waitForHover(['test-section', 'test-row', 'test-column', 'test-sibling']);
+  await page.reload();
+  await heading.hover();
+  await waitForHover(['test-section', 'test-row', 'test-column', 'test-heading']);
+  await cog.click();
+  assert.equal(await toggle.getAttribute('aria-checked'), 'true', 'Preference survives reloading');
+  await setPreference(false);
+  await heading.hover();
+  await waitForHover(['test-heading']);
+  await cog.click();
+  await page.route('**/api/profile', route => route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ error: { message: 'Could not save preference.' } }) }));
+  await toggle.click();
+  await dialog.getByRole('alert').waitFor();
+  assert.equal(await toggle.getAttribute('aria-checked'), 'false', 'Failed saves restore the previous preference');
+  await page.unroute('**/api/profile');
+  await dialog.getByRole('button', { name: 'Close', exact: true }).last().click();
+  await cog.focus();
+  await cog.press('Enter');
+  await dialog.waitFor();
+  await page.keyboard.press('Escape');
+  await dialog.waitFor({ state: 'hidden' });
+  assert.equal(await cog.evaluate(el => el === document.activeElement), true, 'Closing restores focus to the cog');
+  await cog.click();
+  await setPreference(true);
+  await page.context().addCookies([{ name: 'cometcms_admin', value: 'other-admin-session', url: origin }]);
+  await page.reload();
+  await cog.click();
+  assert.equal(await toggle.getAttribute('aria-checked'), 'false', 'Other users have their own preferences');
+  assert.deepEqual(errors, []);
+  console.log('Builder settings browser checks passed (bottom cog, legacy default, hierarchy, selection, persistence, opt-out, save failure, keyboard focus, user isolation).');
+} finally {
+  await browser?.close();
+  if (php) await new Promise(resolve => { php.once('exit', resolve); if (!php.kill('SIGTERM')) resolve(); });
+  rmSync(directory, { recursive: true, force: true });
+}

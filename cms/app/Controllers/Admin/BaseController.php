@@ -223,6 +223,7 @@ abstract class BaseController
             ...UserRepository::appearance($user),
             'language' => $user['language'] ?? 'en',
             'show_api_footer' => $user['show_api_footer'] ?? true,
+            'builder_preferences' => array_replace(UserRepository::BUILDER_PREFERENCES, $user['builder_preferences'] ?? []),
             'has_avatar' => $this->avatarPath((string) $user['id']) !== null,
             'accessible_content_types' => $accessibleContentTypes,
             // Every user needs this to address the API before (or without)

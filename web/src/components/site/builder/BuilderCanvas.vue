@@ -29,6 +29,7 @@ const props = defineProps({
   body: { type: Object, default: null },
   device: { type: String, default: "desktop" },
   selectedTemplatePart: { type: String, default: null },
+  showParentOutlines: { type: Boolean, default: false },
 });
 
 /** rendered: the preview's response data, e.g. the template it showed around the content, and the body it was for. */
@@ -772,7 +773,12 @@ function applyHover() {
   if (!doc) return;
   doc.querySelectorAll("[data-builder-hover]").forEach((el) => el.removeAttribute("data-builder-hover"));
   const el = element(builder.hoverId.value);
-  if (el && builder.hoverId.value !== builder.selectedId.value) el.setAttribute("data-builder-hover", "");
+  if (!el) return;
+  const highlight = (node) => {
+    if (node.dataset.node !== builder.selectedId.value) node.setAttribute("data-builder-hover", "");
+  };
+  if (props.showParentOutlines) forEachNodeAround(el, highlight);
+  else highlight(el);
 }
 
 function applyTemplatePartHover() {
@@ -1512,6 +1518,7 @@ watch(
   },
 );
 watch(() => builder.hoverId.value, applyHover);
+watch(() => props.showParentOutlines, applyHover);
 watch(() => builder.selectedCell?.value, () => applySelection(false));
 watch(() => builder.cssPicker.value, (picker) => {
   if (picker) {

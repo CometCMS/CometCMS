@@ -14,6 +14,7 @@ final class UserRepository
     public const THEMES = ['blue', 'green', 'purple', 'orange', 'red', 'cyan'];
     /** Admin UI color modes; auto follows the browser's preference. */
     public const COLOR_MODES = ['light', 'dark', 'auto'];
+    public const BUILDER_PREFERENCES = ['show_parent_outlines' => false];
     private const LAST_ADMIN_MESSAGE = 'At least one user must keep the Admin role. Give another user the Admin role first.';
 
     private JsonStore $store;
@@ -103,6 +104,7 @@ final class UserRepository
             'color_mode' => 'light',
             'language' => 'en',
             'show_api_footer' => true,
+            'builder_preferences' => self::BUILDER_PREFERENCES,
             'created_at' => Security::now(),
         ];
 
@@ -189,6 +191,19 @@ final class UserRepository
 
         if (array_key_exists('show_api_footer', $data)) {
             $user['show_api_footer'] = (bool) $data['show_api_footer'];
+        }
+
+        if (array_key_exists('builder_preferences', $data)) {
+            $preferences = $data['builder_preferences'];
+            if (!is_array($preferences)) {
+                throw new \InvalidArgumentException('Invalid page builder preferences.');
+            }
+            foreach ($preferences as $key => $value) {
+                if (!array_key_exists($key, self::BUILDER_PREFERENCES) || !is_bool($value)) {
+                    throw new \InvalidArgumentException('Invalid page builder preference.');
+                }
+            }
+            $user['builder_preferences'] = array_replace(self::BUILDER_PREFERENCES, $user['builder_preferences'] ?? [], $preferences);
         }
 
         if (isset($data['password']) && (string) $data['password'] !== '') {

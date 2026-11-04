@@ -212,6 +212,18 @@
             aria-hidden="true"
           ></div>
         </template>
+        <button
+          type="button"
+          class="rail-action mt-auto"
+          :class="{ 'is-active': settingsOpen }"
+          :aria-label="t('site.builder.settings.title')"
+          aria-haspopup="dialog"
+          :aria-expanded="settingsOpen"
+          v-tooltip="{ title: t('site.builder.settings.title'), placement: 'right' }"
+          @click="settingsOpen = true"
+        >
+          <Icon icon="mdi:cog-outline" class="h-5 w-5" aria-hidden="true" />
+        </button>
       </nav>
 
 
@@ -290,7 +302,7 @@
 
       <!-- Canvas -->
       <main class="builder-stage order-1 min-w-0 flex-1" :class="device === 'full' ? 'p-0' : 'p-2 xl:p-4'">
-        <BuilderCanvas ref="canvasRef" :body="previewBody" :device="device" :selected-template-part="selectedTemplatePart" @keydown="onKeydown" @select-template-part="selectedTemplatePart = $event" @edit-field="editEntryField" @switch-page-area="selectPageArea" @rendered="onRendered" />
+        <BuilderCanvas ref="canvasRef" :body="previewBody" :device="device" :selected-template-part="selectedTemplatePart" :show-parent-outlines="auth.user?.builder_preferences?.show_parent_outlines === true" @keydown="onKeydown" @select-template-part="selectedTemplatePart = $event" @edit-field="editEntryField" @switch-page-area="selectPageArea" @rendered="onRendered" />
       </main>
 
       <div
@@ -310,6 +322,7 @@
     <BuilderContextMenu :device="device" />
 
     <BuilderGuide v-model="guideOpen" />
+    <BuilderSettings v-model="settingsOpen" />
 
     <ConfirmModal
       v-model="overwriteOpen"
@@ -405,6 +418,7 @@ import CustomCssPanel from "../components/site/builder/CustomCssPanel.vue";
 import SiteDesignPanel from "../components/site/builder/SiteDesignPanel.vue";
 import BuilderGuide from "../components/site/builder/BuilderGuide.vue";
 import BuilderHelpMenu from "../components/site/builder/BuilderHelpMenu.vue";
+import BuilderSettings from "../components/site/builder/BuilderSettings.vue";
 import BuilderOverview from "../components/site/builder/BuilderOverview.vue";
 import BuilderTemplateMenu from "../components/site/builder/BuilderTemplateMenu.vue";
 import ComponentNameModal from "../components/site/ComponentNameModal.vue";
@@ -569,6 +583,7 @@ function panelHint(panel) {
 
 const GUIDE_SEEN_KEY = "cometcms-builder-guide-seen";
 const guideOpen = ref(false);
+const settingsOpen = ref(false);
 // First visit: explain the builder once.
 try {
   if (!localStorage.getItem(GUIDE_SEEN_KEY)) {

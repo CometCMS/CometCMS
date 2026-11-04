@@ -58,6 +58,8 @@ Run the full local test suite before shipping:
 make test
 ```
 
+After `npm run web:build`, run `node tests/browser/builder-settings.mjs` to check the builder's settings cog, default hover outlines, hierarchy opt-in, account persistence, save failures and keyboard focus. It uses an isolated temporary installation and Chrome/Chromium (`CHROME_BIN` may override the executable).
+
 That command lints PHP and Vue files, runs the Composer-free backend tests in `tests/php`, and runs the Vue/Vite unit tests with Vitest. For the same verification CI performs before a release build, run:
 
 ```bash

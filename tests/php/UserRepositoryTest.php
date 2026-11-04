@@ -4,6 +4,33 @@ declare(strict_types=1);
 
 use CometCMS\Auth\UserRepository;
 
+test('users opt in to parent outlines independently and profile edits preserve the preference', function (): void {
+    $users = new UserRepository();
+    $user = $users->create('admin', 'secret-password', 'admin');
+    $other = $users->create('writer', 'secret-password', 'editor');
+    assert_same(['show_parent_outlines' => false], $user['builder_preferences']);
+
+    // Accounts created before builder preferences existed can opt in too.
+    unset($user['builder_preferences']);
+    $users->save($user);
+    $users->update('admin', ['builder_preferences' => ['show_parent_outlines' => true]]);
+    $users->update('admin', ['display_name' => 'Admin']);
+    assert_same(['show_parent_outlines' => true], $users->find('admin')['builder_preferences']);
+    assert_same(['show_parent_outlines' => false], $users->find($other['id'])['builder_preferences']);
+
+    $users->update('admin', ['builder_preferences' => ['show_parent_outlines' => false]]);
+    assert_same(['show_parent_outlines' => false], $users->find('admin')['builder_preferences']);
+});
+
+test('users reject invalid page builder preferences without changing the saved choice', function (): void {
+    $users = new UserRepository();
+    $users->create('admin', 'secret-password', 'admin');
+    foreach ([null, 'enabled', ['show_parent_outlines' => 'false'], ['show_parent_outlines' => 1], ['unknown' => true]] as $preferences) {
+        assert_throws(InvalidArgumentException::class, fn() => $users->update('admin', ['builder_preferences' => $preferences]));
+        assert_same(['show_parent_outlines' => false], $users->find('admin')['builder_preferences']);
+    }
+});
+
 test('users store a red theme preference', function (): void {
     $users = new UserRepository();
     $user = $users->create('admin', 'secret-password', 'admin');
