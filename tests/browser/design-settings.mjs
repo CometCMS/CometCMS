@@ -148,6 +148,20 @@ try {
   await custom.getByRole('button', { name: 'Remove Raised card' }).click();
   assert.equal(await page.evaluate(() => Object.values(window.designTheme.shadows).some(s => s.label === 'Raised card')), false);
   await shadows.getByRole('button', { name: 'M', exact: true }).click();
+  // Buttons and form fields edit the theme, and their samples follow.
+  await design.getByRole('button', { name: 'Buttons', exact: true }).click();
+  await design.getByRole('radio', { name: 'AB', exact: true }).click();
+  await design.getByRole('radio', { name: 'Round' }).first().click();
+  await design.getByLabel('Hover effect').selectOption('lift');
+  await design.getByLabel('Shadow', { exact: true }).selectOption('hard');
+  assert.deepEqual(await page.evaluate(() => ({ ...window.designTheme.buttons })), { ...defaults.buttons, transform: 'uppercase', radius: 'full', hover: 'lift', shadow: 'hard' });
+  const buttonSample = design.locator('.button-filled');
+  assert.deepEqual(await buttonSample.evaluate(el => [getComputedStyle(el).textTransform, getComputedStyle(el).borderRadius]), ['uppercase', '9999px']);
+  await design.getByRole('button', { name: 'Form fields', exact: true }).click();
+  await design.getByRole('radio', { name: 'Underlined' }).click();
+  assert.equal(await page.evaluate(() => window.designTheme.fields.style), 'underlined');
+  assert.equal(await design.locator('.field-sample').evaluate(el => getComputedStyle(el).borderTopWidth), '0px');
+  assert.equal(await design.getByRole('radio', { name: 'Round' }).count(), 1, 'Underlined fields have no corner choice.');
   for (const width of [1280, 360]) {
     await page.setViewportSize({ width, height: 1000 });
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `No overflow at ${width}px`);

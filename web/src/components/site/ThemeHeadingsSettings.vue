@@ -130,13 +130,13 @@ import SegmentedControl from "./SegmentedControl.vue";
 import FontPicker from "./FontPicker.vue";
 import { useSiteStore } from "../../stores/site.js";
 import { useI18n } from "../../i18n/index.js";
+import { TRANSFORMS, WEIGHTS } from "../../composables/themeControls.js";
 
 /** Type scale step of each level, as in Theme::HEADING_LEVELS. */
 const LEVELS = ["h1", "h2", "h3", "h4", "h5", "h6"];
 /** "all" edits the shared heading settings every level inherits. */
 const TABS = ["all", ...LEVELS];
 const SCALE_STEPS = { h1: 5, h2: 4, h3: 3, h4: 2, h5: 1, h6: 0 };
-const WEIGHTS = [100, 200, 300, 400, 500, 600, 700, 800, 900];
 /** Shared values on the "all" tab, stored as top-level theme keys. */
 const BASE_FIELDS = [
   { key: "heading_line_height", label: "site.theme.lineHeight", min: 0.8, max: 2.2, step: 0.05, unit: "", fallback: 1.2 },
@@ -146,12 +146,6 @@ const NUMBER_FIELDS = [
   { key: "size", label: "site.theme.headingLevelSize", min: 10, max: 160, step: 1, unit: "px" },
   { key: "line_height", label: "site.theme.lineHeight", min: 0.8, max: 2.2, step: 0.05, unit: "" },
   { key: "letter_spacing", label: "site.theme.letterSpacing", min: -0.1, max: 0.5, step: 0.01, unit: "em" },
-];
-const TRANSFORMS = [
-  { value: "", label: "—" },
-  { value: "uppercase", label: "AB" },
-  { value: "lowercase", label: "ab" },
-  { value: "capitalize", label: "Ab" },
 ];
 
 const site = useSiteStore();

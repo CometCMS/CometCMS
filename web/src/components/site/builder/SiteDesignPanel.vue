@@ -162,6 +162,14 @@
         <ThemeLinkSettings :links="theme.links" :colors="themeColors" :hover-ms="theme.motion?.hover ?? 200" />
       </BuilderGroup>
 
+      <BuilderGroup v-if="theme.buttons" v-model:open="expanded.buttons" icon="mdi:gesture-tap-button" :title="t('site.theme.buttons')" content-class="mt-2 px-1">
+        <ThemeButtonSettings :theme="theme" :colors="themeColors" />
+      </BuilderGroup>
+
+      <BuilderGroup v-if="theme.fields" v-model:open="expanded.fields" icon="mdi:form-textbox" :title="t('site.theme.fields')" content-class="mt-2 px-1">
+        <ThemeFieldSettings :theme="theme" :colors="themeColors" />
+      </BuilderGroup>
+
       <BuilderGroup v-model:open="expanded.headings" icon="mdi:format-header-pound" :title="t('site.theme.headings')" content-class="mt-2 px-1">
         <ThemeHeadingsSettings />
       </BuilderGroup>
@@ -313,6 +321,8 @@ import ComponentNameModal from "../ComponentNameModal.vue";
 import ThemeShadowsSettings from "./ThemeShadowsSettings.vue";
 import ThemeMotionSettings from "./ThemeMotionSettings.vue";
 import ThemeLinkSettings from "./ThemeLinkSettings.vue";
+import ThemeButtonSettings from "./ThemeButtonSettings.vue";
+import ThemeFieldSettings from "./ThemeFieldSettings.vue";
 import { useSiteStore } from "../../../stores/site.js";
 import { useToastStore } from "../../../stores/toast.js";
 import { useI18n } from "../../../i18n/index.js";
@@ -373,7 +383,7 @@ const paddingBoxClasses = {
 };
 const deleteTarget = ref(null);
 const busy = ref(false);
-const expanded = ref({ presets: false, colors: false, typography: false, headings: false, links: false, layout: false, spacing: false, corners: false, shadows: false, motion: false });
+const expanded = ref({ presets: false, colors: false, typography: false, headings: false, links: false, buttons: false, fields: false, layout: false, spacing: false, corners: false, shadows: false, motion: false });
 
 const palettes = computed(() => {
   if (theme.value.mode === "dark") return [{ key: "dark_colors" }];

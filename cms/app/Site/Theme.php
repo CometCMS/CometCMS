@@ -38,6 +38,18 @@ final class Theme
     /** When text links show their underline. */
     public const LINK_DECORATIONS = ['underline', 'hover', 'none'];
 
+    /** Button label font: '' follows the surrounding text, 'heading' uses the heading font. */
+    public const BUTTON_FONTS = ['', 'heading'];
+
+    /** How filled buttons react to the pointer; outline buttons always tint. */
+    public const BUTTON_HOVERS = ['fade', 'darken', 'lift', 'none'];
+
+    /** Inner spacing of buttons and form fields, as a factor of the shipped padding. */
+    public const DENSITIES = ['compact' => 0.8, 'normal' => 1, 'relaxed' => 1.25];
+
+    /** Form field look: a full border, a surface fill, or a bottom line only. */
+    public const FIELD_STYLES = ['outlined', 'filled', 'underlined'];
+
     /** Custom heading sizes from this many px shrink on phones (see MOBILE_HEADING_FACTOR). */
     private const MOBILE_HEADING_FROM = 32;
 
@@ -171,6 +183,10 @@ final class Theme
             'space' => ['xs' => 4, 'sm' => 8, 'md' => 16, 'lg' => 32, 'xl' => 56, '2xl' => 96],
             // Text links; an empty hover color keeps the link color. Thickness 0 is the font's own.
             'links' => ['color' => 'primary', 'hover_color' => '', 'decoration' => 'underline', 'thickness' => 0, 'offset' => 0.18],
+            // Site-wide button look; an empty radius uses the default corner, an empty shadow none.
+            'buttons' => ['font' => '', 'weight' => 600, 'transform' => '', 'letter_spacing' => 0.0, 'border_width' => 2, 'radius' => '', 'padding' => 'normal', 'hover' => 'fade', 'shadow' => ''],
+            // Inputs, selects and text areas of forms, search and list filters; an empty radius uses the default corner.
+            'fields' => ['style' => 'outlined', 'border_width' => 1, 'border_color' => 'border', 'radius' => '', 'padding' => 'normal', 'focus_color' => 'primary', 'label_weight' => 600, 'label_transform' => ''],
             // Animation speeds, the extra delay per stagger step and the hover state transition, in ms.
             'motion' => ['fast' => 400, 'normal' => 700, 'slow' => 1100, 'stagger' => 120, 'hover' => 200],
             'custom_css' => '',
@@ -210,15 +226,17 @@ final class Theme
     {
         $defaults = self::defaults();
         $customColors = self::customColors($theme['custom_colors'] ?? []);
+        $shadowScale = self::shadowScale($theme['shadow_scale'] ?? []);
+        // Themes saved before presets existed get the shipped ones; an emptied list stays empty.
+        $shadows = array_key_exists('shadows', $theme) ? self::shadows($theme['shadows']) : $defaults['shadows'];
 
         return [
             'mode' => self::oneOf($theme['mode'] ?? null, self::MODES, $defaults['mode']),
             'colors' => self::colors($theme['colors'] ?? [], $defaults['colors']),
             'dark_colors' => self::colors($theme['dark_colors'] ?? [], $defaults['dark_colors']),
             'custom_colors' => $customColors,
-            'shadow_scale' => self::shadowScale($theme['shadow_scale'] ?? []),
-            // Themes saved before presets existed get the shipped ones; an emptied list stays empty.
-            'shadows' => array_key_exists('shadows', $theme) ? self::shadows($theme['shadows']) : $defaults['shadows'],
+            'shadow_scale' => $shadowScale,
+            'shadows' => $shadows,
             'fonts' => [
                 'body' => self::fontChoice($theme['fonts']['body'] ?? null, $defaults['fonts']['body']),
                 'heading' => self::fontChoice($theme['fonts']['heading'] ?? null, $defaults['fonts']['heading']),
@@ -241,6 +259,8 @@ final class Theme
             ...self::devicePaddings($theme, $defaults),
             'space' => self::space($theme, $defaults['space']),
             'links' => self::links($theme, $customColors, $defaults['links']),
+            'buttons' => self::buttons($theme['buttons'] ?? [], [...array_keys($shadowScale), ...array_keys($shadows)], $defaults['buttons']),
+            'fields' => self::fields($theme['fields'] ?? [], $customColors, $defaults['fields']),
             'motion' => self::motion($theme['motion'] ?? [], $defaults['motion']),
             'custom_css' => self::customCss((string) ($theme['custom_css'] ?? '')),
             'active_theme' => self::themeReference($theme['active_theme'] ?? null),
@@ -289,6 +309,8 @@ final class Theme
         if ($theme['links']['hover_color'] !== '') {
             $root['--link-hover-color'] = 'var(--c-' . $theme['links']['hover_color'] . ')';
         }
+
+        $root += self::buttonVariables($theme['buttons']) + self::fieldVariables($theme['fields']);
 
         foreach ($theme['radii'] as $token => $px) {
             $root['--radius-' . $token] = $px . 'px';
@@ -345,7 +367,7 @@ final class Theme
         $css .= ':root[data-theme="light"]{color-scheme:light;' . self::declarations($light) . '}'
             . ':root[data-theme="dark"]{color-scheme:dark;' . self::declarations($dark) . '}';
 
-        $css .= "\n" . self::baseStylesheet();
+        $css .= "\n" . self::baseStylesheet() . self::buttonHoverStyles($theme['buttons']) . self::fieldStyles($theme['fields']);
         $css .= self::headingStyles($theme['headings'], $stacks) . $fonts->css($basePath);
 
         foreach ($theme['custom_colors'] as $key => $_color) {
@@ -559,6 +581,123 @@ final class Theme
             'thickness' => self::clampInt($links['thickness'] ?? null, 0, 6, $defaults['thickness']),
             'offset' => round(self::clampFloat($links['offset'] ?? null, 0, 0.5, $defaults['offset']), 2),
         ];
+    }
+
+    /** A corner choice as CSS: '' is the default corner; "full" rounds controls fully and $box surfaces to L. */
+    private static function cornerCss(string $radius, bool $box = false): string
+    {
+        return match ($radius) {
+            '' => $box ? 'var(--radius-box)' : 'var(--radius)',
+            'none' => '0',
+            'full' => $box ? 'var(--radius-lg)' : '9999px',
+            default => 'var(--radius-' . $radius . ')',
+        };
+    }
+
+    /** @param list<string> $shadowKeys the theme's shadow sizes and presets */
+    private static function buttons(mixed $buttons, array $shadowKeys, array $defaults): array
+    {
+        $buttons = is_array($buttons) ? $buttons : [];
+
+        return [
+            'font' => self::oneOf($buttons['font'] ?? null, self::BUTTON_FONTS, $defaults['font']),
+            'weight' => self::clampInt($buttons['weight'] ?? null, 100, 900, $defaults['weight'], 100),
+            'transform' => self::oneOf($buttons['transform'] ?? null, self::TEXT_TRANSFORMS, $defaults['transform']),
+            'letter_spacing' => round(self::clampFloat($buttons['letter_spacing'] ?? null, -0.05, 0.3, $defaults['letter_spacing']), 3),
+            'border_width' => self::clampInt($buttons['border_width'] ?? null, 0, 6, $defaults['border_width']),
+            'radius' => self::oneOf($buttons['radius'] ?? null, ['', ...self::RADII], $defaults['radius']),
+            'padding' => self::oneOf($buttons['padding'] ?? null, array_keys(self::DENSITIES), $defaults['padding']),
+            'hover' => self::oneOf($buttons['hover'] ?? null, self::BUTTON_HOVERS, $defaults['hover']),
+            // A removed shadow preset falls back to none.
+            'shadow' => self::oneOf($buttons['shadow'] ?? null, ['', ...$shadowKeys], $defaults['shadow']),
+        ];
+    }
+
+    private static function buttonVariables(array $buttons): array
+    {
+        $vars = [
+            '--button-weight' => (string) $buttons['weight'],
+            '--button-transform' => $buttons['transform'] !== '' ? $buttons['transform'] : 'none',
+            '--button-letter-spacing' => $buttons['letter_spacing'] != 0 ? self::number($buttons['letter_spacing']) . 'em' : 'normal',
+            '--button-border' => $buttons['border_width'] . 'px',
+            '--button-radius' => self::cornerCss($buttons['radius']),
+            '--button-pad' => self::number(self::DENSITIES[$buttons['padding']]),
+            '--button-shadow' => $buttons['shadow'] !== '' ? 'var(--shadow-' . $buttons['shadow'] . ')' : 'none',
+        ];
+        if ($buttons['font'] === 'heading') {
+            $vars['--button-font'] = 'var(--font-heading)';
+        }
+        return $vars;
+    }
+
+    /** Hover rules for filled buttons; outline and link buttons keep their own. */
+    private static function buttonHoverStyles(array $buttons): string
+    {
+        $filled = '.c-button:not(.c-button-outline, .c-button-link):hover';
+
+        return "\n/* Button hover */\n" . match ($buttons['hover']) {
+            // Custom button colors kept the variant's hover before, so fading stays limited to the variants.
+            'fade' => '.c-button-primary:hover,.c-button-secondary:hover{opacity:0.9;}',
+            'darken' => $filled . '{filter:brightness(0.9);}',
+            // A button with a shadow of its own keeps it while raised; others gain one.
+            'lift' => ($buttons['shadow'] === '' ? '.c-button:not(.c-button-link):hover{box-shadow:var(--shadow-md);}' : '')
+                . '@media (prefers-reduced-motion: no-preference){.c-button:not(.c-button-link):hover{transform:translateY(-2px);}}',
+            'none' => '',
+        };
+    }
+
+    private static function fields(mixed $fields, array $customColors, array $defaults): array
+    {
+        $fields = is_array($fields) ? $fields : [];
+        $color = static fn(mixed $value, string $default): string => is_string($value) && (in_array($value, self::COLOR_KEYS, true) || isset($customColors[$value])) ? $value : $default;
+
+        return [
+            'style' => self::oneOf($fields['style'] ?? null, self::FIELD_STYLES, $defaults['style']),
+            'border_width' => self::clampInt($fields['border_width'] ?? null, 0, 4, $defaults['border_width']),
+            'border_color' => $color($fields['border_color'] ?? null, $defaults['border_color']),
+            'radius' => self::oneOf($fields['radius'] ?? null, ['', ...self::RADII], $defaults['radius']),
+            'padding' => self::oneOf($fields['padding'] ?? null, array_keys(self::DENSITIES), $defaults['padding']),
+            'focus_color' => $color($fields['focus_color'] ?? null, $defaults['focus_color']),
+            'label_weight' => self::clampInt($fields['label_weight'] ?? null, 100, 900, $defaults['label_weight'], 100),
+            'label_transform' => self::oneOf($fields['label_transform'] ?? null, self::TEXT_TRANSFORMS, $defaults['label_transform']),
+        ];
+    }
+
+    private static function fieldVariables(array $fields): array
+    {
+        $underlined = $fields['style'] === 'underlined';
+
+        return [
+            '--field-bg' => match ($fields['style']) {
+                'filled' => 'var(--c-surface)',
+                'underlined' => 'transparent',
+                default => 'var(--c-background)',
+            },
+            // An underline needs a line; other styles may go borderless.
+            '--field-border-width' => $underlined ? '0 0 ' . max(1, $fields['border_width']) . 'px' : $fields['border_width'] . 'px',
+            '--field-border' => $fields['border_width'] . 'px',
+            '--field-border-color' => 'var(--c-' . $fields['border_color'] . ')',
+            // The corner choice itself, for fields with a style of their own (search).
+            '--field-corner' => self::cornerCss($fields['radius']),
+            '--field-radius' => $underlined ? '0' : 'var(--field-corner)',
+            '--field-radius-box' => $underlined ? '0' : self::cornerCss($fields['radius'], true),
+            '--field-pad' => self::number(self::DENSITIES[$fields['padding']]),
+            '--field-pad-x' => $underlined ? '0' : '1',
+            '--field-focus' => 'var(--c-' . $fields['focus_color'] . ')',
+            '--label-weight' => (string) $fields['label_weight'],
+            '--label-transform' => $fields['label_transform'] !== '' ? $fields['label_transform'] : 'none',
+        ];
+    }
+
+    /** An underline marks focus by thickening, where an outline would box it in. */
+    private static function fieldStyles(array $fields): string
+    {
+        if ($fields['style'] !== 'underlined') {
+            return '';
+        }
+        $selector = '.c-form :is(input:not([type="checkbox"], [type="radio"], [type="color"]), select, textarea), .c-list-filters :is(input[type="search"], input[type="number"], input[type="date"], select)';
+
+        return "\n/* Underlined fields */\n:is(" . $selector . '):focus-visible{outline:0;box-shadow:0 1px 0 var(--field-focus);}';
     }
 
     private static function shadowScale(mixed $scale): array

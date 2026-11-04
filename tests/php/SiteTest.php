@@ -1375,6 +1375,54 @@ test('theme animation speeds and stagger are clamped and become stylesheet varia
     assert_true(str_contains($css, '.c-stateful{transition-property:background-color,color,border-color,box-shadow,text-shadow,opacity;transition-duration:calc(var(--motion-hover,200) * 1ms);'));
 });
 
+test('theme button settings are fixed choices with a default that keeps the shipped look', function (): void {
+    $defaults = Theme::normalize([])['buttons'];
+    assert_same(['font' => '', 'weight' => 600, 'transform' => '', 'letter_spacing' => 0.0, 'border_width' => 2, 'radius' => '', 'padding' => 'normal', 'hover' => 'fade', 'shadow' => ''], $defaults);
+    $css = Theme::stylesheet([]);
+    assert_true(str_contains($css, '--button-weight:600;--button-transform:none;--button-letter-spacing:normal;--button-border:2px;--button-radius:var(--radius);--button-pad:1;--button-shadow:none;'));
+    assert_false(str_contains($css, '--button-font:'), 'Buttons follow the surrounding font by default.');
+    assert_true(str_contains($css, '.c-button-primary:hover,.c-button-secondary:hover{opacity:0.9;}'));
+
+    $theme = Theme::normalize(['buttons' => ['font' => 'heading', 'weight' => 840, 'transform' => 'uppercase', 'letter_spacing' => 0.08, 'border_width' => 9, 'radius' => 'full', 'padding' => 'relaxed', 'hover' => 'lift', 'shadow' => 'hard']]);
+    assert_same(['font' => 'heading', 'weight' => 800, 'transform' => 'uppercase', 'letter_spacing' => 0.08, 'border_width' => 6, 'radius' => 'full', 'padding' => 'relaxed', 'hover' => 'lift', 'shadow' => 'hard'], $theme['buttons']);
+    $css = Theme::stylesheet($theme);
+    assert_true(str_contains($css, '--button-weight:800;--button-transform:uppercase;--button-letter-spacing:0.08em;--button-border:6px;--button-radius:9999px;--button-pad:1.25;--button-shadow:var(--shadow-hard);--button-font:var(--font-heading);'));
+    assert_false(str_contains($css, '.c-button:not(.c-button-link):hover{box-shadow:'), 'A lifted button keeps its own shadow.');
+    assert_true(str_contains(Theme::stylesheet(['buttons' => ['hover' => 'lift']]), '.c-button:not(.c-button-link):hover{box-shadow:var(--shadow-md);}'));
+    assert_true(str_contains($css, '@media (prefers-reduced-motion: no-preference){.c-button:not(.c-button-link):hover{transform:translateY(-2px);}}'));
+    assert_false(str_contains($css, '.c-button-primary:hover,.c-button-secondary:hover{opacity'), 'Only the chosen hover effect applies.');
+
+    assert_true(str_contains(Theme::stylesheet(['buttons' => ['hover' => 'darken']]), '.c-button:not(.c-button-outline, .c-button-link):hover{filter:brightness(0.9);}'));
+
+    // Unknown values, and shadows the theme no longer has, fall back.
+    $buttons = Theme::normalize(['shadows' => [], 'buttons' => ['font' => 'comic', 'weight' => 'x', 'transform' => 'blink', 'border_width' => -2, 'radius' => 'xl', 'padding' => 'huge', 'hover' => 'spin', 'shadow' => 'hard']])['buttons'];
+    assert_same(['font' => '', 'weight' => 600, 'transform' => '', 'letter_spacing' => 0.0, 'border_width' => 0, 'radius' => '', 'padding' => 'normal', 'hover' => 'fade', 'shadow' => ''], $buttons);
+    assert_same('md', Theme::normalize(['buttons' => ['shadow' => 'md']])['buttons']['shadow']);
+});
+
+test('theme form field settings style forms, filters and search', function (): void {
+    assert_same(['style' => 'outlined', 'border_width' => 1, 'border_color' => 'border', 'radius' => '', 'padding' => 'normal', 'focus_color' => 'primary', 'label_weight' => 600, 'label_transform' => ''], Theme::normalize([])['fields']);
+    $css = Theme::stylesheet([]);
+    assert_true(str_contains($css, '--field-bg:var(--c-background);--field-border-width:1px;--field-border:1px;--field-border-color:var(--c-border);--field-corner:var(--radius);--field-radius:var(--field-corner);--field-radius-box:var(--radius-box);--field-pad:1;--field-pad-x:1;--field-focus:var(--c-primary);--label-weight:600;--label-transform:none;'));
+    assert_false(str_contains($css, '/* Underlined fields */'));
+
+    $theme = Theme::normalize([
+        'custom_colors' => ['custom-brand' => ['label' => 'Brand', 'color' => '#ff0000']],
+        'fields' => ['style' => 'filled', 'border_width' => 0, 'border_color' => 'custom-brand', 'radius' => 'full', 'padding' => 'compact', 'focus_color' => 'accent', 'label_weight' => 400, 'label_transform' => 'uppercase'],
+    ]);
+    $css = Theme::stylesheet($theme);
+    assert_true(str_contains($css, '--field-bg:var(--c-surface);--field-border-width:0px;--field-border:0px;--field-border-color:var(--c-custom-brand);--field-corner:9999px;--field-radius:var(--field-corner);--field-radius-box:var(--radius-lg);--field-pad:0.8;--field-pad-x:1;--field-focus:var(--c-accent);--label-weight:400;--label-transform:uppercase;'));
+
+    // Underlined fields keep a line, lose their corners and side padding, and mark focus with a thicker line.
+    $css = Theme::stylesheet(['fields' => ['style' => 'underlined', 'border_width' => 0, 'radius' => 'lg']]);
+    assert_true(str_contains($css, '--field-bg:transparent;--field-border-width:0 0 1px;--field-border:0px;'));
+    assert_true(str_contains($css, '--field-corner:var(--radius-lg);--field-radius:0;--field-radius-box:0;--field-pad:1;--field-pad-x:0;'));
+    assert_true(str_contains($css, '/* Underlined fields */'));
+
+    $fields = Theme::normalize(['fields' => ['style' => 'dotted', 'border_width' => 12, 'border_color' => 'custom-gone', 'focus_color' => 'red;}', 'label_weight' => 1000]])['fields'];
+    assert_same(['outlined', 4, 'border', 'primary', 900], [$fields['style'], $fields['border_width'], $fields['border_color'], $fields['focus_color'], $fields['label_weight']]);
+});
+
 test('theme link settings are palette tokens and fixed choices', function (): void {
     assert_same(['color' => 'primary', 'hover_color' => '', 'decoration' => 'underline', 'thickness' => 0, 'offset' => 0.18], Theme::normalize([])['links']);
     $css = Theme::stylesheet([]);
