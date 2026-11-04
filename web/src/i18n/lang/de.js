@@ -2045,6 +2045,7 @@ const messages = {
   'site.builder.resetLayout': 'UI-Layout zurücksetzen',
   'site.builder.settings.title': 'Page-Builder-Einstellungen',
   'site.builder.settings.description': 'Deine persönlichen Einstellungen für den Page Builder. Änderungen werden automatisch in deinem Konto gespeichert.',
+  'site.builder.settings.reset': 'Auf Standardwerte zurücksetzen',
   'site.builder.settings.parentOutlines': 'Übergeordnete Elemente umrahmen',
   'site.builder.settings.parentOutlinesHint': 'Beim Bewegen der Maus über ein Element auch alle übergeordneten Elemente umrahmen, um die Hierarchie sichtbar zu machen.',
   'site.history.scope.layout': 'Layout',

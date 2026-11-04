@@ -2040,6 +2040,7 @@ const messages = {
     'site.builder.resetLayout': 'Reset panel layout',
     'site.builder.settings.title': 'Page builder settings',
     'site.builder.settings.description': 'Your personal page builder preferences. Changes are saved automatically to your account.',
+    'site.builder.settings.reset': 'Reset to defaults',
     'site.builder.settings.parentOutlines': 'Show parent outlines',
     'site.builder.settings.parentOutlinesHint': 'When hovering an element, also outline all its parents to reveal the hierarchy.',
     'site.history.scope.layout': 'Layout',

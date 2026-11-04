@@ -14,6 +14,12 @@ const directory = mkdtempSync(join(tmpdir(), 'cometcms-builder-settings-'));
 let php, browser;
 try {
   for (const path of ['app', 'config', 'index.php']) cpSync(join(root, 'cms', path), join(directory, path), { recursive: true });
+  // Simulate a future preference to verify reset follows server defaults, including other value types.
+  const repositoryPath = join(directory, 'app/Auth/UserRepository.php');
+  const repository = readFileSync(repositoryPath, 'utf8');
+  const extended = repository.replace(/public const BUILDER_PREFERENCES\s*=\s*\[/, "$&'future_preference' => 12, ");
+  assert.notEqual(extended, repository, 'Future preference fixture extends the defaults');
+  writeFileSync(repositoryPath, extended);
   cpSync(join(root, 'dist/admin'), join(directory, 'admin'), { recursive: true });
   writeFileSync(join(directory, 'router.php'), `<?php
 if (str_starts_with($_SERVER['REQUEST_URI'], '/admin/assets/') && is_file(__DIR__ . parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH))) return false;
@@ -60,6 +66,9 @@ foreach (['settings-admin', 'other-admin'] as $id) {
   const cog = page.getByRole('button', { name: 'Page builder settings', exact: true });
   const dialog = page.getByRole('dialog', { name: 'Page builder settings', exact: true });
   const toggle = dialog.getByRole('switch', { name: 'Show parent outlines', exact: true });
+  const reset = dialog.getByRole('button', { name: 'Reset to defaults', exact: true });
+  const userPath = join(directory, 'storage/users/settings-admin.json');
+  const savedUser = () => JSON.parse(readFileSync(userPath, 'utf8'));
   const hoveredIds = () => canvas.locator('[data-builder-hover]').evaluateAll(elements => elements.map(el => el.dataset.node));
   const waitForHover = async (ids) => {
     await page.waitForFunction(expected => {
@@ -77,12 +86,24 @@ foreach (['settings-admin', 'other-admin'] as $id) {
   await cog.click();
   await waitForHover([]);
   assert.equal(await toggle.getAttribute('aria-checked'), 'false', 'Legacy accounts retain the old default');
+  assert.equal(await reset.count(), 0, 'Reset is hidden when preferences match defaults');
   const setPreference = async (enabled) => {
     const saved = page.waitForResponse(response => response.url().includes('/api/profile') && response.request().method() === 'PUT');
     await toggle.click();
     assert.equal((await saved).status(), 200);
     await dialog.getByRole('button', { name: 'Close', exact: true }).last().click();
-    assert.equal(JSON.parse(readFileSync(join(directory, 'storage/users/settings-admin.json'), 'utf8')).builder_preferences.show_parent_outlines, enabled);
+    assert.equal(savedUser().builder_preferences.show_parent_outlines, enabled);
+  };
+  const resetToDefaults = async () => {
+    const saved = page.waitForResponse(response => response.url().includes('/api/profile') && response.request().method() === 'PUT');
+    await reset.click();
+    const response = await saved;
+    assert.equal(response.status(), 200);
+    const defaults = (await response.json()).data.builder_preferences_defaults;
+    await reset.waitFor({ state: 'hidden' });
+    assert.deepEqual(savedUser().builder_preferences, defaults);
+    assert.equal(defaults.future_preference, 12);
+    assert.equal(await toggle.evaluate(el => el === document.activeElement), true, 'Reset keeps keyboard focus in the dialog');
   };
   await setPreference(true);
   await heading.hover();
@@ -98,7 +119,9 @@ foreach (['settings-admin', 'other-admin'] as $id) {
   await waitForHover(['test-section', 'test-row', 'test-column', 'test-heading']);
   await cog.click();
   assert.equal(await toggle.getAttribute('aria-checked'), 'true', 'Preference survives reloading');
-  await setPreference(false);
+  await resetToDefaults();
+  assert.equal(await toggle.getAttribute('aria-checked'), 'false', 'Reset restores the default');
+  await dialog.getByRole('button', { name: 'Close', exact: true }).last().click();
   await heading.hover();
   await waitForHover(['test-heading']);
   await cog.click();
@@ -107,6 +130,27 @@ foreach (['settings-admin', 'other-admin'] as $id) {
   await dialog.getByRole('alert').waitFor();
   assert.equal(await toggle.getAttribute('aria-checked'), 'false', 'Failed saves restore the previous preference');
   await page.unroute('**/api/profile');
+  await setPreference(true);
+  await cog.click();
+  await page.route('**/api/profile', route => route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ error: { message: 'Could not reset preferences.' } }) }));
+  await reset.click();
+  await dialog.getByRole('alert').waitFor();
+  assert.equal(await toggle.getAttribute('aria-checked'), 'true', 'Failed resets restore the previous preference');
+  assert.equal(await reset.isVisible(), true, 'Failed resets remain available to retry');
+  await page.unroute('**/api/profile');
+  await resetToDefaults();
+  await dialog.getByRole('button', { name: 'Close', exact: true }).last().click();
+  const user = savedUser();
+  user.builder_preferences.future_preference = 42;
+  writeFileSync(userPath, JSON.stringify(user));
+  await page.reload();
+  await cog.click();
+  assert.equal(await toggle.getAttribute('aria-checked'), 'false');
+  assert.equal(await reset.isVisible(), true, 'An added preference alone makes reset available');
+  await resetToDefaults();
+  await page.reload();
+  await cog.click();
+  assert.equal(await reset.count(), 0, 'Reset preferences persist after reloading');
   await dialog.getByRole('button', { name: 'Close', exact: true }).last().click();
   await cog.focus();
   await cog.press('Enter');
@@ -121,7 +165,7 @@ foreach (['settings-admin', 'other-admin'] as $id) {
   await cog.click();
   assert.equal(await toggle.getAttribute('aria-checked'), 'false', 'Other users have their own preferences');
   assert.deepEqual(errors, []);
-  console.log('Builder settings browser checks passed (bottom cog, legacy default, hierarchy, selection, persistence, opt-out, save failure, keyboard focus, user isolation).');
+  console.log('Builder settings browser checks passed (bottom cog, legacy default, hierarchy, selection, persistence, reset and future defaults, save/reset failures, keyboard focus, user isolation).');
 } finally {
   await browser?.close();
   if (php) await new Promise(resolve => { php.once('exit', resolve); if (!php.kill('SIGTERM')) resolve(); });

@@ -199,7 +199,7 @@ final class UserRepository
                 throw new \InvalidArgumentException('Invalid page builder preferences.');
             }
             foreach ($preferences as $key => $value) {
-                if (!array_key_exists($key, self::BUILDER_PREFERENCES) || !is_bool($value)) {
+                if (!array_key_exists($key, self::BUILDER_PREFERENCES) || gettype($value) !== gettype(self::BUILDER_PREFERENCES[$key])) {
                     throw new \InvalidArgumentException('Invalid page builder preference.');
                 }
             }
