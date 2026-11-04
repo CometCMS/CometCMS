@@ -121,6 +121,17 @@
       @update:model-value="emitValue"
     />
 
+    <MaskPicker
+      v-else-if="def.picker === 'mask'"
+      :options="def.options ?? []"
+      :model-value="value ?? def.default"
+      :label="label"
+      :fit="builder.viewValue(node, 'style', 'mask_fit') || 'stretch'"
+      :flip-x="!!builder.viewValue(node, 'style', 'mask_flip_x')"
+      :flip-y="!!builder.viewValue(node, 'style', 'mask_flip_y')"
+      @update:model-value="emitValue"
+    />
+
     <template v-else-if="def.type === 'enum' || def.type === 'display'">
       <div v-if="isPositionGrid" class="grid w-24 grid-cols-3 gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1" role="radiogroup" :aria-label="label">
         <button
@@ -407,6 +418,7 @@ import ThemeColorPicker from "./ThemeColorPicker.vue";
 import ShadowEditor from "./ShadowEditor.vue";
 import GradientEditor from "./GradientEditor.vue";
 import ShapePicker from "./ShapePicker.vue";
+import MaskPicker from "./MaskPicker.vue";
 import { themeCssClasses } from "../../../composables/cssClasses.js";
 import { themeColorOptions } from "../../../composables/themeColors.js";
 import { DEVICE_ICONS, barOptions, numberBar } from "./controlOptions.js";
@@ -488,6 +500,7 @@ const hint = computed(() => {
   if (props.node.kind === "theme_toggle" && props.name === "label" && !value.value) return t("site.themeToggle.labelHint");
   if (props.node.kind === "modal_close" && props.name === "label" && !value.value) return t("site.modalClose.labelHint");
   if (props.name === "background_blur") return t("site.builder.backgroundBlurHint");
+  if (props.group === "style" && props.name === "mask" && value.value && value.value !== "none" && (props.node.style?.shadow || props.node.style?.border?.length)) return t("site.builder.maskHint");
   if (props.name === "background_effect" && value.value && value.value !== "none") return t("site.builder.stickyHint");
   if (props.node.kind === "section" && props.name === "sticky" && value.value !== "none") return t("site.builder.stickyHint");
   if (props.node.kind === "section" && props.name === "overlap" && value.value) return t("site.builder.overlapHint");

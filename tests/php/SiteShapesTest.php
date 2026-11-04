@@ -54,3 +54,47 @@ test('sections render dividers behind their content in the theme color and leave
     // Dividers come before the content, so they stay behind it.
     assert_true(strpos($html, 'c-shape-bottom') < strpos($html, 'c-container'));
 });
+
+test('masks keep known shapes and drop their options without one', function (): void {
+    $nodes = LayoutSchema::normalize([LayoutSchema::node('section', [], ['mask' => 'heart', 'mask_fit' => 'contain', 'mask_flip_x' => true, 'mask_flip_y' => 'yes'], [
+        LayoutSchema::node('row', [], ['mask' => '<script>', 'mask_fit' => 'contain', 'mask_flip_x' => true], [LayoutSchema::node('column', [], ['mask' => 'blob'], [
+            LayoutSchema::node('image', [], ['mask' => 'circle', 'mask_fit' => 'sideways']),
+        ])]),
+    ])]);
+
+    assert_same(['mask' => 'heart', 'mask_fit' => 'contain', 'mask_flip_x' => true], $nodes[0]['style']);
+    assert_same([], $nodes[0]['children'][0]['style']);
+    assert_same(['mask' => 'blob'], $nodes[0]['children'][0]['children'][0]['style']);
+    assert_same(['mask' => 'circle'], $nodes[0]['children'][0]['children'][0]['children'][0]['style']);
+    $spec = LayoutSchema::spec();
+    assert_same(Shapes::masks(), $spec['style']['mask']['options']);
+    assert_same('mask', $spec['style']['mask']['picker']);
+    assert_true(in_array('mask', $spec['kinds']['heading']['style'], true));
+    assert_false(in_array('mask', $spec['kinds']['site_content']['style'], true));
+    // Every shape has a path the picker draws, inside its 100×100 box.
+    foreach (array_slice(Shapes::masks(), 1) as $shape) {
+        $path = $spec['shapes']['mask']['paths'][$shape] ?? '';
+        assert_true(str_starts_with($path, 'M') && str_ends_with($path, 'Z'), $shape);
+        preg_match_all('/-?\d+(?:\.\d+)?/', preg_replace('/A[^A-Z]*?(?=[A-Z])/', 'A', $path) ?? '', $numbers);
+        assert_true(array_filter($numbers[0], static fn(string $n): bool => (float) $n < -20 || (float) $n > 120) === [], $shape);
+    }
+});
+
+test('masked nodes render their shape as a mask image and unmasked ones stay unchanged', function (): void {
+    comet_site_test_setup();
+    $renderer = new NodeRenderer(comet_site_test_context());
+    $plain = $renderer->render(LayoutSchema::normalize([LayoutSchema::node('section', [], [], [LayoutSchema::node('row', [], [], [LayoutSchema::node('column', [], [], [LayoutSchema::node('heading')])])])]));
+    assert_false(str_contains($plain, 'c-mask'));
+
+    $html = $renderer->render(LayoutSchema::normalize([LayoutSchema::node('section', [], [], [LayoutSchema::node('row', [], [], [LayoutSchema::node('column', [], [], [
+        LayoutSchema::node('heading', [], ['mask' => 'star', 'mask_fit' => 'contain', 'mask_flip_y' => true]),
+        LayoutSchema::node('text', [], ['mask' => 'wave']),
+    ])])])]));
+
+    assert_true(str_contains($html, 'c-mask c-mask-contain" style="--c-mask:url(data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22'));
+    assert_true(str_contains($html, rawurlencode('transform="matrix(1 0 0 -1 0 100)"')));
+    assert_matches('/class="c-el c-el-text[^"]* c-mask" style="--c-mask:url\(data:image\/svg\+xml,[^"]*\)"/', $html);
+    assert_true(str_contains(Shapes::maskSvg('circle'), 'width="100" height="100" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M50,0A50,50'));
+    assert_same('', Shapes::maskImage('none'));
+    assert_same(32, substr_count(Shapes::maskPath('badge'), 'L') + 1);
+});

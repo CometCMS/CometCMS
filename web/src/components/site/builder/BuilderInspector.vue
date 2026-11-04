@@ -419,6 +419,7 @@ const STYLE_GROUPS = [
   { key: "dividerBottom", part: "props", keys: dividerKeys("bottom") },
   { key: "text", keys: ["text_color", "link_color", "text_gradient", "align", "font_size", "font_weight", "font_family", "text_shadow"] },
   { key: "shape", keys: ["radius", "shadow", "opacity", "border", "border_width", "border_style", "border_color", "max_width"] },
+  { key: "mask", keys: ["mask", "mask_fit", "mask_flip_x", "mask_flip_y"] },
   { key: "position", keys: ["position", "pin", "offset_x", "offset_y", "z_index"] },
   { key: "animation", keys: ["animation", "animation_trigger", "animation_duration", "animation_delay"] },
   { key: "conditions", keys: ["visible_if"] },
@@ -599,6 +600,8 @@ const BACKGROUND_IMAGE_OPTIONS = ["background_size", "background_position", "bac
 /** How a border looks only matters once a side is picked; timing only once there is an animation. */
 const BORDER_OPTIONS = ["border_width", "border_style", "border_color"];
 const ANIMATION_OPTIONS = ["animation_trigger", "animation_duration", "animation_delay"];
+/** How a mask fits and turns only matters once a shape is picked. */
+const MASK_OPTIONS = ["mask_fit", "mask_flip_x", "mask_flip_y"];
 /** The pin point and offsets only apply to an element taken out of the flow. */
 const POSITION_OPTIONS = ["pin", "offset_x", "offset_y"];
 
@@ -607,6 +610,7 @@ function styleVisible(key) {
   if (style.background_gradient?.type && ["background_image", ...BACKGROUND_IMAGE_OPTIONS].includes(key)) return false;
   if (BACKGROUND_IMAGE_OPTIONS.includes(key) && !style.background_image) return false;
   if (BORDER_OPTIONS.includes(key) && !style.border?.length) return false;
+  if (MASK_OPTIONS.includes(key) && (style.mask ?? "none") === "none") return false;
   if (key === "animation_trigger" && builder.styleState.value !== "normal") return false;
   if (ANIMATION_OPTIONS.includes(key) && (builder.viewValue(node.value, "style", "animation") || "none") === "none") return false;
   if (POSITION_OPTIONS.includes(key) && !["absolute", "fixed"].includes(builder.viewValue(node.value, "style", "position"))) return false;

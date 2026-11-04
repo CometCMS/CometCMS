@@ -63,9 +63,11 @@ final class JsonStore
         if ($json === false) {
             throw new \RuntimeException('Could not encode JSON.');
         }
+        // Count the complete payload: PHP_EOL is two bytes on Windows.
+        $payload = $json . PHP_EOL;
 
         try {
-            if (file_put_contents($tmp, $json . PHP_EOL, LOCK_EX) !== strlen($json) + 1 || !rename($tmp, $path)) {
+            if (file_put_contents($tmp, $payload, LOCK_EX) !== strlen($payload) || !rename($tmp, $path)) {
                 throw new \RuntimeException('Could not write JSON: ' . implode('/', $segments));
             }
         } finally {
