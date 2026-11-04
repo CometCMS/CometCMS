@@ -28,6 +28,8 @@ const props = defineProps({
   disabled: { type: Boolean, default: false },
   placeholder: { type: String, default: "" },
   label: { type: String, default: "" },
+  /** The text is the inside of a rule: declarations and nested rules, as in the builder's class sections. */
+  nested: { type: Boolean, default: false },
 });
 const emit = defineEmits(["update:modelValue"]);
 
@@ -40,7 +42,7 @@ let editableExtension = null;
 
 onMounted(async () => {
   try {
-    const [{ basicSetup }, { css }, { Compartment, EditorState }, { EditorView, keymap, placeholder }, { indentWithTab }] = await Promise.all([
+    const [{ basicSetup }, { css, cssCompletionSource, cssLanguage }, { Compartment, EditorState }, { EditorView, keymap, placeholder }, { indentWithTab }] = await Promise.all([
       import("codemirror"),
       import("@codemirror/lang-css"),
       import("@codemirror/state"),
@@ -49,6 +51,10 @@ onMounted(async () => {
     ]);
     if (!hostRef.value) return;
 
+    // Nested text is parsed as a declaration list, so completion offers properties, not selectors.
+    const language = props.nested
+      ? [cssLanguage.configure({ top: "Styles" }), cssLanguage.data.of({ autocomplete: cssCompletionSource })]
+      : css();
     editable = new Compartment();
     editableExtension = (disabled) => [EditorView.editable.of(!disabled), EditorState.readOnly.of(disabled)];
     view = new EditorView({
@@ -57,7 +63,7 @@ onMounted(async () => {
         doc: props.modelValue ?? "",
         extensions: [
           basicSetup,
-          css(),
+          language,
           keymap.of([indentWithTab]),
           placeholder(props.placeholder),
           editable.of(editableExtension(props.disabled)),

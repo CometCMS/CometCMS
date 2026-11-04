@@ -971,8 +971,9 @@ html:has(.c-menu-fullscreen > .c-menu-toggle:checked, .c-menu-drawer > .c-menu-t
 /* The primary color would clash with a fill, so highlighted links there keep the fill's text color. */
 .c-bg-background, .c-bg-surface { --c-menu-accent: var(--c-primary); }
 .c-bg-primary, .c-bg-secondary, .c-bg-accent, .c-bg-text, .c-bg-muted, .c-bg-border { --c-menu-accent: currentColor; }
-.c-bg-primary .c-button-primary { background: var(--c-on-primary); color: var(--c-primary); }
-.c-bg-primary .c-button-outline, .c-bg-secondary .c-button-outline { color: inherit; }
+/* Without weight of their own, so a button's own colors still win on a fill. */
+.c-bg-primary :where(.c-button-primary) { background: var(--c-on-primary); color: var(--c-primary); }
+.c-bg-primary :where(.c-button-outline), .c-bg-secondary :where(.c-button-outline) { color: inherit; }
 .c-bg-primary .c-muted, .c-bg-secondary .c-muted, .c-bg-accent .c-muted, .c-bg-primary .c-field-label, .c-bg-secondary .c-field-label { color: inherit; opacity: 0.75; }
 
 .c-fg-text { color: var(--c-text); }

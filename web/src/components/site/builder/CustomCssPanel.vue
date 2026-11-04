@@ -72,6 +72,7 @@
             :key="activeClass"
             v-model="regionCss"
             class="flex-1"
+            nested
             :disabled="!canEdit"
             :label="`${t('site.theme.customCss')} — .${activeClass}`"
             :placeholder="t('site.customCss.elementPlaceholder')"

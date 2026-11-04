@@ -94,6 +94,12 @@ final class NodeRenderer
     /** Button color props and their classes on the button itself. */
     private const BUTTON_COLOR_TOKENS = ['button_color' => 'btn-bg-', 'button_text_color' => 'btn-fg-', 'button_border_color' => 'btn-bdc-'];
 
+    /**
+     * Color styles a button takes on itself, as the prop they stand in for:
+     * on its element they would only fill a strip behind the button.
+     */
+    private const BUTTON_STYLE_COLORS = ['background' => 'button_color', 'text_color' => 'button_text_color'];
+
     private int $annotationsSuspended = 0;
 
     private int $menuSequence = 0;
@@ -1116,16 +1122,7 @@ final class NodeRenderer
                 $classes[] = StyleVariants::PREFIXES[$device] . 'button-' . ($override['full_width'] ? 'block' : 'inline');
             }
         }
-        foreach (self::BUTTON_COLOR_TOKENS as $key => $token) {
-            if (($props[$key] ?? '') !== '') {
-                $classes[] = 'c-' . $token . $props[$key];
-            }
-            foreach (StyleVariants::STATES as $variant) {
-                if (($node['states'][$variant]['props'][$key] ?? '') !== '') {
-                    $classes[] = StyleVariants::PREFIXES[$variant] . $token . $node['states'][$variant]['props'][$key];
-                }
-            }
-        }
+        array_push($classes, ...$this->buttonColorClasses($node));
         if ($props['icon'] !== '' && ($props['icon_gap'] ?? 'sm') !== 'sm') {
             $classes[] = 'c-button-gap-' . $props['icon_gap'];
         }
@@ -1145,6 +1142,46 @@ final class NodeRenderer
         }
 
         return $this->element($node, $this->anchor($link, $label, $classes));
+    }
+
+    /**
+     * The button's color classes, normal and per device and state. Its color
+     * props win over the color styles that stand in for them, which leave
+     * the node's element (see BUTTON_STYLE_COLORS).
+     *
+     * @return list<string>
+     */
+    private function buttonColorClasses(array &$node): array
+    {
+        $classes = [];
+        $variants = [['c-', &$node['props'], &$node['style']]];
+        foreach (['responsive' => array_keys(StyleVariants::DEVICES), 'states' => StyleVariants::STATES] as $group => $names) {
+            foreach ($names as $name) {
+                if (isset($node[$group][$name])) {
+                    $node[$group][$name]['props'] ??= [];
+                    $node[$group][$name]['style'] ??= [];
+                    $variants[] = [StyleVariants::PREFIXES[$name], &$node[$group][$name]['props'], &$node[$group][$name]['style']];
+                }
+            }
+        }
+        foreach ($variants as [$prefix, &$props, &$style]) {
+            foreach (self::BUTTON_COLOR_TOKENS as $key => $token) {
+                $value = (string) ($props[$key] ?? '');
+                $styleKey = array_search($key, self::BUTTON_STYLE_COLORS, true);
+                if ($styleKey !== false) {
+                    if ($value === '' && is_string($style[$styleKey] ?? null)) {
+                        $value = $style[$styleKey];
+                    }
+                    unset($style[$styleKey]);
+                }
+                if ($value !== '') {
+                    $classes[] = $prefix . $token . $value;
+                }
+            }
+        }
+        unset($props, $style);
+
+        return $classes;
     }
 
     private function siteTitle(array $node, array $state): string

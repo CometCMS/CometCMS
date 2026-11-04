@@ -55,6 +55,26 @@ test('overrides render as prefixed classes and buttons carry their own', functio
     assert_true(str_contains($html, 'class="c-button c-button-primary c-button-lg c-m-button-sm c-m-button-block c-btn-bg-secondary c-h-btn-bg-accent c-f-btn-bdc-text"'));
 });
 
+test('a button\'s background and text color styles color the button, not a strip behind it', function (): void {
+    comet_site_test_setup();
+    $renderer = new NodeRenderer(comet_site_test_context());
+    $button = LayoutSchema::node('button', ['link' => ['type' => 'url', 'url' => 'https://example.com']], ['background' => 'accent', 'text_color' => 'text']);
+    $button['responsive'] = ['mobile' => ['style' => ['background' => 'surface']]];
+    $button['states'] = ['hover' => ['style' => ['background' => 'secondary']]];
+    $html = $renderer->render(LayoutSchema::normalizeComponent([LayoutSchema::node('column', [], [], [$button])], 'column'));
+    assert_true(str_contains($html, 'class="c-button c-button-primary c-button-md c-btn-bg-accent c-btn-fg-text c-m-btn-bg-surface c-h-btn-bg-secondary"'), $html);
+    assert_true((bool) preg_match('~class="c-el c-el-button(?![^"]*c-(?:[mh]-)?(?:bg|fg)-)[^"]*"~', $html), $html);
+
+    // The button's own color wins over the style that stands in for it.
+    $button['props']['button_color'] = 'primary';
+    $html = $renderer->render(LayoutSchema::normalizeComponent([LayoutSchema::node('column', [], [], [$button])], 'column'));
+    assert_true(str_contains($html, 'c-btn-bg-primary c-btn-fg-text'));
+    assert_false(str_contains($html, 'c-btn-bg-accent'));
+
+    $css = StyleVariants::css(Theme::baseStylesheet());
+    assert_true(str_contains($css, '.c-button.c-m-btn-bg-surface{'));
+});
+
 test('buttons show an optional bundled icon before or after their label', function (): void {
     comet_site_test_setup();
     $renderer = new NodeRenderer(comet_site_test_context());

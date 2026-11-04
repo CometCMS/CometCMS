@@ -41,7 +41,7 @@ final class StyleVariants
     ];
 
     /** Utility classes devices may change; background image classes keep their own. */
-    private const DEVICE_TOKENS = '(?:p[trbl]|m[trbl]|bg(?!-(?:size|pos)-|-(?:no-)?repeat\b)|fg|lc|ta|fs|fw|ff|ts|r|sh|mw|pos|pin|z|op|v|gap|items|self|stack|flow-justify|flow-align|spacer)-[A-Za-z0-9_-]+|button-(?:sm|md|lg|block|inline)';
+    private const DEVICE_TOKENS = '(?:p[trbl]|m[trbl]|bg(?!-(?:size|pos)-|-(?:no-)?repeat\b)|fg|lc|ta|fs|fw|ff|ts|r|sh|mw|pos|pin|z|op|v|gap|items|self|stack|flow-justify|flow-align|spacer|btn-(?:bg|fg|bdc))-[A-Za-z0-9_-]+|button-(?:sm|md|lg|block|inline)';
 
     /** Utility classes states may change. */
     private const STATE_TOKENS = '(?:bg(?!-(?:size|pos)-|-(?:no-)?repeat\b)|fg|lc|bdc|sh|ts|op|btn-(?:bg|fg|bdc))-[A-Za-z0-9_-]+';
