@@ -1,0 +1,48 @@
+<figure class="vi-mobility" style="--vi-mobility-padding: {{padding}}">
+  <div class="vi-mobility__diagram">
+    <img class="vi-mobility__art" src="assets/infographic.svg" alt="{{diagram_label}}" width="794" height="666" decoding="async">
+    <div data-controls hidden>
+      <button type="button" class="vi-mobility__mode vi-mobility--bicycle" data-mode="bicycle" aria-label="{{bicycle_label}}"></button>
+      <button type="button" class="vi-mobility__mode vi-mobility--bus" data-mode="bus" aria-label="{{bus_label}}"></button>
+      <button type="button" class="vi-mobility__mode vi-mobility--train" data-mode="train" aria-label="{{train_label}}"></button>
+      <button type="button" class="vi-mobility__mode vi-mobility--walking" data-mode="walking" aria-label="{{walking_label}}"></button>
+      <button type="button" class="vi-mobility__mode vi-mobility--truck" data-mode="truck" aria-label="{{truck_label}}"></button>
+      <button type="button" class="vi-mobility__mode vi-mobility--car" data-mode="car" aria-label="{{car_label}}"></button>
+    </div>
+  </div>
+  {{#caption}}<figcaption class="vi-mobility__caption">{{caption}}</figcaption>{{/caption}}
+  <div class="vi-mobility__details" data-details>
+    <article class="vi-mobility__panel vi-mobility--bicycle" data-panel="bicycle">
+      <span class="vi-mobility__badge">{{bicycle_badge}}</span>
+      <h3 class="vi-mobility__title">{{bicycle_label}}</h3>
+      <p class="vi-mobility__text">{{bicycle_text}}</p>
+    </article>
+    <article class="vi-mobility__panel vi-mobility--bus" data-panel="bus">
+      <span class="vi-mobility__badge">{{bus_badge}}</span>
+      <h3 class="vi-mobility__title">{{bus_label}}</h3>
+      <p class="vi-mobility__text">{{bus_text}}</p>
+    </article>
+    <article class="vi-mobility__panel vi-mobility--train" data-panel="train">
+      <span class="vi-mobility__badge">{{train_badge}}</span>
+      <h3 class="vi-mobility__title">{{train_label}}</h3>
+      <p class="vi-mobility__text">{{train_text}}</p>
+    </article>
+    <article class="vi-mobility__panel vi-mobility--walking" data-panel="walking">
+      <span class="vi-mobility__badge">{{walking_badge}}</span>
+      <h3 class="vi-mobility__title">{{walking_label}}</h3>
+      <p class="vi-mobility__text">{{walking_text}}</p>
+    </article>
+    <article class="vi-mobility__panel vi-mobility--truck" data-panel="truck">
+      <span class="vi-mobility__badge">{{truck_badge}}</span>
+      <h3 class="vi-mobility__title">{{truck_label}}</h3>
+      <p class="vi-mobility__text">{{truck_text}}</p>
+    </article>
+    <article class="vi-mobility__panel vi-mobility--car" data-panel="car">
+      <span class="vi-mobility__badge">{{car_badge}}</span>
+      <h3 class="vi-mobility__title">{{car_label}}</h3>
+      <p class="vi-mobility__text">{{car_text}}</p>
+    </article>
+    <button type="button" class="vi-mobility__close" data-close aria-label="{{close_label}}" hidden><span aria-hidden="true">×</span></button>
+  </div>
+  <span class="vi-mobility__sr" data-status role="status" aria-atomic="true"></span>
+</figure>

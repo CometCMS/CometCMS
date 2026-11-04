@@ -1,0 +1,11 @@
+{
+  "$schema": "../../../schemas/comet-extension.schema.json",
+  "api_version": 1,
+  "name": "verkehrsinitiative/mobility",
+  "title": "Mobility Infographic",
+  "description": "The interactive six-mode transport infographic from Verkehrsinitiative, with editable explanations.",
+  "version": "1.0.1",
+  "author": "Verkehrsinitiative Gnigl + Langwied",
+  "homepage": "https://verkehrsinitiative.at/",
+  "cms": ">=2.0"
+}

@@ -1,0 +1,192 @@
+{
+  "$schema": "../../../../../schemas/block.schema.json",
+  "title": "Mobility Infographic",
+  "description": "Six interlocking transport rings with explanations on hover, tap or keyboard selection. Original Verkehrsinitiative artwork.",
+  "icon": "mdi:transit-connection-variant",
+  "category": "Infographics",
+  "keywords": [
+    "transport",
+    "mobility",
+    "verkehr",
+    "fahrrad",
+    "infographic"
+  ],
+  "props": {
+    "caption": {
+      "type": "string",
+      "label": "Caption",
+      "max": 500,
+      "default": "Auswahl: Fahrrad, Bus, Bahn, Fußgänger, LKW oder Auto"
+    },
+    "diagram_label": {
+      "type": "string",
+      "label": "Accessible graphic label",
+      "max": 200,
+      "default": "Mobilität im Vergleich: Wähle ein Verkehrsmittel, um mehr zu erfahren.",
+      "group": "Labels"
+    },
+    "close_label": {
+      "type": "string",
+      "label": "Close button label",
+      "max": 100,
+      "default": "Information schließen",
+      "group": "Labels"
+    },
+    "initial_mode": {
+      "type": "enum",
+      "label": "Initially selected mode",
+      "options": [
+        "none",
+        "bicycle",
+        "bus",
+        "train",
+        "walking",
+        "truck",
+        "car"
+      ],
+      "option_labels": {
+        "none": "None",
+        "bicycle": "Fahrrad",
+        "bus": "Bus",
+        "train": "Bahn",
+        "walking": "Fußgänger",
+        "truck": "LKW",
+        "car": "Auto"
+      },
+      "default": "none",
+      "group": "Appearance"
+    },
+    "padding": {
+      "type": "space",
+      "label": "Inner spacing",
+      "default": "lg",
+      "group": "Appearance"
+    },
+    "bicycle_label": {
+      "type": "string",
+      "label": "Title",
+      "max": 120,
+      "default": "Fahrrad",
+      "group": "Fahrrad"
+    },
+    "bicycle_badge": {
+      "type": "string",
+      "label": "Category",
+      "max": 120,
+      "default": "Aktiv mobil",
+      "group": "Fahrrad"
+    },
+    "bicycle_text": {
+      "type": "text",
+      "label": "Explanation",
+      "max": 2000,
+      "default": "Ein Fahrrad benötigt nur einen Bruchteil des Platzes, den der motorisierte Verkehr beansprucht, sowohl im Fahren als auch beim Parken. Radverkehr ist innerstädtisch – nach dem Zu-Fuss-Gehen – die flächeneffizienteste Form der Mobilität.",
+      "group": "Fahrrad"
+    },
+    "bus_label": {
+      "type": "string",
+      "label": "Title",
+      "max": 120,
+      "default": "Bus",
+      "group": "Bus"
+    },
+    "bus_badge": {
+      "type": "string",
+      "label": "Category",
+      "max": 120,
+      "default": "Öffentlicher Verkehr",
+      "group": "Bus"
+    },
+    "bus_text": {
+      "type": "text",
+      "label": "Explanation",
+      "max": 2000,
+      "default": "Der innerstädtische Flächenverbrauch liegt bei rund 1,2 m²  (bei 40 % Auslastung).",
+      "group": "Bus"
+    },
+    "train_label": {
+      "type": "string",
+      "label": "Title",
+      "max": 120,
+      "default": "Bahn",
+      "group": "Bahn"
+    },
+    "train_badge": {
+      "type": "string",
+      "label": "Category",
+      "max": 120,
+      "default": "Schienenverkehr",
+      "group": "Bahn"
+    },
+    "train_text": {
+      "type": "text",
+      "label": "Explanation",
+      "max": 2000,
+      "default": "Eine Stadtbahn benötigt bei einer Fahrt mit 50 km/h nur etwa 8,7 m² pro Person.",
+      "group": "Bahn"
+    },
+    "walking_label": {
+      "type": "string",
+      "label": "Title",
+      "max": 120,
+      "default": "Fußgänger",
+      "group": "Fußgänger"
+    },
+    "walking_badge": {
+      "type": "string",
+      "label": "Category",
+      "max": 120,
+      "default": "Zu Fuß",
+      "group": "Fußgänger"
+    },
+    "walking_text": {
+      "type": "text",
+      "label": "Explanation",
+      "max": 2000,
+      "default": "Zu-Fuss-Gehen braucht kaum Platz und ist völlig emissionsfrei. Sichere und direkte Fusswege sind Grundvoraussetzung für einen lebenswerten urbanen Raum.",
+      "group": "Fußgänger"
+    },
+    "truck_label": {
+      "type": "string",
+      "label": "Title",
+      "max": 120,
+      "default": "LKW",
+      "group": "LKW"
+    },
+    "truck_badge": {
+      "type": "string",
+      "label": "Category",
+      "max": 120,
+      "default": "Güterverkehr",
+      "group": "LKW"
+    },
+    "truck_text": {
+      "type": "text",
+      "label": "Explanation",
+      "max": 2000,
+      "default": "LKWs beanspruchen enorm viel Straßenfläche und belasten Wohngebiete durch Lärm und Abgase. Eine kluge Güterlogistik kann Durchzugsverkehr in Wohngebieten deutlich reduzieren.",
+      "group": "LKW"
+    },
+    "car_label": {
+      "type": "string",
+      "label": "Title",
+      "max": 120,
+      "default": "Auto",
+      "group": "Auto"
+    },
+    "car_badge": {
+      "type": "string",
+      "label": "Category",
+      "max": 120,
+      "default": "Individualverkehr",
+      "group": "Auto"
+    },
+    "car_text": {
+      "type": "text",
+      "label": "Explanation",
+      "max": 2000,
+      "default": "Ein durchschnittliches Auto steht 23 Stunden pro Tag still und belegt dabei wertvollen – öffentlichen – Raum: Parkend benötigt es ca. 12–14 m², im Fahrbetrieb im Berufsverkehr bis zu 100 m².",
+      "group": "Auto"
+    }
+  }
+}

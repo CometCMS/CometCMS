@@ -1,0 +1,113 @@
+{
+  "title": "Mobilitäts-Infografik",
+  "description": "Die interaktive Verkehrsinfografik der Verkehrsinitiative mit bearbeitbaren Erklärungen.",
+  "blocks": {
+    "mobility-infographic": {
+      "title": "Mobilitäts-Infografik",
+      "description": "Sechs ineinandergreifende Verkehrsmittel-Ringe mit Erklärungen per Maus, Touch oder Tastatur.",
+      "category": "Infografiken",
+      "keywords": [
+        "mobilität",
+        "verkehr",
+        "fahrrad",
+        "infografik"
+      ],
+      "props": {
+        "caption": {
+          "label": "Bildunterschrift"
+        },
+        "diagram_label": {
+          "label": "Barrierefreie Grafikbeschreibung",
+          "group": "Beschriftungen"
+        },
+        "close_label": {
+          "label": "Beschriftung der Schließen-Schaltfläche",
+          "group": "Beschriftungen"
+        },
+        "initial_mode": {
+          "label": "Anfangs ausgewähltes Verkehrsmittel",
+          "group": "Darstellung",
+          "options": {
+            "none": "Keine Auswahl"
+          }
+        },
+        "padding": {
+          "label": "Innenabstand",
+          "group": "Darstellung"
+        },
+        "bicycle_label": {
+          "label": "Titel",
+          "group": "Fahrrad"
+        },
+        "bicycle_badge": {
+          "label": "Kategorie",
+          "group": "Fahrrad"
+        },
+        "bicycle_text": {
+          "label": "Erklärung",
+          "group": "Fahrrad"
+        },
+        "bus_label": {
+          "label": "Titel",
+          "group": "Bus"
+        },
+        "bus_badge": {
+          "label": "Kategorie",
+          "group": "Bus"
+        },
+        "bus_text": {
+          "label": "Erklärung",
+          "group": "Bus"
+        },
+        "train_label": {
+          "label": "Titel",
+          "group": "Bahn"
+        },
+        "train_badge": {
+          "label": "Kategorie",
+          "group": "Bahn"
+        },
+        "train_text": {
+          "label": "Erklärung",
+          "group": "Bahn"
+        },
+        "walking_label": {
+          "label": "Titel",
+          "group": "Fußgänger"
+        },
+        "walking_badge": {
+          "label": "Kategorie",
+          "group": "Fußgänger"
+        },
+        "walking_text": {
+          "label": "Erklärung",
+          "group": "Fußgänger"
+        },
+        "truck_label": {
+          "label": "Titel",
+          "group": "LKW"
+        },
+        "truck_badge": {
+          "label": "Kategorie",
+          "group": "LKW"
+        },
+        "truck_text": {
+          "label": "Erklärung",
+          "group": "LKW"
+        },
+        "car_label": {
+          "label": "Titel",
+          "group": "Auto"
+        },
+        "car_badge": {
+          "label": "Kategorie",
+          "group": "Auto"
+        },
+        "car_text": {
+          "label": "Erklärung",
+          "group": "Auto"
+        }
+      }
+    }
+  }
+}

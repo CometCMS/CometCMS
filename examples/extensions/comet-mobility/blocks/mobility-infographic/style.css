@@ -1,0 +1,152 @@
+:where(.c-block-verkehrsinitiative__mobility-infographic) {
+  background: var(--c-surface, #fff);
+  border: 1px solid var(--c-border, #edf0f3);
+  border-radius: var(--radius-lg, 2rem);
+}
+.c-block-verkehrsinitiative__mobility-infographic .vi-mobility {
+  margin: 0 auto;
+  max-width: 54rem;
+  padding: var(--vi-mobility-padding, 1.5rem);
+}
+.c-block-verkehrsinitiative__mobility-infographic .vi-mobility__diagram {
+  position: relative;
+  aspect-ratio: 794.19 / 666.28;
+}
+.c-block-verkehrsinitiative__mobility-infographic .vi-mobility__art {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.c-block-verkehrsinitiative__mobility-infographic .vi-mobility__mode {
+  position: absolute;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+  min-height: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  clip-path: circle(50%);
+  transition: background-color 150ms ease, box-shadow 150ms ease;
+}
+.c-block-verkehrsinitiative__mobility-infographic .vi-mobility__mode:hover,
+.c-block-verkehrsinitiative__mobility-infographic .vi-mobility__mode[aria-pressed="true"] {
+  background: rgb(255 255 255 / 12%);
+  box-shadow: inset 0 0 0 3px var(--vi-mobility-accent);
+}
+.c-block-verkehrsinitiative__mobility-infographic .vi-mobility__mode:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 4px var(--c-text, #172033), inset 0 0 0 7px #fff;
+}
+.c-block-verkehrsinitiative__mobility-infographic .vi-mobility__caption {
+  margin-top: 1rem;
+  text-align: center;
+  font-size: .875em;
+  line-height: 1.6;
+  opacity: .7;
+}
+.c-block-verkehrsinitiative__mobility-infographic .vi-mobility__details {
+  position: relative;
+}
+.c-block-verkehrsinitiative__mobility-infographic .vi-mobility--interactive .vi-mobility__details {
+  position: fixed;
+  inset: auto;
+  z-index: 1000;
+  width: min(23rem, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  border: 0;
+  border-radius: var(--radius-md, 1rem);
+  background: var(--c-surface, #fff);
+  color: inherit;
+  box-shadow: 0 12px 36px rgb(0 0 0 / 18%);
+}
+.c-block-verkehrsinitiative__mobility-infographic .vi-mobility--interactive .vi-mobility__panel {
+  margin-top: 0;
+}
+.c-block-verkehrsinitiative__mobility-infographic .vi-mobility__panel {
+  margin-top: 1rem;
+  padding: 1.25rem;
+  border: 1px solid var(--c-border, #e5e7eb);
+  border-top: 4px solid var(--vi-mobility-accent);
+  border-radius: var(--radius-md, 1rem);
+  overflow-wrap: anywhere;
+}
+.c-block-verkehrsinitiative__mobility-infographic .vi-mobility__badge {
+  display: block;
+  padding-right: 2.5rem;
+  font-size: .75em;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  opacity: .75;
+}
+.c-block-verkehrsinitiative__mobility-infographic .vi-mobility__title {
+  margin: .5rem 0;
+  font-size: 1.25em;
+  line-height: 1.3;
+}
+.c-block-verkehrsinitiative__mobility-infographic .vi-mobility__text {
+  margin: 0;
+  line-height: 1.7;
+}
+.c-block-verkehrsinitiative__mobility-infographic .vi-mobility__close {
+  position: absolute;
+  top: .5rem;
+  right: .5rem;
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 1.5em;
+  cursor: pointer;
+}
+.c-block-verkehrsinitiative__mobility-infographic .vi-mobility__close:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+.c-block-verkehrsinitiative__mobility-infographic [hidden] { display: none !important; }
+.c-block-verkehrsinitiative__mobility-infographic .vi-mobility__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .c-block-verkehrsinitiative__mobility-infographic .vi-mobility__mode { transition: none; }
+}
+@media (forced-colors: active) {
+  .c-block-verkehrsinitiative__mobility-infographic .vi-mobility__mode:focus-visible,
+  .c-block-verkehrsinitiative__mobility-infographic .vi-mobility__mode[aria-pressed="true"] {
+    outline: 4px solid Highlight;
+    outline-offset: -7px;
+  }
+}
+
+/* Hit areas follow the six circles in the original SVG coordinate system. */
+.c-block-verkehrsinitiative__mobility-infographic .vi-mobility--bicycle { --vi-mobility-accent: #4eae2c; }
+.c-block-verkehrsinitiative__mobility-infographic .vi-mobility__mode.vi-mobility--bicycle { left: 35.40400%; top: 4.31425%; width: 42.31103%; height: 50.43375%; }
+.c-block-verkehrsinitiative__mobility-infographic .vi-mobility--bus { --vi-mobility-accent: #e6007e; }
+.c-block-verkehrsinitiative__mobility-infographic .vi-mobility__mode.vi-mobility--bus { left: 33.73689%; top: 42.88212%; width: 36.74310%; height: 43.79690%; }
+.c-block-verkehrsinitiative__mobility-infographic .vi-mobility--train { --vi-mobility-accent: #cf101a; }
+.c-block-verkehrsinitiative__mobility-infographic .vi-mobility__mode.vi-mobility--train { left: 61.29956%; top: 32.84880%; width: 36.74310%; height: 43.79690%; }
+.c-block-verkehrsinitiative__mobility-infographic .vi-mobility--walking { --vi-mobility-accent: #f47700; }
+.c-block-verkehrsinitiative__mobility-infographic .vi-mobility__mode.vi-mobility--walking { left: 4.13692%; top: 19.42051%; width: 42.31103%; height: 50.43375%; }
+.c-block-verkehrsinitiative__mobility-infographic .vi-mobility--truck { --vi-mobility-accent: #ffec00; }
+.c-block-verkehrsinitiative__mobility-infographic .vi-mobility__mode.vi-mobility--truck { left: 15.05622%; top: 62.52852%; width: 28.94899%; height: 34.50651%; }
+.c-block-verkehrsinitiative__mobility-infographic .vi-mobility--car { --vi-mobility-accent: #2473ad; }
+.c-block-verkehrsinitiative__mobility-infographic .vi-mobility__mode.vi-mobility--car { left: 58.23292%; top: 67.14594%; width: 24.49540%; height: 29.19793%; }
