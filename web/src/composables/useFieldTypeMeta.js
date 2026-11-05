@@ -1,3 +1,5 @@
+import { t } from '../i18n/index.js'
+
 const FIELD_TYPE_ICONS = {
   text: 'mdi:format-text',
   slug: 'mdi:link-variant',
@@ -25,7 +27,15 @@ export function useFieldTypeMeta() {
     return FIELD_TYPE_ICONS[type] ?? FALLBACK_FIELD_TYPE_ICON
   }
 
+  // Human-readable type name; unknown (e.g. extension) types fall back to their key.
+  function fieldTypeLabel(type) {
+    const key = `fieldType.${type}`
+    const label = t(key)
+    return label === key ? String(type ?? '') : label
+  }
+
   return {
     fieldTypeIcon,
+    fieldTypeLabel,
   }
 }

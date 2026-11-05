@@ -1,6 +1,35 @@
 <!-- Visual drag-and-drop field editor for content types -->
 <template>
   <div class="space-y-3">
+    <!-- Built-in fields: shown locked so the list reflects everything the entry editor will contain. -->
+    <div class="space-y-2">
+      <div
+        v-for="builtin in builtinFields"
+        :key="builtin.key"
+        class="flex items-center gap-3 rounded-lg border border-dashed border-slate-200 px-3 py-2"
+        :title="t('fieldBuilder.builtinTooltip')"
+      >
+        <span class="shrink-0 p-1 text-slate-400">
+          <Icon icon="mdi:lock-outline" class="w-4 h-4" />
+        </span>
+        <span class="w-4 shrink-0" aria-hidden="true"></span>
+        <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100">
+          <Icon :icon="fieldTypeIcon(builtin.type)" class="h-4 w-4 text-slate-500" />
+        </span>
+        <div class="min-w-0">
+          <div class="truncate text-sm font-medium text-slate-600">{{ t(builtin.labelKey) }}</div>
+          <div class="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+            <code class="font-mono bg-slate-100 px-1 py-0.5 rounded">{{ builtin.key }}</code>
+            <span class="inline-flex items-center gap-1 rounded bg-slate-100 px-1.5 py-0.5">
+              <Icon :icon="fieldTypeIcon(builtin.type)" class="h-3 w-3" />
+              {{ fieldTypeLabel(builtin.type) }}
+            </span>
+            <span class="inline-flex rounded bg-slate-100 px-1.5 py-0.5">{{ t("fieldBuilder.builtin") }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <TransitionGroup tag="div" name="field-sort" class="space-y-3">
       <div
         v-for="(field, index) in fields"
@@ -17,16 +46,20 @@
         @dragover.prevent="onDragOver(index, $event)"
         @dragend="onDragEnd"
       >
-        <div v-if="field._collapsed" class="flex items-center gap-3">
+        <div class="flex items-center gap-3" :class="{ 'p-3': !field._collapsed }">
           <button
             type="button"
             @click.stop="toggleField(field)"
             class="shrink-0 text-slate-400 hover:text-theme-600 transition-colors p-1 rounded"
-            :title="t('fieldBuilder.expand')"
-            :aria-label="t('fieldBuilder.expand')"
-            :aria-expanded="false"
+            :title="t(field._collapsed ? 'fieldBuilder.expand' : 'fieldBuilder.collapse')"
+            :aria-label="t(field._collapsed ? 'fieldBuilder.expand' : 'fieldBuilder.collapse')"
+            :aria-expanded="!field._collapsed"
           >
-            <Icon icon="mdi:chevron-down" class="w-4 h-4 -rotate-90" />
+            <Icon
+              icon="mdi:chevron-down"
+              class="w-4 h-4 transition-transform"
+              :class="{ '-rotate-90': field._collapsed }"
+            />
           </button>
 
           <Icon
@@ -45,7 +78,8 @@
           <button
             type="button"
             class="flex-1 min-w-0 flex items-center gap-3 text-left"
-            @click.stop="expandCollapsedField(field)"
+            :tabindex="field._collapsed ? 0 : -1"
+            @click.stop="onHeaderClick(field)"
           >
             <div class="min-w-0">
               <div class="truncate text-sm font-medium text-slate-800">
@@ -59,9 +93,18 @@
                 }}</code>
                 <span
                   class="inline-flex items-center gap-1 rounded bg-slate-100 px-1.5 py-0.5"
+                  :title="field.type"
                 >
                   <Icon :icon="fieldTypeIcon(field.type)" class="h-3 w-3" />
-                  {{ field.type }}
+                  {{ fieldTypeLabel(field.type) }}
+                </span>
+                <span
+                  v-if="isMultiple(field)"
+                  class="inline-flex items-center gap-1 rounded bg-slate-100 px-1.5 py-0.5"
+                  :title="t('fieldBuilder.multipleTooltip')"
+                >
+                  <Icon icon="mdi:layers-outline" class="h-3 w-3" />
+                  {{ t("fieldBuilder.multiple") }}
                 </span>
                 <span
                   v-if="field.required"
@@ -71,9 +114,10 @@
                 <span
                   v-if="field.localized === false"
                   class="inline-flex items-center gap-1 rounded bg-sky-50 px-1.5 py-0.5 text-sky-700"
+                  :title="t('field.universalHint')"
                 >
                   <Icon icon="mdi:web" class="h-3 w-3" />
-                  {{ t("fieldBuilder.universal") }}
+                  {{ t("fieldBuilder.allLanguages") }}
                 </span>
                 <span
                   v-if="fieldLayoutWidth(field) !== 'full'"
@@ -99,8 +143,14 @@
             </div>
           </button>
 
+          <!-- Collapsed: actions appear on hover/focus. Expanded: always visible. -->
           <div
-            class="shrink-0 flex items-center gap-1 opacity-0 transition-opacity group-hover/field:opacity-100 focus-within:opacity-100"
+            class="shrink-0 flex items-center gap-1 transition-opacity"
+            :class="
+              field._collapsed
+                ? 'opacity-0 group-hover/field:opacity-100 focus-within:opacity-100'
+                : ''
+            "
           >
             <button
               type="button"
@@ -123,116 +173,14 @@
           </div>
         </div>
 
-        <div v-else class="flex items-center gap-3 p-3">
-          <button
-            type="button"
-            @click.stop="toggleField(field)"
-            class="shrink-0 text-slate-400 hover:text-theme-600 transition-colors p-1 rounded"
-            :title="t('fieldBuilder.collapse')"
-            :aria-label="t('fieldBuilder.collapse')"
-            :aria-expanded="true"
-          >
-            <Icon icon="mdi:chevron-down" class="w-4 h-4" />
-          </button>
-
-          <Icon
-            icon="mdi:drag-vertical"
-            class="w-4 h-4 text-slate-400 shrink-0"
-          />
-          <span
-            class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-theme-100"
-          >
-            <Icon
-              :icon="fieldTypeIcon(field.type)"
-              class="h-4 w-4 text-theme-600"
-            />
-          </span>
-
-          <div class="flex-1 min-w-0">
-            <div class="truncate text-sm font-medium text-slate-800">
-              {{ labelText(field.label) || field.key || t("fieldBuilder.untitled") }}
-            </div>
-            <div
-              class="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-slate-500"
-            >
-              <code class="font-mono bg-slate-100 px-1 py-0.5 rounded">{{
-                field.key || "field_key"
-              }}</code>
-              <span
-                class="inline-flex items-center gap-1 rounded bg-slate-100 px-1.5 py-0.5"
-              >
-                <Icon :icon="fieldTypeIcon(field.type)" class="h-3 w-3" />
-                {{ field.type }}
-              </span>
-              <span
-                v-if="field.required"
-                class="inline-flex rounded bg-amber-50 px-1.5 py-0.5 text-amber-700"
-                >{{ t("fieldBuilder.required") }}</span
-              >
-              <span
-                v-if="field.localized === false"
-                class="inline-flex items-center gap-1 rounded bg-sky-50 px-1.5 py-0.5 text-sky-700"
-              >
-                <Icon icon="mdi:web" class="h-3 w-3" />
-                {{ t("fieldBuilder.universal") }}
-              </span>
-              <span
-                v-if="fieldLayoutWidth(field) !== 'full'"
-                class="inline-flex items-center gap-1 rounded bg-slate-100 px-1.5 py-0.5 text-slate-600"
-                :title="fieldLayoutLabel(field)"
-              >
-                <span
-                  class="flex h-3 w-6 overflow-hidden rounded-sm bg-slate-300"
-                >
-                  <span
-                    class="h-full rounded-sm"
-                    :style="fieldLayoutIndicatorStyle(field)"
-                  ></span>
-                </span>
-                {{ fieldLayoutShortLabel(field) }}
-              </span>
-              <span
-                v-if="fieldErrors[index]"
-                class="inline-flex rounded bg-red-50 px-1.5 py-0.5 text-red-700"
-                >{{ fieldErrors[index] }}</span
-              >
-            </div>
-          </div>
-
-          <div
-            class="shrink-0 flex items-center gap-1 opacity-0 transition-opacity group-hover/field:opacity-100 focus-within:opacity-100"
-          >
-            <button
-              type="button"
-              @click="duplicateField(index)"
-              class="text-slate-400 hover:text-theme-600 transition-colors p-1 rounded"
-              :title="t('fieldBuilder.duplicate')"
-              :aria-label="t('fieldBuilder.duplicate')"
-            >
-              <Icon icon="mdi:content-copy" class="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              @click="removeField(index)"
-              class="text-slate-400 hover:text-red-500 transition-colors p-1 rounded"
-              :title="t('fieldBuilder.remove')"
-              :aria-label="t('fieldBuilder.remove')"
-            >
-              <Icon icon="mdi:close" class="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-
-        <div v-if="!field._collapsed" class="border-t border-slate-200 px-5 pb-5 pt-4">
-          <div
-            class="grid gap-4 lg:grid-cols-[1fr_1fr_1fr_auto_18rem]"
-          >
+        <div v-if="!field._collapsed" class="space-y-4 border-t border-slate-200 px-5 pb-5 pt-4">
+          <!-- Basics -->
+          <div class="grid gap-4 lg:grid-cols-3">
             <div>
               <label :for="`field-${index}-label`" class="text-xs text-slate-500 block mb-1">{{ t("fieldBuilder.label") }}</label>
               <LocalizedInput
                 :id="`field-${index}-label`"
                 v-model="field.label"
-
                 :placeholder="t('fieldBuilder.labelPlaceholder')"
                 class="w-full"
                 @update:model-value="onLabelInput(field)"
@@ -244,20 +192,35 @@
                 {{ t("fieldBuilder.key") }}
                 <span class="text-slate-400 font-normal">{{ t("fieldBuilder.keyHint") }}</span>
               </label>
-              <input
-                :id="`field-${index}-key`"
-                v-model="field.key"
-                type="text"
-                placeholder="field_name"
-                class="form-input w-full rounded-lg border-slate-300 text-sm"
-                :class="{
-                  'border-red-400':
-                    !isValidKey(field.key) || fieldErrors[index],
-                  'border-amber-400': isKeyRenamed(field),
-                }"
-                @blur="normalizeFieldKey(field, index)"
-                @input="onKeyInput(field)"
-              />
+              <div class="relative">
+                <input
+                  :id="`field-${index}-key`"
+                  v-model="field.key"
+                  type="text"
+                  placeholder="field_name"
+                  class="form-input w-full rounded-lg border-slate-300 text-sm"
+                  :class="{
+                    'border-red-400':
+                      !isValidKey(field.key) || fieldErrors[index],
+                    'border-amber-400': isKeyRenamed(field),
+                    'bg-slate-50 pr-24 text-slate-500': isKeyLocked(field),
+                  }"
+                  :readonly="isKeyLocked(field)"
+                  :title="isKeyLocked(field) ? t('fieldBuilder.keyLocked') : undefined"
+                  @blur="normalizeFieldKey(field, index)"
+                  @input="onKeyInput(field)"
+                />
+                <button
+                  v-if="isKeyLocked(field)"
+                  type="button"
+                  class="absolute right-1.5 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-slate-500 transition-colors hover:bg-white hover:text-theme-600"
+                  :title="t('fieldBuilder.keyLocked')"
+                  @click="unlockKey(field, index)"
+                >
+                  <Icon icon="mdi:lock-outline" class="h-3.5 w-3.5" />
+                  {{ t("fieldBuilder.keyUnlock") }}
+                </button>
+              </div>
               <p v-if="fieldErrors[index]" class="mt-1 text-xs text-red-600">
                 {{ fieldErrors[index] }}
               </p>
@@ -288,219 +251,207 @@
                 @update:model-value="setFieldType(field, $event)"
               />
             </div>
-
-            <!-- Page content is optional: without it an entry shows its layout's default content. -->
-            <div v-if="field.type !== 'page'">
-              <span class="text-xs text-slate-500 block mb-1">{{ t("fieldBuilder.required") }}</span>
-              <button
-                type="button"
-                class="relative mt-1 h-7 w-12 rounded-full transition-colors"
-                :class="field.required ? 'bg-theme-500' : 'bg-slate-300'"
-                :aria-label="t('fieldBuilder.required')"
-                :aria-pressed="field.required"
-                @click="field.required = !field.required"
-              >
-                <span
-                  class="absolute left-1 top-1 h-5 w-5 rounded-full bg-white shadow transition-transform"
-                  :class="{ 'translate-x-5': field.required }"
-                ></span>
-              </button>
-            </div>
-
-            <div>
-              <label class="text-xs text-slate-500 block mb-1">{{
-                t("fieldBuilder.editorWidth")
-              }}</label>
-              <div
-                class="grid grid-cols-4 gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1"
-              >
-                <button
-                  v-for="option in layoutWidthOptions"
-                  :key="option.value"
-                  type="button"
-                  class="group/layout flex min-w-0 flex-col gap-1 rounded-md px-2 py-1.5 text-xs font-medium transition"
-                  :class="
-                    fieldLayoutWidth(field) === option.value
-                      ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200'
-                      : 'text-slate-500 hover:bg-white/70 hover:text-slate-800'
-                  "
-                  :title="fieldLayoutOptionLabel(option)"
-                  @click="setFieldLayoutWidth(field, option.value)"
-                >
-                  <span class="flex h-5 overflow-hidden rounded bg-slate-200">
-                    <span
-                      class="h-full rounded bg-slate-400 transition-colors group-hover/layout:bg-slate-500"
-                      :class="
-                        fieldLayoutWidth(field) === option.value
-                          ? 'bg-theme-500 group-hover/layout:bg-theme-500'
-                          : ''
-                      "
-                      :style="{ width: option.percent }"
-                    ></span>
-                  </span>
-                  <span>{{ fieldLayoutOptionShortLabel(option) }}</span>
-                </button>
-              </div>
-            </div>
           </div>
-          <div class="mt-4 rounded-lg border border-slate-200">
-            <div class="grid gap-0 lg:grid-cols-[26rem_1fr]">
-              <div class="space-y-5 border-b border-slate-200 p-4 lg:border-b-0 lg:border-r">
-                <p v-if="field.type === 'page'" class="text-sm text-slate-500">{{ t("fieldBuilder.pageHint") }}</p>
-                <label v-else class="flex items-start gap-3">
-                  <input
-                    type="checkbox"
-                    :checked="field.localized === false"
-                    class="form-checkbox mt-0.5 rounded border-slate-300 text-theme-600"
-                    @change="setFieldUniversal(field, $event.target.checked)"
-                  />
-                  <span>
-                    <span class="block text-sm font-medium text-slate-700">
-                      {{ t("field.universalHint") }}
-                    </span>
-                    <span class="mt-1 block text-sm text-slate-500">
-                      {{ t("fieldBuilder.universalBody") }}
-                    </span>
-                  </span>
-                </label>
 
-                <div
-                  v-if="supportsFieldDefault(field)"
-                  class="border-t border-slate-200 pt-5"
-                >
-                  <label class="flex items-start gap-3">
+          <div class="grid gap-4 lg:grid-cols-2">
+            <!-- Behavior -->
+            <section class="space-y-5 rounded-lg border border-slate-200 p-4">
+              <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                {{ t("fieldBuilder.behavior") }}
+              </h3>
+
+              <p v-if="field.type === 'page'" class="text-sm text-slate-500">{{ t("fieldBuilder.pageHint") }}</p>
+              <template v-else>
+                <!-- Page content is optional: without it an entry shows its layout's default content. -->
+                <div class="flex items-start justify-between gap-4">
+                  <div>
+                    <p :id="`field-${index}-required`" class="text-sm font-medium text-slate-700">
+                      {{ t("fieldBuilder.required") }}
+                    </p>
+                    <p class="mt-0.5 text-sm text-slate-500">{{ t("fieldBuilder.requiredBody") }}</p>
+                  </div>
+                  <ToggleSwitch
+                    v-model="field.required"
+                    :aria-labelledby="`field-${index}-required`"
+                  />
+                </div>
+
+                <div class="flex items-start justify-between gap-4">
+                  <div>
+                    <p :id="`field-${index}-universal`" class="text-sm font-medium text-slate-700">
+                      {{ t("field.universalHint") }}
+                    </p>
+                    <p class="mt-0.5 text-sm text-slate-500">{{ t("fieldBuilder.universalBody") }}</p>
+                  </div>
+                  <ToggleSwitch
+                    :model-value="field.localized === false"
+                    :aria-labelledby="`field-${index}-universal`"
+                    @update:model-value="setFieldUniversal(field, $event)"
+                  />
+                </div>
+              </template>
+
+              <div v-if="supportsFieldDefault(field)">
+                <div class="flex items-start justify-between gap-4">
+                  <div>
+                    <p :id="`field-${index}-default`" class="text-sm font-medium text-slate-700">
+                      {{ t("fieldBuilder.default") }}
+                    </p>
+                    <p class="mt-0.5 text-sm text-slate-500">{{ t("fieldBuilder.defaultBody") }}</p>
+                  </div>
+                  <ToggleSwitch
+                    v-if="field.type !== 'range'"
+                    :model-value="hasFieldDefault(field)"
+                    :aria-labelledby="`field-${index}-default`"
+                    @update:model-value="toggleFieldDefault(field, $event)"
+                  />
+                </div>
+
+                <div v-if="hasFieldDefault(field)" class="mt-3">
+                  <textarea
+                    v-if="['textarea', 'markdown', 'html'].includes(field.type)"
+                    :value="field.default ?? ''"
+                    rows="3"
+                    class="form-textarea w-full rounded-lg border-slate-300 text-sm"
+                    @input="setFieldDefault(field, $event.target.value)"
+                  />
+
+                  <input
+                    v-else-if="['text', 'date', 'datetime'].includes(field.type)"
+                    :type="
+                      field.type === 'date'
+                        ? 'date'
+                        : field.type === 'datetime'
+                          ? 'datetime-local'
+                          : 'text'
+                    "
+                    :value="field.default ?? ''"
+                    class="form-input w-full rounded-lg border-slate-300 text-sm"
+                    @input="setFieldDefault(field, $event.target.value)"
+                  />
+
+                  <input
+                    v-else-if="field.type === 'number' || field.type === 'range'"
+                    v-model.number="field.default"
+                    type="number"
+                    step="any"
+                    class="form-input w-full rounded-lg border-slate-300 text-sm"
+                    @input="normalizeFieldDefault(field)"
+                  />
+
+                  <label
+                    v-else-if="field.type === 'boolean'"
+                    class="inline-flex items-center gap-2 h-[38px]"
+                  >
                     <input
-                      v-if="field.type !== 'range'"
                       type="checkbox"
-                      :checked="hasFieldDefault(field)"
-                      class="form-checkbox mt-0.5 rounded border-slate-300 text-theme-600"
-                      @change="toggleFieldDefault(field, $event.target.checked)"
+                      :checked="field.default === true"
+                      class="form-checkbox rounded border-slate-300 text-theme-600"
+                      @change="setFieldDefault(field, $event.target.checked)"
                     />
-                    <span>
-                      <span class="block text-sm font-medium text-slate-700">
-                        {{ t("fieldBuilder.default") }}
-                      </span>
-                      <span class="mt-1 block text-sm text-slate-500">
-                        {{ t("fieldBuilder.defaultBody") }}
-                      </span>
-                    </span>
+                    <span class="text-sm text-slate-600">{{ t("fieldBuilder.enabled") }}</span>
                   </label>
 
-                  <div v-if="hasFieldDefault(field)" class="mt-3">
-                    <textarea
-                      v-if="['textarea', 'markdown', 'html'].includes(field.type)"
-                      :value="field.default ?? ''"
-                      rows="3"
-                      class="form-textarea w-full rounded-lg border-slate-300 text-sm"
+                  <SearchableSelect
+                    v-else-if="field.type === 'select' && field.multiple"
+                    :model-value="selectDefaultValues(field)"
+                    :options="selectDefaultOptions(field)"
+                    :multiple="true"
+                    :placeholder="t('fieldBuilder.selectDefaults')"
+                    @update:model-value="setFieldDefault(field, $event)"
+                  />
+
+                  <select
+                    v-else-if="field.type === 'select'"
+                    :value="selectDefaultSingleValue(field)"
+                    class="form-select w-full rounded-lg border-slate-300 text-sm"
+                    @change="setFieldDefault(field, $event.target.value)"
+                  >
+                    <option value="">{{ t("fieldValue.select") }}</option>
+                    <option
+                      v-for="opt in parseSelectOptions(field._optionsText)"
+                      :key="opt.key"
+                      :value="opt.key"
+                    >
+                      {{ opt.label }}
+                    </option>
+                  </select>
+
+                  <textarea
+                    v-else-if="field.type === 'json'"
+                    :value="field._defaultJsonText"
+                    rows="4"
+                    class="form-textarea w-full rounded-lg border-slate-300 text-sm font-mono"
+                    @input="setJsonFieldDefault(field, $event.target.value)"
+                  />
+
+                  <div
+                    v-else-if="field.type === 'color'"
+                    class="flex items-center gap-2"
+                  >
+                    <input
+                      type="color"
+                      :value="validColorDefault(field.default)"
+                      class="h-9 w-12 rounded-lg border border-slate-300 bg-white p-1"
                       @input="setFieldDefault(field, $event.target.value)"
                     />
-
                     <input
-                      v-else-if="['text', 'date', 'datetime'].includes(field.type)"
-                      :type="
-                        field.type === 'date'
-                          ? 'date'
-                          : field.type === 'datetime'
-                            ? 'datetime-local'
-                            : 'text'
-                      "
                       :value="field.default ?? ''"
-                      class="form-input w-full rounded-lg border-slate-300 text-sm"
+                      type="text"
+                      maxlength="7"
+                      class="form-input w-32 rounded-lg border-slate-300 text-sm font-mono"
                       @input="setFieldDefault(field, $event.target.value)"
                     />
-
-                    <input
-                      v-else-if="field.type === 'number' || field.type === 'range'"
-                      v-model.number="field.default"
-                      type="number"
-                      step="any"
-                      class="form-input w-full rounded-lg border-slate-300 text-sm"
-                      @input="normalizeFieldDefault(field)"
-                    />
-
-                    <label
-                      v-else-if="field.type === 'boolean'"
-                      class="inline-flex items-center gap-2 h-[38px]"
-                    >
-                      <input
-                        type="checkbox"
-                        :checked="field.default === true"
-                        class="form-checkbox rounded border-slate-300 text-theme-600"
-                        @change="setFieldDefault(field, $event.target.checked)"
-                      />
-                      <span class="text-sm text-slate-600">{{ t("fieldBuilder.enabled") }}</span>
-                    </label>
-
-                    <SearchableSelect
-                      v-else-if="field.type === 'select' && field.multiple"
-                      :model-value="selectDefaultValues(field)"
-                      :options="selectDefaultOptions(field)"
-                      :multiple="true"
-                      :placeholder="t('fieldBuilder.selectDefaults')"
-                      @update:model-value="setFieldDefault(field, $event)"
-                    />
-
-                    <select
-                      v-else-if="field.type === 'select'"
-                      :value="selectDefaultSingleValue(field)"
-                      class="form-select w-full rounded-lg border-slate-300 text-sm"
-                      @change="setFieldDefault(field, $event.target.value)"
-                    >
-                      <option value="">{{ t("fieldValue.select") }}</option>
-                      <option
-                        v-for="opt in parseSelectOptions(field._optionsText)"
-                        :key="opt.key"
-                        :value="opt.key"
-                      >
-                        {{ opt.label }}
-                      </option>
-                    </select>
-
-                    <textarea
-                      v-else-if="field.type === 'json'"
-                      :value="field._defaultJsonText"
-                      rows="4"
-                      class="form-textarea w-full rounded-lg border-slate-300 text-sm font-mono"
-                      @input="setJsonFieldDefault(field, $event.target.value)"
-                    />
-
-                    <div
-                      v-else-if="field.type === 'color'"
-                      class="flex items-center gap-2"
-                    >
-                      <input
-                        type="color"
-                        :value="validColorDefault(field.default)"
-                        class="h-9 w-12 rounded-lg border border-slate-300 bg-white p-1"
-                        @input="setFieldDefault(field, $event.target.value)"
-                      />
-                      <input
-                        :value="field.default ?? ''"
-                        type="text"
-                        maxlength="7"
-                        class="form-input w-32 rounded-lg border-slate-300 text-sm font-mono"
-                        @input="setFieldDefault(field, $event.target.value)"
-                      />
-                    </div>
                   </div>
                 </div>
               </div>
 
-              <div class="space-y-4 p-4">
-                <div>
-                  <label :for="`field-${index}-description`" class="text-sm font-medium text-slate-700 block mb-2"
-                    >{{ t("fieldBuilder.description") }}
-                    <span class="font-normal text-slate-400">{{ t("fieldBuilder.descriptionHint") }}</span></label
+              <div>
+                <p class="text-sm font-medium text-slate-700">{{ t("fieldBuilder.editorWidth") }}</p>
+                <p class="mt-0.5 mb-2 text-sm text-slate-500">{{ t("fieldBuilder.editorWidthHint") }}</p>
+                <div
+                  class="grid grid-cols-4 gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1"
+                >
+                  <button
+                    v-for="option in layoutWidthOptions"
+                    :key="option.value"
+                    type="button"
+                    class="group/layout flex min-w-0 flex-col gap-1 rounded-md px-2 py-1.5 text-xs font-medium transition"
+                    :class="
+                      fieldLayoutWidth(field) === option.value
+                        ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200'
+                        : 'text-slate-500 hover:bg-white/70 hover:text-slate-800'
+                    "
+                    :title="fieldLayoutOptionLabel(option)"
+                    :aria-pressed="fieldLayoutWidth(field) === option.value"
+                    @click="setFieldLayoutWidth(field, option.value)"
                   >
-                  <LocalizedInput multiline
-                    :id="`field-${index}-description`"
-                    v-model="field.description"
-                    rows="2"
-                    :placeholder="t('fieldBuilder.descriptionPlaceholder')"
-                    class="w-full"
-                  />
+                    <span class="flex h-5 overflow-hidden rounded bg-slate-200">
+                      <span
+                        class="h-full rounded bg-slate-400 transition-colors group-hover/layout:bg-slate-500"
+                        :class="
+                          fieldLayoutWidth(field) === option.value
+                            ? 'bg-theme-500 group-hover/layout:bg-theme-500'
+                            : ''
+                        "
+                        :style="{ width: option.percent }"
+                      ></span>
+                    </span>
+                    <span>{{ fieldLayoutOptionShortLabel(option) }}</span>
+                  </button>
                 </div>
+              </div>
+            </section>
 
+            <div class="space-y-4">
+              <!-- Type-specific options -->
+              <section
+                v-if="hasTypeOptions(field)"
+                class="space-y-3 rounded-lg border border-slate-200 p-4"
+              >
+                <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  {{ t("fieldBuilder.typeOptions", { type: fieldTypeLabel(field.type) }) }}
+                </h3>
                 <FieldConfigSelect
                   v-if="field.type === 'select'"
                   :field="field"
@@ -527,10 +478,27 @@
                   v-if="field.type === 'color'"
                   :field="field"
                 />
-              </div>
+              </section>
+
+              <!-- Help text -->
+              <section class="space-y-2 rounded-lg border border-slate-200 p-4">
+                <label
+                  :for="`field-${index}-description`"
+                  class="block text-xs font-semibold uppercase tracking-wide text-slate-500"
+                >
+                  {{ t("fieldBuilder.helpText") }}
+                </label>
+                <p class="text-sm text-slate-500">{{ t("fieldBuilder.helpTextBody") }}</p>
+                <LocalizedInput multiline
+                  :id="`field-${index}-description`"
+                  v-model="field.description"
+                  rows="2"
+                  :placeholder="t('fieldBuilder.descriptionPlaceholder')"
+                  class="w-full"
+                />
+              </section>
             </div>
           </div>
-
         </div>
       </div>
     </TransitionGroup>
@@ -539,15 +507,16 @@
       @click="addField"
       class="w-full py-2.5 rounded-xl border-2 border-dashed border-slate-300 text-sm text-slate-500 hover:border-theme-400 hover:text-theme-600 transition-colors"
     >
-      + Add field
+      + {{ t("fieldBuilder.addField") }}
     </button>
   </div>
 </template>
 
 <script setup>
-import { computed, ref, watch } from "vue";
+import { computed, nextTick, ref, watch } from "vue";
 import { Icon } from "@iconify/vue";
 import SearchableSelect from "./SearchableSelect.vue";
+import ToggleSwitch from "./ToggleSwitch.vue";
 import FieldConfigSelect from "./FieldConfigSelect.vue";
 import FieldConfigRelation from "./FieldConfigRelation.vue";
 import FieldConfigRange from "./FieldConfigRange.vue";
@@ -596,13 +565,22 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["update:modelValue"]);
-const { fieldTypeIcon } = useFieldTypeMeta();
+const { fieldTypeIcon, fieldTypeLabel } = useFieldTypeMeta();
 const { t } = useI18n();
 const languages = useLanguages();
 const labelText = (value) => String(resolveLocalized(value, languages.defaultLocale.value, languages.defaultLocale.value) ?? '').trim();
 
 
 const fieldTypeOptions = computed(() => props.fieldTypes.map(fieldTypeOption));
+
+// Every content type has these; shown read-only above the custom fields.
+const builtinFields = [
+  { key: "title", type: "text", labelKey: "fieldBuilder.builtinTitle" },
+  { key: "slug", type: "slug", labelKey: "fieldBuilder.builtinSlug" },
+];
+
+const MULTIPLE_TYPES = ["media", "relation", "select"];
+const TYPES_WITH_OPTIONS = ["select", "relation", "range", "media", "repeater", "color"];
 let uid = 0;
 
 // Work on an internal list that includes a stable _id for list rendering.
@@ -702,6 +680,7 @@ function toExternal(arr) {
     ({
       _id,
       _collapsed,
+      _keyUnlocked,
       collection,
       multiple,
       _optionsText,
@@ -760,7 +739,7 @@ function toExternal(arr) {
 function fieldTypeOption(type) {
   return {
     value: type,
-    label: type,
+    label: fieldTypeLabel(type),
     icon: fieldTypeIcon(type),
   };
 }
@@ -922,9 +901,17 @@ function toggleField(field) {
   field._collapsed = !field._collapsed;
 }
 
-function expandCollapsedField(field) {
-  if (suppressNextClick.value || !field._collapsed) return;
-  field._collapsed = false;
+function onHeaderClick(field) {
+  if (suppressNextClick.value) return;
+  field._collapsed = !field._collapsed;
+}
+
+function isMultiple(field) {
+  return Boolean(field.multiple) && MULTIPLE_TYPES.includes(field.type);
+}
+
+function hasTypeOptions(field) {
+  return TYPES_WITH_OPTIONS.includes(field.type);
 }
 
 function expandAllFields() {
@@ -958,6 +945,17 @@ function onKeyInput(field) {
 
 function isKeyRenamed(field) {
   return field._originalKey !== "" && field.key !== field._originalKey;
+}
+
+// Saved keys hold existing entry data, so renaming takes an explicit unlock.
+function isKeyLocked(field) {
+  return field._originalKey !== "" && !field._keyUnlocked && !isKeyRenamed(field);
+}
+
+async function unlockKey(field, index) {
+  field._keyUnlocked = true;
+  await nextTick();
+  document.getElementById(`field-${index}-key`)?.focus();
 }
 
 // Type groups whose members are interchangeable without data loss.

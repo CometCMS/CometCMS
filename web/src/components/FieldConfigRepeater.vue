@@ -106,7 +106,7 @@ import {
   rangeDefaults,
   uniqueKey,
 } from "../composables/fieldBuilderUtils.js";
-import { useId } from "vue";
+import { computed, useId } from "vue";
 import { useI18n } from "../i18n/index.js";
 
 const { t } = useI18n();
@@ -117,7 +117,7 @@ const props = defineProps({
   contentTypes: { type: Array, default: () => [] },
 });
 
-const { fieldTypeIcon } = useFieldTypeMeta();
+const { fieldTypeIcon, fieldTypeLabel } = useFieldTypeMeta();
 
 const SUB_FIELD_TYPES = [
   "text",
@@ -137,11 +137,11 @@ const SUB_FIELD_TYPES = [
   "range",
 ];
 
-const subFieldTypeOptions = SUB_FIELD_TYPES.map((type) => ({
+const subFieldTypeOptions = computed(() => SUB_FIELD_TYPES.map((type) => ({
   value: type,
-  label: type,
+  label: fieldTypeLabel(type),
   icon: fieldTypeIcon(type),
-}));
+})));
 
 let uid = 0;
 

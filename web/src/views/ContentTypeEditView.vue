@@ -229,12 +229,7 @@
         <!-- Custom fields supply values to shared page layouts. -->
         <div class="card p-6">
           <div class="mb-4 flex items-center justify-between gap-3">
-            <h2 class="card-title">
-              {{ t("contentTypeEdit.fields") }}
-              <span class="text-slate-400 font-normal ml-1">{{
-                t("contentTypeEdit.builtinFieldsHint")
-              }}</span>
-            </h2>
+            <h2 class="card-title">{{ t("contentTypeEdit.fields") }}</h2>
 
             <div v-if="customFields.length > 1" class="flex items-center gap-2 text-xs">
               <button
