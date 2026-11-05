@@ -54,7 +54,7 @@
           :target="item.href ? '_blank' : undefined"
           :rel="item.href ? 'noopener noreferrer' : undefined"
           class="card group flex items-start gap-4 p-5"
-          :class="item.to || item.href ? 'transition hover:border-slate-300 hover:shadow-sm' : ''"
+          :class="item.to || item.href ? 'transition hover:border-slate-300 cursor-pointer hover:shadow-sm' : ''"
         >
           <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-theme-50 text-theme-600 ring-1 ring-inset ring-theme-600/10">
             <Icon :icon="item.icon" class="h-5 w-5" />

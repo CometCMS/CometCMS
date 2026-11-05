@@ -6,7 +6,8 @@
       <select
         v-if="showSelect"
         v-model="selected"
-        :class="compact ? 'absolute inset-0 h-full w-full cursor-pointer opacity-0' : 'form-select max-w-full rounded-lg border-slate-200 bg-slate-50 py-1.5 pl-3 pr-8 text-xs font-medium text-slate-600'"
+        class="form-select"
+        :class="compact ? 'absolute inset-0 h-full w-full cursor-pointer opacity-0' : 'max-w-full rounded-lg border-slate-200 bg-slate-50 py-1.5 pl-3 pr-8 text-xs font-medium text-slate-600'"
         :title="compact ? `${languageLabel(active)} — ${t('site.builder.language')}` : undefined"
         :aria-label="t('site.builder.language')"
       >
