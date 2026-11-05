@@ -175,7 +175,7 @@ final class LayoutSchema
     private const LINK_TYPES = ['none', 'url', 'current', 'entry', 'index', 'home', 'anchor'];
 
     /** Background image style options. */
-    private const BACKGROUND_IMAGE_KEYS = ['background_image', 'background_size', 'background_position', 'background_repeat', 'background_blur', 'background_effect', 'overlay'];
+    private const BACKGROUND_IMAGE_KEYS = ['background_image', 'background_poster', 'background_size', 'background_position', 'background_repeat', 'background_blur', 'background_effect', 'overlay'];
 
     /** Border sides and how they are drawn; the look only applies once a side is picked. */
     private const BORDER_KEYS = ['border', 'border_width', 'border_style', 'border_color'];
@@ -190,7 +190,7 @@ final class LayoutSchema
     private const POSITION_KEYS = ['position', 'pin', 'offset_x', 'offset_y'];
 
     /** Style a tablet or mobile override may change: values that render as a class, and the offsets (see NodeRenderer::offsetStyle). */
-    public const RESPONSIVE_STYLE = ['padding_top', 'padding_right', 'padding_bottom', 'padding_left', 'margin_top', 'margin_right', 'margin_bottom', 'margin_left', 'background', 'text_color', 'link_color', 'align', 'font_size', 'font_weight', 'font_family', 'text_shadow', 'radius', 'shadow', 'max_width', ...self::POSITION_KEYS, 'z_index', 'opacity'];
+    public const RESPONSIVE_STYLE = ['padding_top', 'padding_right', 'padding_bottom', 'padding_left', 'margin_top', 'margin_right', 'margin_bottom', 'margin_left', 'background', 'background_image', 'text_color', 'link_color', 'align', 'font_size', 'font_weight', 'font_family', 'text_shadow', 'radius', 'shadow', 'max_width', ...self::POSITION_KEYS, 'z_index', 'opacity'];
 
     /** Props a tablet or mobile override may change, per kind. */
     public const RESPONSIVE_PROPS = [
@@ -241,7 +241,9 @@ final class LayoutSchema
             // An image or video is layered over the background color, which shows
             // through transparent images and while the media loads. Videos play
             // muted in a loop; size and position become their fit and focal point.
-            'background_image' => ['type' => 'media', 'default' => '', 'localized' => true, 'description' => 'A library image or video file shown behind the content. Videos play muted in a loop without controls (paused offscreen and for visitors who prefer reduced motion); background_size, background_position, background_blur, background_effect and overlay apply to both, background_repeat only to images.'],
+            'background_image' => ['type' => 'media', 'default' => '', 'localized' => true, 'description' => 'A library image or video file shown behind the content. Videos play muted in a loop without controls (paused offscreen and for visitors who prefer reduced motion); background_size, background_position, background_blur, background_effect and overlay apply to both, background_repeat only to images. Tablet and mobile overrides (responsive.<device>.style.background_image) may pick another image or video, e.g. a still image instead of a video on phones.'],
+            // Shown before a background video plays, and instead of it for reduced motion.
+            'background_poster' => ['type' => 'media', 'default' => '', 'localized' => true, 'description' => 'An image shown before a background video plays, and instead of it for visitors who prefer reduced motion. Only used with video backgrounds.'],
             'background_size' => ['type' => 'enum', 'options' => ['cover', 'contain', 'original'], 'default' => 'cover'],
             'background_position' => ['type' => 'enum', 'options' => self::POSITIONS, 'default' => 'center'],
             'background_repeat' => ['type' => 'bool', 'default' => false],
@@ -1673,7 +1675,10 @@ final class LayoutSchema
                     if (!array_key_exists($key, $values) || ($part === 'style' && !in_array($key, $styleKeys, true))) {
                         continue;
                     }
-                    $item = self::normalizeValue($specs[$part][$key], $values[$key]);
+                    $binding = $part === 'style' ? SmartValue::STYLE_PROPERTIES[$key] ?? null : null;
+                    $item = $binding !== null && SmartValue::isDynamic($values[$key])
+                        ? SmartValue::normalize($values[$key], $binding)
+                        : self::normalizeValue($specs[$part][$key], $values[$key]);
                     if ($item !== '') {
                         $normalized[$variant][$part][$key] = $item;
                     }

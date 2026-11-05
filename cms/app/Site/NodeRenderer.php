@@ -201,10 +201,19 @@ final class NodeRenderer
         }
         foreach (SmartValue::STYLE_PROPERTIES as $key => $target) {
             $binding = $node['style'][$key] ?? null;
-            if (!SmartValue::isDynamic($binding)) continue;
-            $resolved = $this->resolveBinding($binding, $target, $state);
-            $node['style'][$key] = $resolved['value'];
-            $warnings = $warnings || $resolved['missing'];
+            if (SmartValue::isDynamic($binding)) {
+                $resolved = $this->resolveBinding($binding, $target, $state);
+                $node['style'][$key] = $resolved['value'];
+                $warnings = $warnings || $resolved['missing'];
+            }
+            // A tablet or mobile background may be bound as well.
+            foreach (array_keys(StyleVariants::DEVICES) as $device) {
+                $binding = $node['responsive'][$device]['style'][$key] ?? null;
+                if (!SmartValue::isDynamic($binding)) continue;
+                $resolved = $this->resolveBinding($binding, $target, $state);
+                $node['responsive'][$device]['style'][$key] = $resolved['value'];
+                $warnings = $warnings || $resolved['missing'];
+            }
         }
         $html = match ($node['kind'] ?? '') {
             'section' => $this->section($node, $state),
@@ -456,7 +465,7 @@ final class NodeRenderer
         }
 
         // The section spans the screen; its content is held to the container's width.
-        $background = $this->background($node['style'], $state, $props['min_height'] !== '');
+        $background = $this->background($node, $state, $props['min_height'] !== '');
 
         $embedded = ($state['embedded'] ?? false) === true;
         $slot = $this->slot($state);
@@ -549,7 +558,7 @@ final class NodeRenderer
             }
         }
 
-        $background = $this->background($node['style'], $state);
+        $background = $this->background($node, $state);
 
         return '<div' . $this->attributes($node, [...$classes, ...$background['classes'], ...$this->styleClasses($node['style'])], $background['style']) . '>' . $background['layer'] . $inner . '</div>';
     }
@@ -600,7 +609,7 @@ final class NodeRenderer
             $inner .= str_replace('<a ', '<a aria-label="' . Security::e($label) . '" ', $this->anchor($link, '', 'c-linked-cover'));
         }
 
-        $background = $this->background($node['style'], $state);
+        $background = $this->background($node, $state);
         $style = implode(';', array_filter([$order !== null ? '--c-column-order:' . $order : '', $background['style']]));
 
         return '<div' . $this->attributes($node, [...$classes, ...$background['classes'], ...$this->styleClasses($node['style'])], $style) . '>' . $background['layer'] . $inner . '</div>';
@@ -754,7 +763,7 @@ final class NodeRenderer
     {
         $props = $node['props'];
         $preview = !empty($state['modal_preview']);
-        $background = $this->background($node['style']);
+        $background = $this->background($node);
         $classes = [
             'c-modal',
             'c-modal-' . $props['size'],
@@ -2310,7 +2319,7 @@ final class NodeRenderer
     /** @param string $attributes further escaped attributes, each with its leading space */
     private function element(array $node, string $inner, array $extraClasses = [], string $style = '', string $attributes = ''): string
     {
-        $background = $this->background($node['style']);
+        $background = $this->background($node);
         $classes = ['c-el', 'c-el-' . preg_replace('/[^a-z0-9-]/', '-', str_replace('_', '-', $node['kind'])), ...$extraClasses, ...$background['classes'], ...$this->styleClasses($node['style'])];
         $style = implode(';', array_filter([$background['style'], $style]));
 
@@ -2336,62 +2345,83 @@ final class NodeRenderer
      * A tall element ($tall) is covered by its image on portrait screens too,
      * which shows the image larger than the element is wide.
      */
-    private function background(array $style, array $state = [], bool $tall = false): array
+    private function background(array $node, array $state = [], bool $tall = false): array
     {
+        $style = $node['style'] ?? [];
         $gradient = Gradient::css($style['background_gradient'] ?? []);
         if ($gradient !== '') {
             return ['classes' => [], 'style' => 'background-image:' . $gradient, 'layer' => ''];
         }
-        $file = (string) ($style['background_image'] ?? '');
-        $item = $file !== '' ? $this->ctx->mediaItem($file) : null;
-        $mime = (string) ($item['mime'] ?? '');
 
-        $spec = LayoutSchema::styleSpec();
-        $option = static fn(string $key): mixed => $style[$key] ?? $spec[$key]['default'];
-        if ($item !== null && str_starts_with($mime, 'video/')) {
-            return $this->videoBackground($item, $option);
+        // Each device shows its own file: mobile follows tablet, which follows the normal value.
+        // Images become a CSS value per device ('none' where a video or nothing shows); videos
+        // are listed with the devices that show them.
+        $slot = $this->slot($state);
+        $file = (string) ($style['background_image'] ?? '');
+        $sources = [];
+        $videos = [];
+        foreach (array_keys(self::SCREEN_WIDTHS) as $device) {
+            $override = $node['responsive'][$device]['style']['background_image'] ?? null;
+            if (is_string($override) && $override !== '') {
+                $file = $override;
+            }
+            $item = $file !== '' ? $this->ctx->mediaItem($file) : null;
+            $mime = (string) ($item['mime'] ?? '');
+            $sources[$device] = 'none';
+            if ($item !== null && str_starts_with($mime, 'video/')) {
+                $videos[$item['name']] ??= ['item' => $item, 'devices' => []];
+                $videos[$item['name']]['devices'][] = $device;
+            } elseif ($item !== null && str_starts_with($mime, 'image/')) {
+                $sources[$device] = 'url(\'' . $this->backgroundSources($item, $slot, $tall)[$device] . '\')';
+            }
         }
-        if ($item === null || !str_starts_with($mime, 'image/')) {
+        $hasImage = array_filter($sources, static fn(string $source): bool => $source !== 'none') !== [];
+        if (!$hasImage && $videos === []) {
             return ['classes' => [], 'style' => '', 'layer' => ''];
         }
 
-        $sources = $this->backgroundSources($item, $this->slot($state), $tall);
-        $image = 'url(\'' . $sources['desktop'] . '\')';
-        $responsive = count(array_unique($sources)) > 1;
+        $spec = LayoutSchema::styleSpec();
+        $option = static fn(string $key): mixed => $style[$key] ?? $spec[$key]['default'];
         $blur = (int) $option('background_blur');
         $effect = (string) $option('background_effect');
-        $classes = [
-            'c-has-bg-image',
-            'c-bg-size-' . $option('background_size'),
-            'c-bg-pos-' . $option('background_position'),
-            $option('background_repeat') ? 'c-bg-repeat' : 'c-bg-no-repeat',
-        ];
-
+        $classes = ['c-has-bg-image', 'c-bg-size-' . $option('background_size'), 'c-bg-pos-' . $option('background_position')];
+        if ($hasImage) {
+            $classes[] = $option('background_repeat') ? 'c-bg-repeat' : 'c-bg-no-repeat';
+        }
         if ($option('overlay') !== 'none') {
             $classes[] = 'c-overlay-' . $option('overlay');
         }
 
         // Each device loads its own size; site.css swaps them by screen width.
+        $responsive = count(array_unique($sources)) > 1;
         $images = $responsive
-            ? implode(';', array_map(static fn(string $device): string => '--c-bg-' . $device[0] . ':url(\'' . $sources[$device] . '\')', array_keys($sources)))
+            ? implode(';', array_map(static fn(string $device): string => '--c-bg-' . $device[0] . ':' . $sources[$device], array_keys($sources)))
             : '';
         if ($responsive) {
             $classes[] = 'c-bg-responsive';
         }
 
-        if ($blur === 0 && $effect === 'none') {
-            return ['classes' => $classes, 'style' => $responsive ? $images : 'background-image:' . $image, 'layer' => ''];
+        if ($videos === [] && $blur === 0 && $effect === 'none') {
+            return ['classes' => $classes, 'style' => $responsive ? $images : 'background-image:' . $sources['desktop'], 'layer' => ''];
         }
 
         $classes[] = 'c-has-bg-layer';
         if ($effect !== 'none') {
             $classes[] = 'c-bg-effect-' . $effect;
         }
+        if (!$hasImage) {
+            $classes[] = 'c-has-bg-video';
+        }
+        $layer = '';
+        foreach ($videos as $video) {
+            $layer .= $this->backgroundVideo($video['item'], $video['devices'], $style, $option, $slot, $tall);
+        }
+        $image = $hasImage ? ($responsive ? $images : '--c-background-image:' . $sources['desktop']) : '';
 
         return [
             'classes' => $classes,
-            'style' => ($responsive ? $images : '--c-background-image:' . $image) . ($blur > 0 ? ';--c-background-blur:' . $blur . 'px' : ''),
-            'layer' => '<span class="c-background-layer" aria-hidden="true"></span>',
+            'style' => implode(';', array_filter([$image, $blur > 0 ? '--c-background-blur:' . $blur . 'px' : ''])),
+            'layer' => '<span class="c-background-layer" aria-hidden="true">' . $layer . '</span>',
         ];
     }
 
@@ -2399,35 +2429,33 @@ final class NodeRenderer
      * A library video behind the content: muted, looping and without
      * controls, on the same layer image backgrounds use, so blur, scroll
      * effects and overlays work alike. Size and focal point become the
-     * video's fit and position. The site script starts playback (see
-     * BackgroundVideo), so editor canvases and visitors who prefer reduced
-     * motion see a still first frame.
+     * video's fit and position; devices that show another background hide
+     * it. The site script starts playback (see BackgroundVideo), so editor
+     * canvases and visitors who prefer reduced motion see the poster or a
+     * still first frame, and hidden videos never load.
      *
+     * @param list<string> $devices
      * @param callable(string): mixed $option
-     * @return array{classes: list<string>, style: string, layer: string}
      */
-    private function videoBackground(array $item, callable $option): array
+    private function backgroundVideo(array $item, array $devices, array $style, callable $option, array $slot, bool $tall): string
     {
-        $blur = (int) $option('background_blur');
-        $effect = (string) $option('background_effect');
-        $classes = ['c-has-bg-image', 'c-has-bg-video', 'c-has-bg-layer'];
-        if ($effect !== 'none') {
-            $classes[] = 'c-bg-effect-' . $effect;
-        }
-        if ($option('overlay') !== 'none') {
-            $classes[] = 'c-overlay-' . $option('overlay');
+        $classes = ['c-background-video'];
+        foreach (array_diff(array_keys(self::SCREEN_WIDTHS), $devices) as $device) {
+            $classes[] = 'c-bg-off-' . $device[0];
         }
         $fit = ['cover' => 'cover', 'contain' => 'contain', 'original' => 'none'][$option('background_size')] ?? 'cover';
         $position = str_replace('-', ' ', (string) $option('background_position'));
-        $video = '<video class="c-background-video" src="' . Security::e($this->ctx->mediaUrl($item['name'])) . '"'
-            . ' style="object-fit:' . $fit . ';object-position:' . $position . '"'
-            . ' muted loop playsinline disablepictureinpicture preload="metadata" tabindex="-1" data-background-video></video>';
+        $file = (string) ($style['background_poster'] ?? '');
+        $poster = $file !== '' ? $this->ctx->mediaItem($file) : null;
+        $poster = $poster !== null && str_starts_with((string) ($poster['mime'] ?? ''), 'image/')
+            ? $this->backgroundSources($poster, $slot, $tall)[$devices[0]] : '';
+        // Without a poster the canvas, which runs no scripts, loads the first frame to show.
+        $canvas = $this->ctx->preview && !$this->ctx->browsePreview;
 
-        return [
-            'classes' => $classes,
-            'style' => $blur > 0 ? '--c-background-blur:' . $blur . 'px' : '',
-            'layer' => '<span class="c-background-layer" aria-hidden="true">' . $video . '</span>',
-        ];
+        return '<video class="' . implode(' ', $classes) . '" src="' . Security::e($this->ctx->mediaUrl($item['name'])) . '"'
+            . ' style="object-fit:' . $fit . ';object-position:' . $position . '"'
+            . ($poster !== '' ? ' poster="' . Security::e($poster) . '"' : '')
+            . ' muted loop playsinline disablepictureinpicture preload="' . ($canvas && $poster === '' ? 'metadata' : 'none') . '" tabindex="-1" data-background-video></video>';
     }
 
     /**

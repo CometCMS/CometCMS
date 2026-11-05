@@ -6,6 +6,7 @@ use CometCMS\Site\BackgroundVideo;
 use CometCMS\Site\LayoutSchema;
 use CometCMS\Site\SiteScripts;
 use CometCMS\Site\SiteService;
+use CometCMS\Site\SmartValue;
 use CometCMS\Site\NodeRenderer;
 use CometCMS\Site\VideoEmbed;
 
@@ -162,4 +163,83 @@ test('pages with background videos load the hashed playback module', function ()
     $site->saveLayout('blog', 'index', [LayoutSchema::node('section', [], [], [LayoutSchema::node('row', [], [], [LayoutSchema::node('column', [], [], [LayoutSchema::node('heading', ['text' => 'No video'])])])])]);
     $page = (new SiteService(comet_site_test_context($site)))->respond('/blog', []);
     assert_false(str_contains($page['body'], 'initBackgroundVideos'));
+});
+
+/** A section with a heading, a background and tablet/mobile background overrides, normalized. */
+function comet_background_video_section(array $style, array $responsive = []): array
+{
+    $section = LayoutSchema::node('section', [], $style, [LayoutSchema::node('row', [], [], [LayoutSchema::node('column', [], [], [LayoutSchema::node('heading', ['text' => 'Over the video'])])])]);
+    foreach ($responsive as $device => $file) {
+        $section['responsive'][$device]['style']['background_image'] = $file;
+    }
+
+    return LayoutSchema::normalize([$section])[0];
+}
+
+function comet_background_video_media(): void
+{
+    comet_site_test_setup();
+    foreach (['clip.mp4', 'other.mp4'] as $name) {
+        file_put_contents(comet_test_workspace_path() . '/media/' . $name, "\x00\x00\x00\x18ftypmp42\x00\x00\x00\x00mp42isom");
+    }
+    file_put_contents(comet_test_workspace_path() . '/media/photo.svg', '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="40"></svg>');
+}
+
+test('tablet and mobile overrides swap background videos and images per device', function (): void {
+    comet_background_video_media();
+    $render = static fn(array $node): string => (new NodeRenderer(comet_site_test_context()))->render([$node]);
+
+    $node = comet_background_video_section(['background_image' => 'clip.mp4'], ['mobile' => 'photo.svg', 'hover' => 'other.mp4']);
+    assert_same(['mobile' => ['style' => ['background_image' => 'photo.svg']]], $node['responsive'], 'Devices may override the background media.');
+    $html = $render($node);
+    assert_true(str_contains($html, '<video class="c-background-video c-bg-off-m" src="'), $html);
+    assert_true(str_contains($html, '--c-bg-d:none;--c-bg-t:none;--c-bg-m:url('), 'Phones show the image instead.');
+    assert_true(str_contains($html, 'c-bg-responsive'));
+    assert_false(str_contains($html, 'c-has-bg-video'), 'The layer keeps its image for phones.');
+
+    // Mobile follows tablet: a tablet video replaces the desktop image on both.
+    $html = $render(comet_background_video_section(['background_image' => 'photo.svg', 'background_repeat' => true, 'background_size' => 'contain'], ['tablet' => 'clip.mp4']));
+    assert_true(str_contains($html, '<video class="c-background-video c-bg-off-d" src="'), $html);
+    assert_true(str_contains($html, '--c-bg-d:url(') && str_contains($html, '--c-bg-t:none;--c-bg-m:none'));
+    assert_true(str_contains($html, 'c-bg-repeat'), 'Images keep their repetition.');
+
+    $html = $render(comet_background_video_section(['background_image' => 'clip.mp4'], ['mobile' => 'other.mp4']));
+    assert_same(2, substr_count($html, '<video '), 'Each video shows on its own devices.');
+    assert_true(str_contains($html, 'c-background-video c-bg-off-m" src="') && str_contains($html, 'c-background-video c-bg-off-d c-bg-off-t" src="'));
+    assert_false(str_contains($html, '--c-bg-'), 'Video-only backgrounds set no image.');
+
+    // Images alone still need no layer, even when they differ per device.
+    $html = $render(comet_background_video_section(['background_image' => 'photo.svg'], ['mobile' => 'missing.svg']));
+    assert_false(str_contains($html, 'c-background-layer'), $html);
+    assert_true(str_contains($html, '--c-bg-m:none'), 'A missing override file shows no image on that device.');
+
+    $html = $render(comet_background_video_section(['background_image' => 'clip.mp4', 'background_gradient' => ['type' => 'linear', 'from' => 'primary', 'to' => 'secondary']], ['mobile' => 'photo.svg']));
+    assert_false(str_contains($html, '<video'), 'A gradient still takes precedence.');
+});
+
+test('background video overrides may be bound to entry fields', function (): void {
+    $node = comet_background_video_section(['background_image' => 'clip.mp4'], ['mobile' => SmartValue::reference('photo')]);
+    assert_same(SmartValue::reference('photo'), $node['responsive']['mobile']['style']['background_image']);
+});
+
+test('background videos show their poster and load only when played', function (): void {
+    comet_background_video_media();
+    $node = comet_background_video_section(['background_image' => 'clip.mp4', 'background_poster' => 'photo.svg']);
+    assert_same('photo.svg', $node['style']['background_poster']);
+
+    $html = (new NodeRenderer(comet_site_test_context()))->render([$node]);
+    assert_true(str_contains($html, ' poster="') && str_contains($html, 'photo.svg'), $html);
+    assert_true(str_contains($html, 'preload="none"'), 'The playback script loads the video.');
+
+    unset($node['style']['background_poster']);
+    assert_true(str_contains((new NodeRenderer(comet_site_test_context()))->render([$node]), 'preload="none"'));
+    $ctx = comet_site_test_context();
+    $ctx->preview = true;
+    $ctx->annotate = true;
+    $html = (new NodeRenderer($ctx))->render([$node]);
+    assert_true(str_contains($html, 'preload="metadata"'), 'Without a poster the canvas shows the first frame.');
+    assert_false(str_contains($html, ' poster='));
+
+    $node['style']['background_poster'] = 'other.mp4';
+    assert_false(str_contains((new NodeRenderer(comet_site_test_context()))->render([$node]), ' poster='), 'Posters are images.');
 });

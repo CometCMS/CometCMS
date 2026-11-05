@@ -211,6 +211,10 @@ html:has(.c-sticky, .c-overlap) { container-type: scroll-state; }
   filter: blur(var(--c-background-blur));
 }
 .c-bg-effect-fixed > .c-background-layer > .c-background-video { position: fixed; }
+/* A video gives way where a tablet or mobile override shows another background. */
+@media (min-width: 1024px) { .c-background-video.c-bg-off-d { display: none; } }
+@media (min-width: 768px) and (max-width: 1023px) { .c-background-video.c-bg-off-t { display: none; } }
+@media (max-width: 767px) { .c-background-video.c-bg-off-m { display: none; } }
 @supports (animation-timeline: view()) {
   .c-bg-effect-parallax > .c-background-layer > .c-background-video {
     top: calc(-3 * var(--c-background-blur, 0px) - var(--c-parallax-shift));

@@ -500,6 +500,7 @@ const hint = computed(() => {
   if (props.node.kind === "theme_toggle" && props.name === "label" && !value.value) return t("site.themeToggle.labelHint");
   if (props.node.kind === "modal_close" && props.name === "label" && !value.value) return t("site.modalClose.labelHint");
   if (props.name === "background_blur") return t("site.builder.backgroundBlurHint");
+  if (props.name === "background_poster") return t("site.builder.backgroundPosterHint");
   if (props.group === "style" && props.name === "mask" && value.value && value.value !== "none" && (props.node.style?.shadow || props.node.style?.border?.length)) return t("site.builder.maskHint");
   if (props.name === "background_effect" && value.value && value.value !== "none") return t("site.builder.stickyHint");
   if (props.node.kind === "section" && props.name === "sticky" && value.value !== "none") return t("site.builder.stickyHint");

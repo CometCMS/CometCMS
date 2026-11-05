@@ -415,7 +415,7 @@ const STYLE_GROUPS = [
   { key: "button", part: "props", keys: BUTTON_COLORS },
   { key: "icon", part: "props", keys: ICON_SHAPE },
   { key: "spacing", keys: ["padding_top", "padding_right", "padding_bottom", "padding_left", "margin_top", "margin_right", "margin_bottom", "margin_left"] },
-  { key: "background", keys: ["background", "background_gradient", "background_image", "background_size", "background_position", "background_repeat", "background_blur", "background_effect", "overlay"] },
+  { key: "background", keys: ["background", "background_gradient", "background_image", "background_poster", "background_size", "background_position", "background_repeat", "background_blur", "background_effect", "overlay"] },
   { key: "dividerTop", part: "props", keys: dividerKeys("top") },
   { key: "dividerBottom", part: "props", keys: dividerKeys("bottom") },
   { key: "text", keys: ["text_color", "link_color", "text_gradient", "align", "font_size", "font_weight", "font_family", "text_shadow"] },
@@ -596,7 +596,7 @@ const fieldWarning = computed(() => {
 });
 
 /** Image options only apply once there is an image; covering images never repeat. */
-const BACKGROUND_IMAGE_OPTIONS = ["background_size", "background_position", "background_repeat", "background_blur", "background_effect", "overlay"];
+const BACKGROUND_IMAGE_OPTIONS = ["background_poster", "background_size", "background_position", "background_repeat", "background_blur", "background_effect", "overlay"];
 
 /** How a border looks only matters once a side is picked; timing only once there is an animation. */
 const BORDER_OPTIONS = ["border_width", "border_style", "border_color"];
@@ -609,7 +609,8 @@ const POSITION_OPTIONS = ["pin", "offset_x", "offset_y"];
 function styleVisible(key) {
   const style = node.value?.style ?? {};
   if (style.background_gradient?.type && ["background_image", ...BACKGROUND_IMAGE_OPTIONS].includes(key)) return false;
-  if (BACKGROUND_IMAGE_OPTIONS.includes(key) && !style.background_image) return false;
+  if (BACKGROUND_IMAGE_OPTIONS.includes(key) && !backgroundValues().length) return false;
+  if (key === "background_poster") return backgroundValues().some((value) => typeof value !== "string" || isVideoFile(value));
   if (BORDER_OPTIONS.includes(key) && !style.border?.length) return false;
   if (MASK_OPTIONS.includes(key) && (style.mask ?? "none") === "none") return false;
   if (key === "animation_trigger" && builder.styleState.value !== "normal") return false;
@@ -617,13 +618,23 @@ function styleVisible(key) {
   if (POSITION_OPTIONS.includes(key) && !["absolute", "fixed"].includes(builder.viewValue(node.value, "style", "position"))) return false;
   if (key !== "background_repeat") return true;
   // Videos never tile; covering images never repeat.
-  return !backgroundIsVideo(style.background_image) && (style.background_size ?? styleSpec.value.background_size?.default) !== "cover";
+  const shown = localizedFile(builder.viewValue(node.value, "style", "background_image"));
+  return !(typeof shown === "string" && isVideoFile(shown)) && (style.background_size ?? styleSpec.value.background_size?.default) !== "cover";
 }
 
-/** A background video picked from the library (bound field values are only known on the canvas). */
-function backgroundIsVideo(value) {
-  const file = resolveLocalized(value, builder.locale.value || builder.defaultLocale?.value || "en", builder.defaultLocale?.value || "en");
-  return typeof file === "string" && isVideoFile(file);
+function localizedFile(value) {
+  return resolveLocalized(value, builder.locale.value || builder.defaultLocale?.value || "en", builder.defaultLocale?.value || "en");
+}
+
+/**
+ * The background media of every device: file names, or bindings whose file is only
+ * known on the canvas. The poster applies once any of them may be a video.
+ */
+function backgroundValues() {
+  const current = node.value;
+  return [current?.style?.background_image, ...["tablet", "mobile"].map((device) => current?.responsive?.[device]?.style?.background_image)]
+    .map(localizedFile)
+    .filter((value) => value && value !== "");
 }
 
 /** A divider's color, height and direction only apply once it has a shape. */

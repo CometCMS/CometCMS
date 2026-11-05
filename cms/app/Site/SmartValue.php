@@ -23,7 +23,7 @@ final class SmartValue
         'field' => ['source' => 'value', 'link' => 'link'],
     ];
     /** Style keys that accept a binding, on every kind that offers them. */
-    public const STYLE_PROPERTIES = ['background_image' => 'media'];
+    public const STYLE_PROPERTIES = ['background_image' => 'media', 'background_poster' => 'media'];
 
     public function __construct(private readonly SiteContext $ctx) {}
 
