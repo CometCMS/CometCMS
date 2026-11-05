@@ -19,6 +19,7 @@
 </template>
 
 <script setup>
+import { Icon } from "@iconify/vue";
 import KindIcon from "./KindIcon.vue";
 
 defineProps({
