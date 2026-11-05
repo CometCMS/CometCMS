@@ -118,7 +118,7 @@ function comet_block_errors(callable $callback): array
 test('extensions register their blocks without changing built-ins or crossing workspaces', function (): void {
     $blocks = ExtensionRegistry::active();
     $result = $blocks->installFiles(comet_block_files(), allowScripts: true);
-    assert_same(['name' => 'cometcms/essentials', 'title' => 'Comet Essentials', 'version' => '1.8.1', 'previous_version' => null,
+    assert_same(['name' => 'cometcms/essentials', 'title' => 'Comet Essentials', 'version' => '1.9.0', 'previous_version' => null,
         'blocks' => ['cometcms/before-after', 'cometcms/callout', 'cometcms/card', 'cometcms/feature', 'cometcms/logo-bar', 'cometcms/maps', 'cometcms/pricing', 'cometcms/slideshow', 'cometcms/stats', 'cometcms/testimonial', 'cometcms/vertical-text'], 'changes' => [], 'scripts' => ['cometcms/before-after', 'cometcms/logo-bar', 'cometcms/maps', 'cometcms/slideshow', 'cometcms/stats'], 'permissions' => []], $result);
     $spec = LayoutSchema::spec(blocks: $blocks);
     assert_true(in_array('heading', $spec['elements'], true));
@@ -330,11 +330,11 @@ test('extension updates that break placed blocks need confirmation', function ()
         assert_same(['cometcms/callout: the prop "tone" no longer offers success. Instances using them fall back to the default.',
             'cometcms/callout: the prop "link_label" is removed. Its saved values are dropped the next time a layout is saved.',
             'cometcms/feature is removed. Placed instances will show as missing blocks.'], $e->changes);
-        assert_same('1.8.1', $e->installedVersion);
+        assert_same('1.9.0', $e->installedVersion);
     }
-    assert_same('1.8.1', ExtensionRegistry::active()->extension('cometcms/essentials')['version']);
+    assert_same('1.9.0', ExtensionRegistry::active()->extension('cometcms/essentials')['version']);
     $result = ExtensionRegistry::active()->installFiles($update, true, true);
-    assert_same('1.8.1', $result['previous_version']);
+    assert_same('1.9.0', $result['previous_version']);
     assert_same(3, count($result['changes']));
     assert_null(ExtensionRegistry::active()->get('block:cometcms/feature'));
     $pricing = comet_block_manifest('blocks/pricing/block.json', []);

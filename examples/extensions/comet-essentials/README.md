@@ -15,6 +15,8 @@ The Style controls apply to each block wrapper. Main surfaces use overridable ba
 
 Card's **Accent color → None** removes its colored top border and lets its link inherit the text color. Feature uses the shared searchable site icon picker. Updating an older Feature definition asks for confirmation because its icon property changes from an enum to an icon; saved values outside the new catalog fall back to the check icon. Empty Before / after labels omit their label boxes.
 
+Stats has a **Number color** picker for its numbers and suffixes. Leave it unset to use the theme accent color; labels keep their own color.
+
 Before / after compares two media images with matching crops, editable labels, four aspect ratios, an initial split and an optional caption. On published pages, drag across the image or Tab to the divider and use the arrow keys or Home/End. The native range control is visually hidden; keyboard focus is shown on the divider. Both images remain visible side by side without JavaScript or if an image fails to load. Image descriptions come from media alt text.
 
 Testimonial displays a quote, name, role and company, with an optional portrait and one-to-five-star rating. Choose left or centered alignment. Quotes and attribution are translatable and bindable; ratings include an editable accessible label. No JavaScript is needed.

@@ -18,6 +18,7 @@
         { "value": 12, "label": "Languages" }
       ]
     },
+    "number_color": { "type": "color", "label": "Number color" },
     "duration": { "type": "int", "label": "Count-up duration (ms)", "min": 0, "max": 5000, "default": 1200 }
   }
 }

@@ -123,7 +123,12 @@
       }
     },
     "stats": {
-      "title": "Statistiken"
+      "title": "Statistiken",
+      "props": {
+        "number_color": {
+          "label": "Zahlenfarbe"
+        }
+      }
     },
     "testimonial": {
       "title": "Testimonial"
