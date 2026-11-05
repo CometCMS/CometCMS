@@ -15,10 +15,6 @@
 
 ---
 
-## Upgrading to 2.0.0
-
-Version 2.0.0 requires a fresh installation. Recreate content and website designs as needed; pre-2.0 storage and backups are unsupported. Backup inspection and restore accept only archives from version 2.0.0 or newer. Existing storage is never reset automatically. See [LEGACY.md](LEGACY.md) for the removal decisions and retained behavior.
-
 ## Why CometCMS
 
 The entire CMS is a single PHP folder you upload to your server. That's it.
@@ -186,19 +182,19 @@ Installation replaces release-owned application files and folders while preservi
 
 ## Admin UI
 
-| URL                           | Description            |
-| ----------------------------- | ---------------------- |
-| `/admin`                      | Dashboard              |
-| `/admin/content/{collection}` | Content entries        |
-| `/admin/media`                | Media library          |
-| `/admin/users`                | Users                  |
-| `/admin/connect/access-tokens` | Access tokens          |
-| `/admin/backups`              | Backup and restore     |
-| `/admin/connect/webhooks`             | Outbound webhooks      |
-| `/admin/page-builder`         | Website design, templates, menus and fonts |
-| `/admin/website/general`      | Homepage, languages and website settings |
-| `/admin/website/workspaces`   | Workspace management |
-| `/admin/update`               | GitHub release updates |
+| URL                            | Description                                |
+| ------------------------------ | ------------------------------------------ |
+| `/admin`                       | Dashboard                                  |
+| `/admin/content/{collection}`  | Content entries                            |
+| `/admin/media`                 | Media library                              |
+| `/admin/users`                 | Users                                      |
+| `/admin/connect/access-tokens` | Access tokens                              |
+| `/admin/backups`               | Backup and restore                         |
+| `/admin/connect/webhooks`      | Outbound webhooks                          |
+| `/admin/page-builder`          | Website design, templates, menus and fonts |
+| `/admin/website/general`       | Homepage, languages and website settings   |
+| `/admin/website/workspaces`    | Workspace management                       |
+| `/admin/update`                | GitHub release updates                     |
 
 ### Roles
 
@@ -212,12 +208,12 @@ Roles can be customized or created in **Administration → Users & roles → Rol
 
 ### Screenshots
 
-| Dashboard                                                                          | Content types                                                                                  |
-| ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Dashboard                                                                                                                                   | Content types                                                                                                                                           |
+| ------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | <img src="https://raw.githubusercontent.com/CometCMS/documentation/main/screenshots/view-dashboard.png" alt="Dashboard view" width="420" /> | <img src="https://raw.githubusercontent.com/CometCMS/documentation/main/screenshots/view-content-types.png" alt="Content types overview" width="420" /> |
 
-| Media library                                                                      | Role permissions                                                                                             |
-| ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Media library                                                                                                                               | Role permissions                                                                                                                                                      |
+| ------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | <img src="https://raw.githubusercontent.com/CometCMS/documentation/main/screenshots/view-media.png" alt="Media library view" width="420" /> | <img src="https://raw.githubusercontent.com/CometCMS/documentation/main/screenshots/view-user-role-permissions.png" alt="User role permissions editor" width="420" /> |
 
 ## Storage layout
