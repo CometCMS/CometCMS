@@ -532,7 +532,10 @@ final class McpServer
             'name' => $name,
             'title' => $schema['title'],
             'description' => $schema['description'],
-            'inputSchema' => $schema['inputSchema'],
+            // JSON Schema requires `properties` to be an object; PHP encodes an empty array as [].
+            'inputSchema' => ($schema['inputSchema']['properties'] ?? null) === []
+                ? array_replace($schema['inputSchema'], ['properties' => (object) []])
+                : $schema['inputSchema'],
             'annotations' => $schema['annotations'],
         ], array_keys($schemas), $schemas));
     }

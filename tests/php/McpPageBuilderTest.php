@@ -68,6 +68,8 @@ test('mcp builder discovery and execution require workspace site manage grants',
     $names = array_column($response['result']['tools'], 'name');
     assert_same(PageBuilderTools::NAMES, array_values(array_intersect(PageBuilderTools::NAMES, $names)));
     foreach ($response['result']['tools'] as $tool) {
+        // JSON Schema clients (e.g. zod-based MCP SDKs) reject `"properties": []`.
+        assert_true(str_contains(json_encode($tool['inputSchema']), '"properties":{'), $tool['name'] . ' inputSchema.properties must encode as an object');
         if ($tool['name'] === 'set_layout') {
             assert_true(in_array('revision', $tool['inputSchema']['required'], true));
             assert_true(isset($tool['inputSchema']['$defs']['node']));
