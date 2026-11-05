@@ -1061,9 +1061,13 @@ export function createSiteBuilder({ t, componentApi = {}, templateApi = {}, fiel
     const node = findNode(nodes.value, id)
     if (node?.kind !== 'collection' || node.children?.length) return null
     const mixed = ['search', 'types'].includes(node.props?.list_source)
-    if (!mixed && (!node.props?.type || !templateApi.load)) return null
-    // Entries are of several types, so such a list starts from fields they all have.
-    const card = mixed ? spec.value?.search_card?.[0] : (await templateApi.load(node.props.type))?.nodes?.[0]
+    // A list of one type starts from the card its entries showed until now.
+    const collections = node.props?.collections ?? []
+    const single = mixed ? (collections.length === 1 ? collections[0] : '') : node.props?.type
+    if (!mixed && (!single || !templateApi.load)) return null
+    const standard = single && templateApi.load ? (await templateApi.load(single))?.nodes?.[0] : null
+    // Entries of several types start from fields they all have.
+    const card = standard ?? (mixed ? spec.value?.search_card?.[0] : null)
     if (!card) return null
     const copy = cloneWithNewIds(card)
     let placed = false

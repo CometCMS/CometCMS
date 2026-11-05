@@ -615,6 +615,24 @@ describe('builder custom fields', () => {
     builder.undo()
     expect(builder.nodes.value[0].children[0].children[0].children[0].children).toHaveLength(1)
   })
+
+  it('starts the card of a search list from the standard card of the one type it searches', async () => {
+    let builder
+    const card = { id: 'std', kind: 'column', props: {}, style: {}, children: [{ id: 'std-i', kind: 'text', props: { html: reference('intro') }, style: {}, children: [] }] }
+    const shared = { id: 'shared', kind: 'column', props: {}, style: {}, children: [] }
+    const templateApi = { load: async (type) => (type === 'posts' ? { nodes: [card] } : null) }
+    await renderToString(createSSRApp({ setup() { builder = createSiteBuilder({ t: (key) => key, templateApi }); return () => null } }))
+    builder.spec.value = { root: ['section'], item_elements: [], search_card: [shared], kinds: {
+      section: { props: {}, children: ['row'] }, row: { props: {}, children: ['column'] }, column: { props: {}, children: ['text', 'collection', 'row'] },
+      text: { props: { html: { default: '' } }, children: [] }, collection: { props: { type: { default: '' } }, children: ['column'] },
+    } }
+    const one = builder.make('collection', { list_source: 'search', collections: ['posts'] })
+    const several = builder.make('collection', { list_source: 'search', collections: ['posts', 'pages'] })
+    builder.load([builder.make('section', {}, {}, [builder.make('row', {}, {}, [builder.make('column', {}, {}, [one, several])])])])
+
+    expect((await builder.customizeCard(one.id)).children[0].props.html).toEqual(reference('intro'))
+    expect((await builder.customizeCard(several.id)).children).toEqual([])
+  })
 })
 
 
