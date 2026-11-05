@@ -1646,16 +1646,17 @@ final class NodeRenderer
             }
 
             // A filter that matches nothing keeps its bar, so it can be changed again.
-            return $empty === '' && $bar === '' ? '' : $this->element($node, $bar . $empty);
+            return $empty === '' && $bar === '' ? '' : $this->listElement($node, $bar . $empty, $bar !== '', false);
         }
 
         $html = $bar . $this->cardGrid($type, $result['data'], $props['columns'], $state, $node['children']);
+        $paged = $props['paginate'] && $result['total'] > $props['limit'];
 
-        if ($props['paginate'] && $result['total'] > $props['limit']) {
-            $html .= $this->pagination($page, (int) ceil($result['total'] / $props['limit']), ['path' => $filters->url((string) ($state['path'] ?? ''), $filters->chosen())] + $state);
+        if ($paged) {
+            $html .= $this->pagination($page, (int) ceil($result['total'] / $props['limit']), ['path' => $filters->url((string) ($state['path'] ?? ''), $filters->chosen()), 'anchor' => $this->listAnchor($node, $bar !== '')] + $state);
         }
 
-        return $this->element($node, $html);
+        return $this->listElement($node, $html, $bar !== '', $paged);
     }
 
     /**
@@ -1725,15 +1726,16 @@ final class NodeRenderer
                 $empty = '<div class="c-placeholder"' . $this->placeholder('noEntries', ['type' => $labels]) . '>No published ' . Security::e($labels) . ' yet</div>';
             }
 
-            return $empty === '' && $bar === '' ? '' : $this->element($node, $bar . $empty);
+            return $empty === '' && $bar === '' ? '' : $this->listElement($node, $bar . $empty, $bar !== '', false);
         }
 
         $html = $bar . $this->cardGrid('', array_column($items, 'entry'), $props['columns'], $state, $node['children'], array_column($items, 'type'));
-        if ($props['paginate'] && $total > $props['limit']) {
-            $html .= $this->pagination($page, (int) ceil($total / $props['limit']), ['path' => $filters->url((string) ($state['path'] ?? ''), $filters->chosen())] + $state);
+        $paged = $props['paginate'] && $total > $props['limit'];
+        if ($paged) {
+            $html .= $this->pagination($page, (int) ceil($total / $props['limit']), ['path' => $filters->url((string) ($state['path'] ?? ''), $filters->chosen()), 'anchor' => $this->listAnchor($node, $bar !== '')] + $state);
         }
 
-        return $this->element($node, $html);
+        return $this->listElement($node, $html, $bar !== '', $paged);
     }
 
     /**
@@ -1773,14 +1775,15 @@ final class NodeRenderer
         }
 
         $html = $this->cardGrid('', array_column($result['data'], 'entry'), $props['columns'], $state, $node['children'], array_column($result['data'], 'type'));
-        if ($props['paginate'] && $result['total'] > $props['limit']) {
+        $paged = $props['paginate'] && $result['total'] > $props['limit'];
+        if ($paged) {
             // Page links keep the query, which the page's own path leaves out.
             $path = $this->ctx->searchPageUrl();
             $path .= (str_contains($path, '?') ? '&' : '?') . http_build_query(['q' => $query]);
-            $html .= $this->pagination($page, (int) ceil($result['total'] / $props['limit']), ['path' => $path] + $state);
+            $html .= $this->pagination($page, (int) ceil($result['total'] / $props['limit']), ['path' => $path, 'anchor' => $this->listAnchor($node, false)] + $state);
         }
 
-        return $this->element($node, $html);
+        return $this->listElement($node, $html, false, $paged);
     }
 
     /**
@@ -1811,10 +1814,38 @@ final class NodeRenderer
         return '<div class="c-grid c-cols-' . max(1, min(6, $columns)) . '">' . $items . '</div>';
     }
 
+    /**
+     * Where page and filter links of a list lead back to: its filter bar,
+     * else its own anchor, else an id of its own (see listElement).
+     */
+    private function listAnchor(array $node, bool $bar): string
+    {
+        $anchor = (string) ($node['style']['anchor'] ?? '');
+
+        return $bar || $anchor === '' ? ListFilters::anchor($node) : $anchor;
+    }
+
+    /**
+     * A list's element. One that visitors page or filter ($bar, $paged) is
+     * marked with data-list, so list-filters.js can swap it for its next
+     * state in place, which keeps the visitor where they are on the page.
+     */
+    private function listElement(array $node, string $html, bool $bar, bool $paged): string
+    {
+        if ((!$bar && !$paged) || $this->annotating()) {
+            return $this->element($node, $html);
+        }
+        $id = !$bar && ($node['style']['anchor'] ?? '') === '' ? ' id="' . Security::e(ListFilters::anchor($node)) . '"' : '';
+
+        return $this->element($node, $html, [], '', $id . ' data-list="' . Security::e((string) $node['id']) . '"');
+    }
+
     private function pagination(int $page, int $pages, array $state): string
     {
         $path = (string) ($state['path'] ?? '');
-        $link = static fn(int $target): string => Security::e($path . ($target > 1 ? (str_contains($path, '?') ? '&' : '?') . 'page=' . $target : ''));
+        // Without the list script, the next page still opens at the list rather than the top.
+        $hash = ($state['anchor'] ?? '') !== '' ? '#' . $state['anchor'] : '';
+        $link = static fn(int $target): string => Security::e($path . ($target > 1 ? (str_contains($path, '?') ? '&' : '?') . 'page=' . $target : '') . $hash);
         $html = '<nav class="c-pagination" aria-label="' . Security::e(Messages::get('pagination', $this->ctx->htmlLang())) . '"><ul>';
 
         $html .= $page > 1

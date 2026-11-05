@@ -59,6 +59,12 @@ final class ListFilters
         return array_is_list($options) ? array_combine(array_map('strval', $options), $options) : $options;
     }
 
+    /** The id page and filter links of a list lead back to. */
+    public static function anchor(array $node): string
+    {
+        return 'c-list-' . $node['id'];
+    }
+
     public static function script(): string
     {
         return (string) file_get_contents(__DIR__ . '/assets/list-filters.js') . "\ninitListFilters(document);";
@@ -240,7 +246,7 @@ final class ListFilters
             $sort = '<label class="c-filter-sort"><span>' . Security::e(Messages::get('sort', $lang)) . '</span><select name="' . $name('sort') . '"' . $builder . '>' . $options . '</select></label>';
         }
 
-        $anchor = 'c-list-' . $id;
+        $anchor = self::anchor($this->node);
         $chosenFilters = array_diff_key($chosen, ['sort' => true]);
         $reset = $chosen !== [] ? '<a class="c-filter-reset" href="' . Security::e($this->url($path, []) . '#' . $anchor) . '">' . Security::e(Messages::get('filter_reset', $lang)) . '</a>' : '';
 

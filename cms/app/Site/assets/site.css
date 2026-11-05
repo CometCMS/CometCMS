@@ -699,6 +699,9 @@ html:has(.c-lightbox[open], .c-modal:modal) { overflow: hidden; }
 .c-pagination span[aria-hidden="true"] { opacity: 0.4; }
 
 /* Entry list filters */
+[data-list] { scroll-margin-top: var(--space-xl); }
+[data-list]:focus { outline: none; }
+[data-list][aria-busy="true"] > :not(.c-list-filters) { opacity: 0.6; transition: opacity 0.15s; }
 .c-list-filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-sm) var(--space-md); margin-bottom: var(--space-lg); scroll-margin-top: var(--space-xl); }
 .c-filter-controls { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-sm) var(--space-md); flex: 1 1 auto; min-width: 0; }
 .c-filter-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-sm); margin-left: auto; }

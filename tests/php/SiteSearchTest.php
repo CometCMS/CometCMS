@@ -202,7 +202,9 @@ test('the search results page lists the hits of its query with paging and an emp
     $response = comet_site_test_get('/search', ['q' => 'item']);
     assert_same(200, $response['status']);
     assert_same(10, substr_count($response['body'], '<article class="c-card">'));
-    assert_true(str_contains($response['body'], 'href="/search?q=item&amp;page=2"'));
+    assert_true(preg_match('/href="\/search\?q=item&amp;page=2#(c-list-[^"]+)"/', $response['body'], $anchor) === 1, 'Page links lead back to the list.');
+    assert_true(str_contains($response['body'], 'id="' . $anchor[1] . '" data-list="'), 'The list carries the anchor and is paged in place.');
+    assert_true(str_contains($response['body'], '<script type="module">' . \CometCMS\Site\ListFilters::script() . '</script>'));
     assert_true(str_contains($response['body'], 'noindex'));
     assert_true(str_contains($response['body'], '<form class="c-search'));
     assert_true(str_contains($response['body'], 'action="/search" method="get"'));
