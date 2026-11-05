@@ -35,15 +35,6 @@ export const layoutWidthOptions = [
   },
 ];
 
-export const layoutRowColors = [
-  "#2563eb",
-  "#059669",
-  "#d97706",
-  "#7c3aed",
-  "#dc2626",
-  "#0891b2",
-];
-
 export function normalizeLayoutWidth(width) {
   const value = String(width ?? "full");
   return layoutWidthOptions.some((option) => option.value === value)

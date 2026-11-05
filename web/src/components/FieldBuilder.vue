@@ -6,7 +6,7 @@
       <div
         v-for="builtin in builtinFields"
         :key="builtin.key"
-        class="flex items-center gap-3 rounded-lg border border-dashed border-slate-200 px-3 py-2"
+        class="ml-7 flex items-center gap-3 rounded-lg border border-dashed border-slate-200 px-3 py-2"
         :title="t('fieldBuilder.builtinTooltip')"
       >
         <span class="shrink-0 p-1 text-slate-400">
@@ -34,7 +34,31 @@
       <div
         v-for="(field, index) in fields"
         :key="field._id"
-        class="group/field select-none"
+        class="flex"
+      >
+        <!-- Row gutter: cards that share an editor row are joined by a rail. -->
+        <div class="relative w-7 shrink-0" aria-hidden="true">
+          <span
+            v-if="rowInfo(field) && !(rowInfo(field).isFirst && rowInfo(field).isLast)"
+            class="absolute left-1/2 w-0.5 -translate-x-1/2 rounded-full bg-slate-300"
+            :style="{
+              top: rowInfo(field).isFirst ? '1.75rem' : '-0.75rem',
+              bottom: rowInfo(field).isLast ? 'auto' : '0',
+              height: rowInfo(field).isLast ? '2.5rem' : undefined,
+            }"
+          ></span>
+          <span
+            v-if="rowInfo(field)?.isFirst"
+            class="absolute left-1/2 top-[1.125rem] z-10 flex h-5 w-5 -translate-x-1/2 items-center justify-center rounded-full bg-slate-100 text-[10px] font-semibold text-slate-500"
+            :title="t('fieldBuilder.editorRow', { row: rowInfo(field).row.number })"
+          >{{ rowInfo(field).row.number }}</span>
+          <span
+            v-else-if="rowInfo(field)"
+            class="absolute left-1/2 top-[1.5rem] z-10 h-2 w-2 -translate-x-1/2 rounded-full bg-slate-300"
+          ></span>
+        </div>
+      <div
+        class="group/field min-w-0 flex-1 select-none"
         :class="[
           field._collapsed
             ? 'card cursor-grab p-3'
@@ -120,16 +144,21 @@
                   {{ t("fieldBuilder.allLanguages") }}
                 </span>
                 <span
-                  v-if="fieldLayoutWidth(field) !== 'full'"
-                  class="inline-flex items-center gap-1 rounded bg-slate-100 px-1.5 py-0.5 text-slate-600"
-                  :title="fieldLayoutLabel(field)"
+                  v-if="fieldLayoutWidth(field) !== 'full' || rowHasSpace(field)"
+                  class="inline-flex items-center gap-1.5 rounded bg-slate-100 px-1.5 py-0.5 text-slate-600"
+                  :title="rowTooltip(field)"
                 >
-                  <span
-                    class="flex h-3 w-6 overflow-hidden rounded-sm bg-slate-300"
-                  >
+                  <span class="flex h-3 w-10 gap-px">
                     <span
-                      class="h-full rounded-sm"
-                      :style="fieldLayoutIndicatorStyle(field)"
+                      v-for="segment in rowSegments(field)"
+                      :key="segment.key"
+                      class="h-full min-w-0 rounded-[2px]"
+                      :class="{
+                        'bg-theme-500': segment.kind === 'self',
+                        'bg-slate-300': segment.kind === 'other',
+                        'border border-dashed border-slate-400': segment.kind === 'empty',
+                      }"
+                      :style="{ flex: `${segment.units} 1 0` }"
                     ></span>
                   </span>
                   {{ fieldLayoutShortLabel(field) }}
@@ -440,6 +469,27 @@
                     <span>{{ fieldLayoutOptionShortLabel(option) }}</span>
                   </button>
                 </div>
+                <div v-if="rowInfo(field)" class="mt-3">
+                  <p class="mb-1 text-xs text-slate-500">
+                    {{ t("fieldBuilder.editorRow", { row: rowInfo(field).row.number }) }}
+                  </p>
+                  <div class="flex h-7 gap-1">
+                    <span
+                      v-for="segment in rowSegments(field)"
+                      :key="segment.key"
+                      class="flex min-w-0 items-center rounded px-2 text-[11px]"
+                      :class="{
+                        'bg-theme-500 font-medium text-white': segment.kind === 'self',
+                        'bg-slate-200 text-slate-600': segment.kind === 'other',
+                        'border border-dashed border-slate-300 text-slate-400': segment.kind === 'empty',
+                      }"
+                      :style="{ flex: `${segment.units} 1 0` }"
+                      :title="segment.label || t('fieldBuilder.rowHasSpace')"
+                    >
+                      <span class="truncate">{{ segment.label || t("fieldBuilder.rowEmpty") }}</span>
+                    </span>
+                  </div>
+                </div>
               </div>
             </section>
 
@@ -501,11 +551,12 @@
           </div>
         </div>
       </div>
+      </div>
     </TransitionGroup>
     <button
       type="button"
       @click="addField"
-      class="w-full py-2.5 rounded-xl border-2 border-dashed border-slate-300 text-sm text-slate-500 hover:border-theme-400 hover:text-theme-600 transition-colors"
+      class="ml-7 w-[calc(100%-1.75rem)] py-2.5 rounded-xl border-2 border-dashed border-slate-300 text-sm text-slate-500 hover:border-theme-400 hover:text-theme-600 transition-colors"
     >
       + {{ t("fieldBuilder.addField") }}
     </button>
@@ -539,7 +590,6 @@ import {
 } from "../composables/fieldDefaults.js";
 import {
   formatJsonDefaultText,
-  layoutRowColors,
   layoutWidthOptions,
   normalizeExternalDefault,
   normalizeExternalLayout,
@@ -587,36 +637,32 @@ let uid = 0;
 const fields = ref(toInternal(props.modelValue));
 let lastExternalJson = JSON.stringify(toExternal(fields.value));
 
-const layoutRowByFieldId = computed(() => {
-  const rows = new Map();
-  let row = 0;
-  let used = 0;
+// Mirrors the entry editor's 12-column grid: a field that doesn't fit starts a new row.
+const layoutRowInfo = computed(() => {
+  const rows = [];
+  let current = null;
 
   for (const field of fields.value) {
     const units = fieldLayoutUnits(field);
-
-    if (units === 12) {
-      rows.set(field._id, row);
-      row += 1;
-      used = 0;
-      continue;
+    if (!current || current.units + units > 12) {
+      current = { number: rows.length + 1, units: 0, fields: [] };
+      rows.push(current);
     }
-
-    if (used > 0 && used + units > 12) {
-      row += 1;
-      used = 0;
-    }
-
-    rows.set(field._id, row);
-    used += units;
-
-    if (used >= 12) {
-      row += 1;
-      used = 0;
-    }
+    current.fields.push(field);
+    current.units += units;
   }
 
-  return rows;
+  const info = new Map();
+  for (const row of rows) {
+    row.fields.forEach((field, position) => {
+      info.set(field._id, {
+        row,
+        isFirst: position === 0,
+        isLast: position === row.fields.length - 1,
+      });
+    });
+  }
+  return info;
 });
 
 watch(
@@ -847,21 +893,41 @@ function fieldLayoutOption(field) {
   );
 }
 
-function fieldLayoutPercent(field) {
-  return fieldLayoutOption(field).percent;
-}
-
 function fieldLayoutUnits(field) {
   return fieldLayoutOption(field).units;
 }
 
-function fieldLayoutIndicatorStyle(field) {
-  const row = layoutRowByFieldId.value.get(field?._id) ?? 0;
+function rowInfo(field) {
+  return layoutRowInfo.value.get(field?._id) ?? null;
+}
 
-  return {
-    width: fieldLayoutPercent(field),
-    backgroundColor: layoutRowColors[row % layoutRowColors.length],
-  };
+// Segments of the field's editor row: this field, its neighbours, and unused space.
+function rowSegments(field) {
+  const info = rowInfo(field);
+  if (!info) return [];
+  const segments = info.row.fields.map((item) => ({
+    key: item._id,
+    units: fieldLayoutUnits(item),
+    kind: item._id === field._id ? "self" : "other",
+    label: labelText(item.label) || item.key || t("fieldBuilder.untitled"),
+  }));
+  if (info.row.units < 12) {
+    segments.push({ key: "empty", units: 12 - info.row.units, kind: "empty", label: "" });
+  }
+  return segments;
+}
+
+function rowHasSpace(field) {
+  const info = rowInfo(field);
+  return Boolean(info) && info.row.units < 12;
+}
+
+function rowTooltip(field) {
+  const info = rowInfo(field);
+  if (!info) return "";
+  const parts = [fieldLayoutLabel(field), t("fieldBuilder.editorRow", { row: info.row.number })];
+  if (info.row.units < 12) parts.push(t("fieldBuilder.rowHasSpace"));
+  return parts.join(" · ");
 }
 
 function fieldLayoutLabel(field) {
