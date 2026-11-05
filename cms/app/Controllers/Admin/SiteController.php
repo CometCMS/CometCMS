@@ -1296,8 +1296,11 @@ final class SiteController extends BaseController
         header('Content-Type: text/html; charset=utf-8');
         header('Cache-Control: private, no-store, no-transform');
         header('X-Robots-Tag: noindex, nofollow');
+        // Block loaders embed the preview flag, so their hashes must come from a preview context.
+        $context = $this->context();
+        $context->preview = true;
         header('Content-Security-Policy: ' . \CometCMS\Site\Blocks\BlockScripts::extendPolicy("default-src 'self'; img-src 'self' data: https:; media-src 'self' https:; frame-src 'self' https://www.youtube-nocookie.com https://player.vimeo.com; style-src 'self' 'unsafe-inline' https:; font-src 'self' data: https:; "
-            . SiteScripts::cspDirective($html, $this->context()) . "; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'self'", $html, $this->context()));
+            . SiteScripts::cspDirective($html, $context) . "; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'self'", $html, $context));
         echo $html;
         exit;
     }
