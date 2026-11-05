@@ -1393,7 +1393,7 @@ final class SiteRepository
     {
         $id = $this->requireComponent($id)['id'];
 
-        return $this->listRevisions(['components', $id]);
+        return $this->listRevisions(['components', $id], $this->component($id)['nodes'] ?? null, RevisionChanges::nodes(...));
     }
 
     public function restoreComponentRevision(string $id, string $revisionId, array $user = []): ?array
@@ -1577,21 +1577,21 @@ final class SiteRepository
 
     public function themeRevisions(): array
     {
-        return $this->listRevisions(['theme']);
+        return $this->listRevisions(['theme'], $this->theme(), static fn(array $before, array $after): array => RevisionChanges::theme(Theme::normalize($before), Theme::normalize($after)));
     }
 
     public function regionRevisions(string $region): array
     {
         $this->assertRegion($region);
 
-        return $this->listRevisions(['regions', $region]);
+        return $this->listRevisions(['regions', $region], $this->region($region), RevisionChanges::nodes(...));
     }
 
     public function layoutRevisions(string $type, string $variant, string $area = self::DEFAULT_TEMPLATE): array
     {
         $this->assertVariant($this->requireType($type), $variant);
 
-        return $this->listRevisions(['content', $type, $variant, $area]);
+        return $this->listRevisions(['content', $type, $variant, $area], $this->layout($type, $variant, $area), RevisionChanges::nodes(...));
     }
 
     /** Read a revision without changing the saved website or its history. */
@@ -1689,13 +1689,24 @@ final class SiteRepository
         return ['format_version' => LayoutSchema::FORMAT_VERSION, 'nodes' => $this->layout($type, $variant, $area), 'customized' => $this->layoutCustomized($type, $variant, $area)];
     }
 
-    private function listRevisions(array $path): array
+    /**
+     * Revisions newest first, without their snapshots. With $compare, each
+     * says what the save after it changed (see RevisionChanges).
+     */
+    private function listRevisions(array $path, mixed $current = null, ?callable $compare = null): array
     {
+        $theme = ($path[0] ?? '') === 'theme';
         $revisions = $this->revisions->all(...$path);
-        if (($path[0] ?? '') !== 'theme') {
+        if (!$theme) {
             $revisions = array_values(array_filter($revisions, static fn(array $revision): bool => ($revision['snapshot']['format_version'] ?? null) === LayoutSchema::FORMAT_VERSION));
         }
         usort($revisions, static fn(array $a, array $b): int => strcmp($b['id'], $a['id']));
+        if ($compare !== null) {
+            $revisions = RevisionChanges::annotate($revisions, static function (array $revision) use ($theme): ?array {
+                $snapshot = $revision['snapshot'][$theme ? 'theme' : 'nodes'] ?? null;
+                return is_array($snapshot) ? $snapshot : null;
+            }, $current, $compare);
+        }
         foreach ($revisions as &$revision) {
             $revision['customized'] = $revision['snapshot']['customized'] ?? null;
             unset($revision['snapshot']);

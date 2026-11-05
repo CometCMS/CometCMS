@@ -16,6 +16,7 @@ use CometCMS\Site\FormCaptchaSettings;
 use CometCMS\Site\LayoutSchema;
 use CometCMS\Site\PageRenderer;
 use CometCMS\Site\PreviewRepository;
+use CometCMS\Site\RevisionChanges;
 use CometCMS\Site\SiteContext;
 use CometCMS\Site\SiteRepository;
 use CometCMS\Site\SiteScripts;
@@ -544,17 +545,44 @@ final class SiteController extends BaseController
     /** The entry's saved versions, newest first, as the builder's history lists them. Query: field. */
     public function pageRevisions(string $type, string $id): never
     {
-        [, $entry, $field] = $this->requirePage($type, $id, (string) ($_GET['field'] ?? ''));
-        $revisions = array_map(static fn(array $revision): array => [
+        [$schema, $entry, $field] = $this->requirePage($type, $id, (string) ($_GET['field'] ?? ''));
+        $revisions = $this->content()->revisions($type, (string) $entry['id']);
+        usort($revisions, static fn(array $a, array $b): int => strcmp($b['id'], $a['id']));
+        // Not designed, a page shows its template's default content; its ids
+        // stay the same between revisions, so only real changes are listed.
+        $default = LayoutSchema::pagePlaces($this->site->layout($type, 'detail', $this->entryTemplate($type, $entry)['id']))[$field]['children'] ?? [];
+        $labels = [];
+        foreach ($schema['fields'] as $name => $config) {
+            if (($config['type'] ?? '') !== 'page') $labels[(string) $name] = (string) ($config['label'] ?? $name);
+        }
+        $state = static fn(array $values): array => [
+            'customized' => LayoutSchema::hasPageContent($values[$field] ?? null),
+            'nodes' => LayoutSchema::hasPageContent($values[$field] ?? null) ? LayoutSchema::pageNodes($values[$field]) : $default,
+            // Every locale's stored values, so translations count too.
+            'values' => is_array($values['values'] ?? null) ? $values['values'] : [],
+        ];
+        $revisions = RevisionChanges::annotate(
+            $revisions,
+            static fn(array $revision): array => $state(is_array($revision['entry'] ?? null) ? $revision['entry'] : []),
+            $state($entry),
+            static fn(array $before, array $after): array => [
+                ...match (true) {
+                    !$before['customized'] && $after['customized'] => [['action' => 'customized', 'kind' => '', 'label' => '']],
+                    $before['customized'] && !$after['customized'] => [['action' => 'reset', 'kind' => '', 'label' => '']],
+                    default => RevisionChanges::nodes($before['nodes'], $after['nodes']),
+                },
+                ...RevisionChanges::fields($before['values'], $after['values'], $labels, $field),
+            ],
+        );
+
+        $this->json(['data' => array_map(static fn(array $revision): array => [
             'id' => $revision['id'],
             'created_at' => $revision['created_at'],
             'created_by' => $revision['created_by'],
             'event' => $revision['event'] === 'content.revision_restore' ? 'restored' : 'saved',
             'customized' => LayoutSchema::hasPageContent($revision['entry'][$field] ?? null),
-        ], $this->content()->revisions($type, (string) $entry['id']));
-        usort($revisions, static fn(array $a, array $b): int => strcmp($b['id'], $a['id']));
-
-        $this->json(['data' => $revisions]);
+            'changes' => $revision['changes'],
+        ], $revisions)]);
     }
 
     public function pageRevision(string $type, string $id, string $revisionId): never

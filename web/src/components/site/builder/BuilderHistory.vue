@@ -29,7 +29,25 @@
                   <span class="truncate">{{ revision.created_by_name || revision.created_by }}</span>
                 </span>
               </div>
-              <p class="text-xs leading-relaxed text-slate-500">{{ t(`site.history.event.${revision.event}`) }}</p>
+              <template v-if="changesOf(revision)">
+                <p v-if="revision.event !== 'saved'" class="inline-flex rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">{{ t(`site.history.kind.${revision.event}`) }}</p>
+                <p v-if="!changesOf(revision).total" class="text-xs italic leading-relaxed text-slate-400">{{ t('site.history.noChanges') }}</p>
+                <ul v-else class="space-y-1" :aria-label="t('site.history.changesLabel')">
+                  <li v-for="(line, index) in changesOf(revision).lines" :key="index" class="flex min-w-0 items-start gap-1.5 text-xs leading-snug">
+                    <Icon :icon="line.icon" :class="line.tone" class="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                    <span class="min-w-0 break-words text-slate-700" :title="line.label || undefined"><span class="font-medium">{{ line.subject }}</span>{{ line.label ? ' ' : '' }}<span v-if="line.label" class="text-slate-600">{{ t("site.history.quoted", { label: line.label }) }}</span>{{ line.action ? ' ' : '' }}<span v-if="line.action" class="text-slate-500">{{ line.action }}</span></span>
+                  </li>
+                </ul>
+                <button
+                  v-if="changesOf(revision).hidden && !expanded.has(revision.id)"
+                  type="button"
+                  class="text-xs font-medium text-theme-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-theme-500"
+                  :aria-expanded="false"
+                  @click="expand(revision.id)"
+                >{{ t('site.history.moreChanges', { count: changesOf(revision).hidden }) }}</button>
+                <p v-else-if="changesOf(revision).hidden" class="text-xs text-slate-400">{{ t('site.history.furtherChanges', { count: changesOf(revision).hidden }) }}</p>
+              </template>
+              <p v-else class="text-xs leading-relaxed text-slate-500">{{ t(`site.history.event.${revision.event}`) }}</p>
               <p v-if="revision.customized === false" class="inline-flex rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">{{ t('site.history.defaultLayout') }}</p>
             </div>
             <button
@@ -55,6 +73,8 @@ import { Icon } from "@iconify/vue";
 import LoadingSpinner from "../../LoadingSpinner.vue";
 import { useToastStore } from "../../../stores/toast.js";
 import { useI18n } from "../../../i18n/index.js";
+import { useOptionalSiteBuilder } from "../../../composables/useSiteBuilder.js";
+import { describeChanges } from "../../../composables/revisionChanges.js";
 
 const props = defineProps({
   fetchRevisions: { type: Function, required: true },
@@ -68,7 +88,21 @@ const loading = ref(false);
 const loadingRevision = ref(false);
 const revisions = ref([]);
 const error = ref("");
+/** Revisions whose whole change list is shown. */
+const expanded = ref(new Set());
+const builder = useOptionalSiteBuilder();
+const labels = { t, kindLabel: (kind) => builder?.kindLabel(kind) ?? t(`site.kind.${kind}`) };
 let sequence = 0;
+
+const changeLines = computed(() => new Map(revisions.value.map((revision) => [revision.id, describeChanges(revision.changes, labels, expanded.value.has(revision.id))])));
+
+function changesOf(revision) {
+  return changeLines.value.get(revision.id);
+}
+
+function expand(id) {
+  expanded.value = new Set([...expanded.value, id]);
+}
 
 const revisionGroups = computed(() => {
   const groups = new Map();
@@ -92,6 +126,7 @@ async function load() {
   loading.value = true;
   error.value = "";
   revisions.value = [];
+  expanded.value = new Set();
   loadingRevision.value = false;
   const request = ++sequence;
   try {

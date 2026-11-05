@@ -60,6 +60,8 @@ Layouts are generated from the content type's fields until you change them, so a
 
 If saving fails, the builder keeps a recovery copy in the current browser tab, including pending entry fields and design changes. Reloading the same editor restores that copy. If browser storage is unavailable, a warning asks you to keep the tab open. When the saved layout has changed elsewhere, **Save my layout** lets you explicitly replace it after confirmation; the previous saved version stays in **History**. Clicking Save again alone does not overwrite another edit.
 
+**History** lists every save of the open layout, page or component, and on its **Website design** tab every design save. Each entry shows what that save changed: elements added, removed, edited (texts, images, links), restyled or moved, named by their element type and text, plus changed entry fields on pages and changed design groups such as **Colors**. **Load version before** puts the state from before that save into the editor; nothing changes until you save.
+
 The builder shows a live preview rendered by the same code as the real site. Layouts are built from **sections → rows → columns → elements**. A column can also hold column sets of its own (up to three levels deep), for example a card with an image beside its text. Columns of such a nested set switch between stacked and side by side by the width of the column they sit in, not by the screen width:
 
 | Element      | Shows                                                                         |
