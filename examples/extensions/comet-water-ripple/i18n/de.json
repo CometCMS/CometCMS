@@ -1,0 +1,31 @@
+{
+  "$schema": "../../../../schemas/i18n.schema.json",
+  "title": "Wasserwellen",
+  "description": "Ein interaktiver Punktraster-Hintergrund für Abschnitte, Zeilen und Spalten. Zeigerbewegungen und Tippen schicken Wellen, Glitch-Risse und verzögerte Lichtblitze in deinen Theme-Farben durch das Raster.",
+  "backgrounds": {
+    "water-ripple": {
+      "title": "Wasserwellen",
+      "description": "Ein reaktives Punktraster hinter dem Inhalt. Zeigerbewegungen oder Tippen schicken Wellen, gebrochene Datenspalten und verzögerte Lichtblitze hindurch.",
+      "keywords": ["interaktiv", "Punkte", "Glitch", "Wasser", "Wellen"],
+      "props": {
+        "color": { "label": "Punktfarbe", "group": "Farben", "help": "„Keine“ nutzt die Textfarbe des Abschnitts." },
+        "highlight": { "label": "Lichtfarbe", "group": "Farben", "help": "Nur die stärksten Lichtblitze erreichen sie." },
+        "intensity": { "label": "Reaktionsstärke", "group": "Bewegung", "help": "Bei niedrigen Werten bleibt das Raster hinter langen Texten ruhig." },
+        "drift": { "label": "Umgebungsbewegung", "group": "Bewegung", "help": "Breite, gerasterte Bänder ziehen über das Raster. Bei 0 steht ein beruhigtes Raster still." },
+        "interaction": {
+          "label": "Reagiert auf",
+          "group": "Bewegung",
+          "options": { "pointer": "Zeigerbewegung und Tippen", "taps": "Nur Tippen und Klicks", "none": "Nichts (nur Umgebung)" }
+        },
+        "density": {
+          "label": "Punktabstand",
+          "group": "Raster",
+          "options": { "fine": "Fein", "medium": "Mittel", "coarse": "Grob" }
+        }
+      },
+      "variations": {
+        "drifting": { "title": "Treibende Wasserwellen", "description": "Das Wasserraster mit langsamen Umgebungsbändern, auch wenn niemand den Zeiger bewegt." }
+      }
+    }
+  }
+}

@@ -41,5 +41,6 @@
     "align": {
       "use": "align"
     }
-  }
+  },
+  "deprecated": "Use a section with the Futuristic Grid background instead (Style → Background → Background effect), which holds rows and columns."
 }

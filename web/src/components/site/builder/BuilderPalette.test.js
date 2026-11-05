@@ -60,3 +60,40 @@ describe('components in the Add panel', () => {
     expect(html).toContain('Icons')
   })
 })
+
+async function renderEffects() {
+  const app = createSSRApp({ setup() {
+    const builder = createSiteBuilder({ t })
+    builder.spec.value = {
+      elements: ['text'],
+      backgrounds: ['block:acme/aurora', 'block:acme/retired'],
+      kinds: {
+        'block:acme/aurora': {
+          extension: true, background: true, label: 'Aurora', description: 'Northern lights', icon: 'mdi:weather-night', keywords: [], props: {},
+          variations: [{ name: 'calm', title: 'Calm aurora', props: {} }],
+        },
+        'block:acme/retired': { extension: true, background: true, label: 'Retired glow', deprecated: '', icon: '', keywords: [], props: {}, variations: [] },
+      },
+    }
+    return () => h(BuilderPalette, { withFields: false })
+  } })
+  const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/:pathMatch(.*)*', component: { render: () => null } }] })
+  await router.push('/page-builder/builder/region/header')
+  app.use(router)
+  app.component('router-link', RouterLink)
+  app.use(createPinia())
+  return renderToString(app)
+}
+
+describe('effect sections in the Add panel', () => {
+  it('offers each background and its variations as a section, without deprecated ones or an element entry', async () => {
+    const html = await renderEffects()
+    expect(html).toContain(t('site.builder.effectSections'))
+    expect(html).toContain('Aurora')
+    expect(html).toContain('Calm aurora')
+    expect(html).toContain('data-icon="mdi:weather-night"')
+    expect(html).not.toContain('Retired glow')
+    // Backgrounds are not in spec.elements, so they appear once per entry, not again as elements.
+    expect(html.match(/>Aurora</g)).toHaveLength(1)
+  })
+})

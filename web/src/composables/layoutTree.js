@@ -20,6 +20,8 @@ const WRAPPER = { section: null, row: 'section', column: 'row' }
 
 /** Fresh preset sections: dropped where no section fits, only their row is placed (see resolveDrop()). */
 const ADAPTIVE_SECTIONS = new WeakSet()
+// The row an adaptive section places instead of itself, when that row should keep the section's look.
+const ADAPTED_ROWS = new WeakMap()
 
 export function newId() {
   const bytes = new Uint8Array(5)
@@ -320,7 +322,7 @@ export function resolveDrop(spec, nodes, node, targetId, position, options = {})
         : null
     }
     // A preset section dropped into a column (or any non-section spot) becomes just its row of columns.
-    const candidate = ADAPTIVE_SECTIONS.has(node) && !allowedChildren(spec, parent ? parent.kind : ROOT).includes('section') ? node.children[0] : node
+    const candidate = ADAPTIVE_SECTIONS.has(node) && !allowedChildren(spec, parent ? parent.kind : ROOT).includes('section') ? ADAPTED_ROWS.get(node) ?? node.children[0] : node
     if (insideTemplate && !(spec?.item_elements ?? []).includes(placementKind(candidate))) return null
     const placed = wrapFor(spec, parent ? parent.kind : ROOT, candidate)
     if (placed && parent && placementKind(placed) === 'row' && rowDepth(nodes, parent.id) > (spec?.max_row_depth ?? 0)) return null
@@ -423,6 +425,32 @@ export function sectionPreset(spec, spans) {
   const section = createNode(spec, 'section', {}, {}, [createNode(spec, 'row', {}, {}, columns)])
   ADAPTIVE_SECTIONS.add(section)
   return section
+}
+
+/**
+ * A one-column section with an extension background (style background_fx), as the
+ * palette offers it: the background's starting section props and style, and its
+ * props with the given starting values. Dropped where only rows fit, its row
+ * takes the background and the style rows support.
+ */
+export function effectSection(spec, kind, props = {}) {
+  const own = spec?.kinds?.[kind] ?? {}
+  const section = sectionPreset(spec, [12])
+  const background = { kind, props: { ...defaultProps(spec, kind), ...clone(props) } }
+  section.props = { ...section.props, ...clone(own.section?.props ?? {}) }
+  section.style = { ...clone(own.section?.style ?? {}), background_fx: background }
+  const rowKeys = spec?.kinds?.row?.style ?? []
+  const row = section.children[0]
+  ADAPTED_ROWS.set(section, {
+    ...row,
+    style: Object.fromEntries(Object.entries(section.style).filter(([key]) => rowKeys.includes(key)).map(([key, value]) => [key, clone(value)])),
+  })
+  return section
+}
+
+/** Whether a style value names an extension background, which [] or {} for none do not. */
+export function hasBackgroundEffect(value) {
+  return !!value && typeof value === 'object' && !Array.isArray(value) && typeof value.kind === 'string' && value.kind !== ''
 }
 
 /**

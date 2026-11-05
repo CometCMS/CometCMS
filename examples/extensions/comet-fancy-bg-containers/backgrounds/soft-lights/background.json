@@ -1,0 +1,52 @@
+{
+  "$schema": "../../../../../schemas/background.schema.json",
+  "title": "Soft Lights",
+  "description": "Softly drifting light orbs or a breathing aurora ribbon behind a section, row or column.",
+  "icon": "mdi:blur",
+  "keywords": [
+    "glow",
+    "aurora",
+    "gradient"
+  ],
+  "props": {
+    "variant": {
+      "type": "enum",
+      "label": "Background style",
+      "options": [
+        "orbs",
+        "aurora"
+      ],
+      "default": "orbs",
+      "option_labels": {
+        "orbs": "Light orbs",
+        "aurora": "Aurora ribbon"
+      }
+    },
+    "accent": {
+      "use": "accent"
+    },
+    "secondary": {
+      "use": "secondary"
+    },
+    "intensity": {
+      "use": "intensity"
+    },
+    "motion": {
+      "use": "motion"
+    },
+    "scale": {
+      "use": "scale"
+    }
+  },
+  "section": {
+    "props": {
+      "min_height": "half",
+      "vertical_align": "center"
+    },
+    "style": {
+      "background": "text",
+      "text_color": "background",
+      "link_color": "background"
+    }
+  }
+}

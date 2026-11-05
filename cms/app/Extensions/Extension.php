@@ -16,8 +16,12 @@ use CometCMS\Site\Blocks\BlockScripts;
 use CometCMS\Site\Blocks\BlockTemplate;
 
 /**
- * An extension: a manifest, optional blocks, assets and site-content seeds.
+ * An extension: a manifest, optional blocks, backgrounds, assets and site-content seeds.
  * Templates and CSS compile here; optional trusted view.js modules run in the browser.
+ *
+ * A background (backgrounds/<name>/) compiles like a block without a slot and is
+ * stored with the blocks, flagged "background". It is not placed as an element:
+ * sections, rows and columns show it behind their content (style background_fx).
  */
 final class Extension
 {
@@ -35,13 +39,19 @@ final class Extension
         'webp' => 'image/webp', 'avif' => 'image/avif', 'woff2' => 'font/woff2', 'mp4' => 'video/mp4', 'webm' => 'video/webm',
     ];
 
-    private const TEXT_LIMITS = ['comet-extension.json' => 16384, 'block.json' => 32768, 'template.html' => 65536, 'style.css' => 131072];
+    private const TEXT_LIMITS = ['comet-extension.json' => 16384, 'block.json' => 32768, 'background.json' => 32768, 'template.html' => 65536, 'style.css' => 131072];
     private const DOCUMENTS = ['README.md', 'LICENSE', 'LICENSE.md', 'LICENSE.txt', 'CHANGELOG.md'];
     private const SEED_LIMIT = 1048576;
     private const DOCUMENT_LIMIT = 262144;
     // "$schema" lets editors and agents validate the JSON while writing it; CometCMS ignores it.
     public const EXTENSION_FIELDS = ['$schema', 'api_version', 'name', 'title', 'description', 'version', 'author', 'license', 'homepage', 'requires', 'cms', 'permissions', 'settings', 'shared_props'];
     public const BLOCK_FIELDS = ['$schema', 'title', 'description', 'icon', 'category', 'keywords', 'deprecated', 'aliases', 'allowed_children', 'variations', 'props'];
+    /** A background has no slot or palette category, and may describe the section it starts as. */
+    public const BACKGROUND_FIELDS = ['$schema', 'title', 'description', 'icon', 'keywords', 'deprecated', 'aliases', 'variations', 'props', 'section'];
+    /** Section style a background's palette entry cannot start with. */
+    private const SECTION_START_EXCLUDED = ['background_fx', 'background_image', 'background_poster', 'visible_if', 'class', 'anchor'];
+    /** Prop types a background can have: visual values without translations or content bindings. */
+    public const BACKGROUND_PROP_TYPES = ['bool', 'int', 'enum', 'icon', 'color', 'space', 'radius', 'shadow'];
     public const PROP_FIELDS = ['use', 'type', 'label', 'default', 'max', 'min', 'options', 'fields', 'control', 'group', 'help', 'placeholder', 'visible_when', 'option_labels', 'option_aliases', 'renamed_from', 'deprecated'];
     /** Prop fields a block may set on top of a shared prop it uses. */
     private const OVERRIDABLE_TEXTS = ['label', 'help', 'placeholder', 'group'];
@@ -213,6 +223,10 @@ final class Extension
         $icons = [];
         $extensionIcons = [];
         $scripts = [];
+        $scriptPaths = [];
+        // Slugs of the backgrounds/ folders; their parts sit in $blocks with the blocks'.
+        $backgrounds = [];
+        $folders = [];
         $seeds = [];
         $presetIds = [];
         $translations = [];
@@ -274,6 +288,7 @@ final class Extension
                     $errors[] = ['file' => $path, 'line' => $line, 'message' => $message];
                 }
                 $scripts[$role[1]] = hash('sha256', $bytes) . '.js';
+                $scriptPaths[$role[1]] = $path;
             } elseif ($role[0] === 'asset') {
                 $file = self::asset($path, $bytes, $errors);
                 if ($file !== null) $assets[$path] = $file;
@@ -286,8 +301,13 @@ final class Extension
             } elseif ($role[0] === 'document') {
                 $documents[] = $path;
                 if (strlen($bytes) > self::DOCUMENT_LIMIT) $errors[] = ['file' => $path, 'line' => null, 'message' => 'Documents are limited to 256 KiB.'];
+            } elseif ($role[0] === 'block' && isset($folders[$role[1]]) && $folders[$role[1]] !== $role[3]) {
+                $errors[] = ['file' => $path, 'line' => null, 'message' => 'blocks/' . $role[1] . '/ and backgrounds/' . $role[1] . '/ would both be named ' . $role[1] . '. Rename one of the folders.'];
             } elseif ($role[0] === 'block' && strlen($bytes) <= self::TEXT_LIMITS[$role[2]]) {
-                $blocks[$role[1]][$role[2]] = $bytes;
+                $folders[$role[1]] = $role[3];
+                if ($role[3] === 'backgrounds') $backgrounds[$role[1]] = true;
+                // A background's manifest is read like a block's.
+                $blocks[$role[1]][$role[2] === 'background.json' ? 'block.json' : $role[2]] = $bytes;
             } elseif ($role[0] === 'block' || strlen($bytes) > self::TEXT_LIMITS[basename($path)]) {
                 $errors[] = ['file' => $path, 'line' => null, 'message' => sprintf('This file is limited to %d KiB.', self::TEXT_LIMITS[basename($path)] >> 10)];
             }
@@ -331,25 +351,37 @@ final class Extension
         $compiled = [];
         ksort($blocks);
         foreach ($blocks as $slug => $parts) {
-            $folder = 'blocks/' . $slug . '/';
-            foreach (['block.json', 'template.html'] as $required) {
-                if (!isset($parts[$required])) $errors[] = ['file' => $folder . $required, 'line' => null, 'message' => 'Every block needs ' . $required . '.'];
+            $background = isset($backgrounds[$slug]);
+            $folder = self::folder($slug, $background);
+            $manifestFile = $folder . ($background ? 'background.json' : 'block.json');
+            $required = $background ? ['block.json'] : ['block.json', 'template.html'];
+            foreach ($required as $file) {
+                if (!isset($parts[$file])) $errors[] = ['file' => $file === 'block.json' ? $manifestFile : $folder . $file, 'line' => null, 'message' => $background ? 'Every background needs background.json.' : 'Every block needs ' . $file . '.'];
             }
-            if (!isset($parts['block.json'], $parts['template.html'])) continue;
-            $block = self::blockManifest($parts['block.json'], $folder . 'block.json', $errors, $extension['shared_props'] ?? []);
+            if (!isset($parts['block.json']) || (!$background && !isset($parts['template.html']))) continue;
+            $block = self::blockManifest($parts['block.json'], $manifestFile, $errors, $extension['shared_props'] ?? [], $background);
             if ($block === null) continue;
             if (isset($icons[$slug]) && $block['icon'] !== '') {
-                $errors[] = ['file' => $folder . 'block.json', 'line' => null, 'message' => 'The block has both an "icon" name and an icon file. Keep one.'];
+                $errors[] = ['file' => $manifestFile, 'line' => null, 'message' => 'The ' . ($background ? 'background' : 'block') . ' has both an "icon" name and an icon file. Keep one.'];
             }
             $name = $vendor . '/' . $slug;
-            $template = BlockTemplate::compile($parts['template.html'], $block['props'], $assets, $folder . 'template.html', $errors, $extension['settings'] ?? []);
+            // A background may draw everything from its view.js, without markup of its own.
+            $template = isset($parts['template.html'])
+                ? BlockTemplate::compile($parts['template.html'], $block['props'], $assets, $folder . 'template.html', $errors, $extension['settings'] ?? [])
+                : [];
             foreach ($block['aliases'] as $alias) {
                 if (explode('/', $alias)[0] !== $vendor || $alias === $name) {
-                    $errors[] = ['file' => $folder . 'block.json', 'line' => null, 'message' => 'aliases: "' . $alias . '" must be an earlier name of this block from the vendor ' . $vendor . ', such as ' . $vendor . '/old-' . $slug . '.'];
+                    $errors[] = ['file' => $manifestFile, 'line' => null, 'message' => 'aliases: "' . $alias . '" must be an earlier name of this ' . ($background ? 'background' : 'block') . ' from the vendor ' . $vendor . ', such as ' . $vendor . '/old-' . $slug . '.'];
                 }
             }
             if ($block['allowed_children'] !== [] && !BlockTemplate::hasSlot($template) && $template !== []) {
-                $errors[] = ['file' => $folder . 'block.json', 'line' => null, 'message' => 'allowed_children only applies to blocks whose template has a <slot></slot>.'];
+                $errors[] = ['file' => $manifestFile, 'line' => null, 'message' => 'allowed_children only applies to blocks whose template has a <slot></slot>.'];
+            }
+            if ($background && BlockTemplate::hasSlot($template)) {
+                $errors[] = ['file' => $folder . 'template.html', 'line' => null, 'message' => 'A background sits behind content and has no <slot></slot>. Remove it; editors add content to the section, row or column instead.'];
+            }
+            if ($background && $template === [] && !isset($scripts[$slug])) {
+                $errors[] = ['file' => $folder . 'template.html', 'line' => null, 'message' => 'A background needs template.html, view.js or both.'];
             }
             $compiled['block:' . $name] = [
                 'name' => $name,
@@ -357,6 +389,7 @@ final class Extension
                 'icon' => $icons[$slug] ?? ($block['icon'] !== '' ? $block['icon'] : ($icons[''] ?? '')),
                 'slot' => BlockTemplate::hasSlot($template),
                 'script' => $scripts[$slug] ?? '',
+                'background' => $background,
             ] + $block + [
                 'template' => $template,
                 'css' => self::css($parts['style.css'] ?? '', $folder . 'style.css', $assets, $errors),
@@ -366,13 +399,13 @@ final class Extension
         foreach ($compiled as $kind => $block) {
             foreach ($block['aliases'] as $alias) {
                 if (isset($compiled['block:' . $alias]) || isset($aliases[$alias])) {
-                    $errors[] = ['file' => 'blocks/' . explode('/', $block['name'])[1] . '/block.json', 'line' => null, 'message' => 'aliases: ' . $alias . ' is already the name or alias of another block in this extension.'];
+                    $errors[] = ['file' => self::folder(explode('/', $block['name'])[1], $block['background']) . ($block['background'] ? 'background.json' : 'block.json'), 'line' => null, 'message' => 'aliases: ' . $alias . ' is already the name or alias of another block or background in this extension.'];
                 }
                 $aliases[$alias] = $kind;
             }
         }
         if (($extension['permissions'] ?? []) !== [] && $scripts === []) {
-            $errors[] = ['file' => self::MANIFEST, 'line' => null, 'message' => 'permissions only apply to block scripts (blocks/<name>/view.js), and this extension has none. Remove permissions.'];
+            $errors[] = ['file' => self::MANIFEST, 'line' => null, 'message' => 'permissions only apply to block and background scripts (blocks/<name>/view.js, backgrounds/<name>/view.js), and this extension has none. Remove permissions.'];
         }
         self::translations($translations, $extension, $compiled, $vendor, $errors);
         foreach ($compiled as &$block) {
@@ -381,7 +414,14 @@ final class Extension
         unset($block);
         unset($extension['shared_props']);
         foreach (array_diff_key($scripts, $blocks) as $slug => $_) {
-            $errors[] = ['file' => 'blocks/' . $slug . '/view.js', 'line' => null, 'message' => 'There is no block "' . $slug . '" for this script. Add block.json and template.html next to it.'];
+            $errors[] = str_starts_with($scriptPaths[$slug], 'backgrounds/')
+                ? ['file' => $scriptPaths[$slug], 'line' => null, 'message' => 'There is no background "' . $slug . '" for this script. Add background.json next to it.']
+                : ['file' => $scriptPaths[$slug], 'line' => null, 'message' => 'There is no block "' . $slug . '" for this script. Add block.json and template.html next to it.'];
+        }
+        foreach ($scriptPaths as $slug => $path) {
+            if (isset($folders[$slug]) && !str_starts_with($path, $folders[$slug] . '/')) {
+                $errors[] = ['file' => $path, 'line' => null, 'message' => 'This script belongs next to the ' . ($folders[$slug] === 'backgrounds' ? 'background' : 'block') . ' in ' . $folders[$slug] . '/' . $slug . '/.'];
+            }
         }
         $css = self::css($files['style.css'] ?? '', 'style.css', $assets, $errors);
         if ($errors !== []) {
@@ -390,7 +430,7 @@ final class Extension
 
         $scriptFiles = [];
         foreach ($scripts as $slug => $file) {
-            $scriptFiles['blocks/' . $slug . '/view.js'] = $file;
+            $scriptFiles[$scriptPaths[$slug]] = $file;
         }
 
         return $extension + ['icon' => $extensionIcons['icon.png'] ?? $extensionIcons['icon.svg'] ?? '', 'css' => $css, 'assets' => $assets + $scriptFiles, 'blocks' => $compiled, 'seeds' => $seeds];
@@ -432,11 +472,13 @@ final class Extension
         if (in_array($path, self::DOCUMENTS, true)) return ['document'];
         $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
         $segments = explode('/', $path);
-        if ($segments[0] === 'blocks' && count($segments) === 3 && $segments[2] === 'view.js' && preg_match('/^[a-z][a-z0-9-]{0,39}$/D', $segments[1])) {
+        if (in_array($segments[0], ['blocks', 'backgrounds'], true) && count($segments) === 3 && $segments[2] === 'view.js' && preg_match('/^[a-z][a-z0-9-]{0,39}$/D', $segments[1])) {
             return ['script', $segments[1]];
         }
         if (in_array($extension, ['js', 'mjs', 'cjs', 'ts'], true)) {
-            return 'A block\'s script is blocks/<name>/view.js, one self-contained module. Bundle other files into it.';
+            return $segments[0] === 'backgrounds'
+                ? 'A background\'s script is backgrounds/<name>/view.js, one self-contained module. Bundle other files into it.'
+                : 'A block\'s script is blocks/<name>/view.js, one self-contained module. Bundle other files into it.';
         }
         if (in_array($extension, ['php', 'phtml', 'phar'], true)) {
             return 'PHP files are not allowed in extensions.';
@@ -446,17 +488,25 @@ final class Extension
                 ? ['asset']
                 : 'Assets must be ' . implode(', ', array_keys(self::ASSET_TYPES)) . ' files.';
         }
-        if ($segments[0] === 'blocks' && count($segments) === 3) {
+        if (in_array($segments[0], ['blocks', 'backgrounds'], true) && count($segments) === 3) {
             if (!preg_match('/^[a-z][a-z0-9-]{0,39}$/D', $segments[1])) {
-                return 'Block folder names start with a lowercase letter and hold up to 40 lowercase letters, digits or hyphens.';
+                return ($segments[0] === 'blocks' ? 'Block' : 'Background') . ' folder names start with a lowercase letter and hold up to 40 lowercase letters, digits or hyphens.';
             }
-            if (in_array($segments[2], ['block.json', 'template.html', 'style.css'], true)) return ['block', $segments[1], $segments[2]];
+            $manifest = $segments[0] === 'blocks' ? 'block.json' : 'background.json';
+            if (in_array($segments[2], [$manifest, 'template.html', 'style.css'], true)) return ['block', $segments[1], $segments[2], $segments[0]];
             if (isset(self::ICONS[$segments[2]])) return ['icon', $segments[1]];
             if ($segments[2] === 'README.md') return ['document'];
             if ($segments[2] === 'template.mustache') return 'Rename template.mustache to template.html.';
+            if (in_array($segments[2], ['block.json', 'background.json'], true)) return 'A ' . ($segments[0] === 'blocks' ? 'block' : 'background') . ' is described by ' . $manifest . '.';
         }
 
-        return 'Unexpected file. Extensions contain ' . self::MANIFEST . ', style.css, icon.svg/icon.png, README/LICENSE/CHANGELOG, i18n/<locale>.json, blocks/<name>/{block.json, template.html, style.css, view.js, icon.svg} assets/, content-types/<name>.json, components/<id>.json, templates/<type>/<variant>.json, presets/<id>.json, fonts/<id>.json and theme.json.';
+        return 'Unexpected file. Extensions contain ' . self::MANIFEST . ', style.css, icon.svg/icon.png, README/LICENSE/CHANGELOG, i18n/<locale>.json, blocks/<name>/{block.json, template.html, style.css, view.js, icon.svg}, backgrounds/<name>/{background.json, template.html, style.css, view.js, icon.svg}, assets/, content-types/<name>.json, components/<id>.json, templates/<type>/<variant>.json, presets/<id>.json, fonts/<id>.json and theme.json.';
+    }
+
+    /** The folder of a block or background, with its trailing slash. */
+    private static function folder(string $slug, bool $background): string
+    {
+        return ($background ? 'backgrounds/' : 'blocks/') . $slug . '/';
     }
 
     /** null when the path is fine, false when it is clutter to ignore, or a message. */
@@ -634,7 +684,7 @@ final class Extension
         return $permissions;
     }
 
-    private static function blockManifest(string $json, string $file, array &$errors, array $shared = []): ?array
+    private static function blockManifest(string $json, string $file, array &$errors, array $shared = [], bool $background = false): ?array
     {
         $before = count($errors);
         $manifest = self::json($json, $file, $errors);
@@ -642,10 +692,15 @@ final class Extension
         $error = static function (string $message) use ($file, &$errors): void {
             $errors[] = ['file' => $file, 'line' => null, 'message' => $message];
         };
-        foreach (array_diff(array_keys($manifest), self::BLOCK_FIELDS) as $unknown) {
-            $error($unknown === 'name'
-                ? 'Remove "name": a block is named after its extension vendor and folder, for example blocks/callout becomes cometcms/callout.'
-                : 'Unknown field "' . $unknown . '". Allowed: ' . implode(', ', self::BLOCK_FIELDS) . '.');
+        $fields = $background ? self::BACKGROUND_FIELDS : self::BLOCK_FIELDS;
+        foreach (array_diff(array_keys($manifest), $fields) as $unknown) {
+            $error(match (true) {
+                $unknown === 'name' => $background
+                    ? 'Remove "name": a background is named after its extension vendor and folder, for example backgrounds/aurora becomes cometcms/aurora.'
+                    : 'Remove "name": a block is named after its extension vendor and folder, for example blocks/callout becomes cometcms/callout.',
+                $background && $unknown === 'allowed_children' => 'A background holds no elements, so allowed_children does not apply.',
+                default => 'Unknown field "' . $unknown . '". Allowed: ' . implode(', ', $fields) . '.',
+            });
         }
         self::text($manifest, 'title', 120, true, $error);
         self::text($manifest, 'description', 500, false, $error);
@@ -662,10 +717,11 @@ final class Extension
             $error('Blocks have at most ' . self::MAX_PROPS . ' props.');
         }
         foreach ($declared as $key => $spec) {
-            $prop = self::prop((string) $key, $spec, static fn(string $message) => $error('props.' . $key . ': ' . $message), shared: $shared);
+            $prop = self::prop((string) $key, $spec, static fn(string $message) => $error('props.' . $key . ': ' . $message), types: $background ? self::BACKGROUND_PROP_TYPES : null, shared: $shared);
             if ($prop !== null) $props[$key] = $prop;
         }
         self::relations($props, static fn(string $message) => $error('props.' . $message));
+        $section = $background ? self::sectionStart($manifest['section'] ?? [], $error) : [];
         self::text($manifest, 'category', 40, false, $error);
         $keywords = $manifest['keywords'] ?? [];
         if (!is_array($keywords) || !array_is_list($keywords) || count($keywords) > 12
@@ -689,7 +745,7 @@ final class Extension
         $deprecated = self::deprecation($manifest, $error);
         if (count($errors) > $before) return null;
 
-        return [
+        return ($background ? ['section' => $section] : []) + [
             'title' => trim($manifest['title']),
             'description' => trim($manifest['description'] ?? ''),
             'icon' => $icon,
@@ -701,6 +757,43 @@ final class Extension
             'variations' => $variations,
             'props' => $props,
         ];
+    }
+
+    /**
+     * How a section added with a background from the palette starts: section props and
+     * style, such as a dark surface or a minimum height. Values must be ones the
+     * section keeps as they are; the background itself is set by the palette.
+     *
+     * @return array{props: array, style: array}
+     */
+    private static function sectionStart(mixed $declared, callable $error): array
+    {
+        $start = ['props' => [], 'style' => []];
+        if (!is_array($declared) || ($declared !== [] && array_is_list($declared)) || array_diff(array_keys($declared), ['props', 'style']) !== []) {
+            $error('section must be an object with "props" and/or "style", for example {"props": {"min_height": "half"}, "style": {"background": "text", "text_color": "background"}}.');
+            return $start;
+        }
+        foreach (['props', 'style'] as $part) {
+            $values = $declared[$part] ?? [];
+            if (!is_array($values) || ($values !== [] && array_is_list($values))) {
+                $error('section.' . $part . ' must be an object of section ' . ($part === 'props' ? 'props' : 'style values') . '.');
+                continue;
+            }
+            // Media, conditions and anchors belong to one site, and the palette sets the background itself.
+            $known = $part === 'props' ? array_keys(LayoutSchema::propSpec('section')) : array_values(array_diff(LayoutSchema::styleKeys('section'), self::SECTION_START_EXCLUDED));
+            $normalized = LayoutSchema::normalizeSection($part, array_intersect_key($values, array_flip($known)));
+            foreach ($values as $key => $value) {
+                if (!in_array($key, $known, true)) {
+                    $error('section.' . $part . '.' . $key . ': sections have no ' . ($part === 'props' ? 'prop' : 'style') . ' "' . $key . '"' . ($key === 'background_fx' ? '; the palette sets the background itself.' : '.'));
+                } elseif (!array_key_exists($key, $normalized) || $normalized[$key] !== $value) {
+                    $error('section.' . $part . '.' . $key . ': ' . json_encode($value, JSON_UNESCAPED_SLASHES) . ' is not a value sections keep. Inspect the builder schema for section.');
+                } else {
+                    $start[$part][$key] = $value;
+                }
+            }
+        }
+
+        return $start;
     }
 
     /**
@@ -718,8 +811,8 @@ final class Extension
             $error = static function (string $message) use ($file, &$errors): void {
                 $errors[] = ['file' => $file, 'line' => null, 'message' => $message];
             };
-            foreach (array_diff(array_keys($data), ['$schema', 'title', 'description', 'settings', 'shared_props', 'blocks']) as $unknown) {
-                $error('Unknown field "' . $unknown . '". Allowed: title, description, settings, shared_props, blocks.');
+            foreach (array_diff(array_keys($data), ['$schema', 'title', 'description', 'settings', 'shared_props', 'blocks', 'backgrounds']) as $unknown) {
+                $error('Unknown field "' . $unknown . '". Allowed: title, description, settings, shared_props, blocks, backgrounds.');
             }
             $texts = self::texts($data, ['title' => 120, 'description' => 500], '', $error);
             if ($texts !== []) $extension['l10n'][$locale] = $texts;
@@ -751,19 +844,25 @@ final class Extension
                 }
                 unset($block);
             }
-            foreach (self::entries($data, 'blocks', '', $error) as $slug => $entry) {
+            $entries = [];
+            foreach (['blocks' => false, 'backgrounds' => true] as $group => $background) {
+                foreach (self::entries($data, $group, '', $error) as $slug => $entry) $entries[] = [$group, $background, (string) $slug, $entry];
+            }
+            foreach ($entries as [$group, $background, $slug, $entry]) {
                 $kind = 'block:' . $vendor . '/' . $slug;
-                if (!isset($blocks[$kind])) {
-                    $error('blocks.' . $slug . ': the extension has no block "' . $slug . '".');
+                if (!isset($blocks[$kind]) || $blocks[$kind]['background'] !== $background) {
+                    $error($group . '.' . $slug . ': the extension has no ' . ($background ? 'background' : 'block') . ' "' . $slug . '".'
+                        . (isset($blocks[$kind]) ? ' It is a ' . ($background ? 'block; translate it under blocks.' : 'background; translate it under backgrounds.') : ''));
                     continue;
                 }
-                $path = 'blocks.' . $slug;
+                $path = $group . '.' . $slug;
                 if (!is_array($entry) || array_is_list($entry)) {
                     $error($path . ' must be an object.');
                     continue;
                 }
-                foreach (array_diff(array_keys($entry), ['title', 'description', 'category', 'keywords', 'deprecated', 'props', 'variations']) as $unknown) {
-                    $error($path . ': unknown field "' . $unknown . '". Allowed: title, description, category, keywords, deprecated, props, variations.');
+                $allowed = $background ? ['title', 'description', 'keywords', 'deprecated', 'props', 'variations'] : ['title', 'description', 'category', 'keywords', 'deprecated', 'props', 'variations'];
+                foreach (array_diff(array_keys($entry), $allowed) as $unknown) {
+                    $error($path . ': unknown field "' . $unknown . '". Allowed: ' . implode(', ', $allowed) . '.');
                 }
                 $texts = self::texts($entry, ['title' => 120, 'description' => 500, 'category' => 40, 'deprecated' => 300], $path . '.', $error);
                 if (array_key_exists('keywords', $entry)) {
@@ -778,7 +877,7 @@ final class Extension
                 $names = array_column($blocks[$kind]['variations'], null, 'name');
                 foreach (self::entries($entry, 'variations', $path . '.', $error) as $name => $variation) {
                     if (!isset($names[$name])) {
-                        $error($path . '.variations.' . $name . ': the block has no variation "' . $name . '".');
+                        $error($path . '.variations.' . $name . ': the ' . ($background ? 'background' : 'block') . ' has no variation "' . $name . '".');
                         continue;
                     }
                     $variationTexts = is_array($variation) && !array_is_list($variation) ? self::texts($variation, ['title' => 120, 'description' => 500], $path . '.variations.' . $name . '.', $error) : [];
@@ -790,7 +889,7 @@ final class Extension
                 if ($texts !== []) $blocks[$kind]['l10n'][$locale] = $texts;
                 foreach (self::entries($entry, 'props', $path . '.', $error) as $key => $propEntry) {
                     if (!isset($blocks[$kind]['props'][$key])) {
-                        $error($path . '.props.' . $key . ': the block has no prop "' . $key . '".');
+                        $error($path . '.props.' . $key . ': the ' . ($background ? 'background' : 'block') . ' has no prop "' . $key . '".');
                         continue;
                     }
                     self::propTexts($blocks[$kind]['props'][$key], $propEntry, $locale, $path . '.props.' . $key, $error);

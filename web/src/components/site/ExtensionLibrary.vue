@@ -57,11 +57,12 @@
             <p v-if="Object.keys(pkg.requires ?? {}).length" class="text-xs text-slate-500">{{ t('site.extensions.requires') }} {{ Object.entries(pkg.requires).map(([name, constraint]) => constraint === '*' ? name : `${name} ${constraint}`).join(', ') }}</p>
             <p v-if="pkg.permissions?.connect?.length" class="text-xs text-slate-500">{{ t('site.extensions.connectsTo') }} {{ pkg.permissions.connect.join(', ') }}</p>
             <p v-if="pkg.description" class="text-sm text-slate-600">{{ extensionText(pkg, 'description', locale) }}</p>
-            <p class="text-xs text-slate-500">{{ t('site.extensions.counts', { blocks: pkg.counts?.blocks ?? pkg.blocks.length, types: pkg.counts?.content_types ?? 0, components: pkg.counts?.components ?? 0, templates: pkg.counts?.templates ?? 0, presets: pkg.counts?.presets ?? 0, fonts: pkg.counts?.fonts ?? 0 }) }}</p>
+            <p class="text-xs text-slate-500">{{ t('site.extensions.counts', { blocks: pkg.counts?.blocks ?? pkg.blocks.length, backgrounds: pkg.counts?.backgrounds ?? 0, types: pkg.counts?.content_types ?? 0, components: pkg.counts?.components ?? 0, templates: pkg.counts?.templates ?? 0, presets: pkg.counts?.presets ?? 0, fonts: pkg.counts?.fonts ?? 0 }) }}</p>
             <ul class="flex flex-wrap gap-1.5 pt-1" :aria-label="t('site.extensions.blocksIn', { name: pkg.title })">
               <li v-for="block in pkg.blocks" :key="block.name" class="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-700" :title="block.description || block.name">
                 <KindIcon :icon="kindIcon(`block:${block.name}`, { kinds: { [`block:${block.name}`]: block } })" class="h-3.5 w-3.5 shrink-0 text-slate-500" />
                 <span :class="{ 'line-through': typeof block.deprecated === 'string' }">{{ extensionText(block, 'title', locale) }}</span>
+                <Icon v-if="block.background" icon="mdi:image-filter-hdr-outline" class="h-3.5 w-3.5 text-slate-500" :aria-label="t('site.extensions.backgroundBadge')" />
                 <Icon v-if="block.script" icon="mdi:language-javascript" class="h-3.5 w-3.5 text-amber-700" :aria-label="t('site.extensions.scriptsBadge')" />
               </li>
             </ul>

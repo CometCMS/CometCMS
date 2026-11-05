@@ -1,0 +1,10 @@
+{
+  "$schema": "../../../schemas/comet-extension.schema.json",
+  "api_version": 1,
+  "name": "cometcms/water-ripple",
+  "title": "Water Ripple",
+  "description": "An interactive dot-lattice background for sections, rows and columns. Pointer strokes and taps send ripples, glitch tears and delayed flares through the lattice in your theme colors.",
+  "version": "1.0.0",
+  "author": "CometCMS",
+  "license": "MIT"
+}

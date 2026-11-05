@@ -37,6 +37,21 @@
       </div>
     </BuilderGroup>
 
+    <!-- Sections that start with an extension background behind them. -->
+    <BuilderGroup v-if="effectItems.length" v-model:open="expanded.effects" :title="t('site.builder.effectSections')" content-class="mt-2 grid grid-cols-2 gap-1.5">
+      <PaletteItem
+        v-for="item in effectItems"
+        :key="item.key"
+        stacked
+        :icon="item.icon"
+        :label="item.label"
+        :hint="item.hint"
+        @add="builder.insert(item.create())"
+        @drag="start($event, item.create)"
+        @dragend="end"
+      />
+    </BuilderGroup>
+
     <BuilderGroup v-if="elementItems.length" v-model:open="expanded.elements" :title="t('site.builder.elements')" content-class="mt-2 grid grid-cols-2 gap-1.5">
       <PaletteItem
         v-for="item in elementItems"
@@ -125,7 +140,7 @@ import PaletteItem from "./PaletteItem.vue";
 import GroupedList from "./GroupedList.vue";
 import { componentIcon, KIND_ICONS, kindIcon } from "./kindIcons.js";
 import { fieldGroups, fieldShortcut } from "../../../composables/smartValues.js";
-import { MODAL, ancestors, clone, instanceNode, sectionPreset } from "../../../composables/layoutTree.js";
+import { MODAL, ancestors, clone, effectSection, instanceNode, sectionPreset } from "../../../composables/layoutTree.js";
 import { extensionText, variationText } from "../../../composables/extensionText.js";
 import { useFieldTypeMeta } from "../../../composables/useFieldTypeMeta.js";
 import { useSiteBuilder } from "../../../composables/useSiteBuilder.js";
@@ -145,10 +160,10 @@ const { fieldTypeIcon } = useFieldTypeMeta();
 const search = ref("");
 const searchId = `builder-palette-search-${useId()}`;
 const searchTerms = computed(() => search.value.trim().toLowerCase().split(/\s+/).filter(Boolean));
-const expanded = ref({ layout: true, elements: true, fields: true, components: true });
+const expanded = ref({ layout: true, effects: true, elements: true, fields: true, components: true });
 
 watch(searchTerms, (terms) => {
-  if (terms.length) expanded.value = { layout: true, elements: true, fields: true, components: true };
+  if (terms.length) expanded.value = { layout: true, effects: true, elements: true, fields: true, components: true };
 });
 
 function matches(...values) {
@@ -195,6 +210,28 @@ const paletteItems = computed(() => (builder.spec.value?.elements ?? []).filter(
   return [block, ...variations];
 }).filter((item) => matches(item.label, item.hint, item.category, ...item.terms)));
 const elementItems = computed(() => paletteItems.value.filter((item) => !item.groupKey));
+
+/**
+ * One entry per extension background and each of its variations: a section that
+ * starts with the background behind it, ready for rows and columns. Panels of the
+ * modal template hold no sections, and deprecated backgrounds are not offered.
+ */
+const effectItems = computed(() => (builder.rootKind.value === MODAL ? [] : builder.spec.value?.backgrounds ?? []).flatMap((kind) => {
+  const own = builder.spec.value?.kinds?.[kind] ?? {};
+  if (typeof own.deprecated === "string") return [];
+  const keywords = extensionText(own, "keywords", locale.value) ?? [];
+  const base = { key: kind, icon: kindIcon(kind, builder.spec.value), label: builder.kindLabel(kind), hint: kindHint(kind), terms: [kind, ...keywords, t("site.builder.effectSections"), builder.kindLabel("section")], create: () => effectSection(builder.spec.value, kind) };
+  const variations = (own.variations ?? []).map((variation) => ({
+    ...base,
+    key: `${kind}:${variation.name}`,
+    icon: variation.icon || base.icon,
+    label: variationText(own, variation, "title", locale.value),
+    hint: variationText(own, variation, "description", locale.value) || base.hint,
+    terms: [...base.terms, base.label, variation.name],
+    create: () => effectSection(builder.spec.value, kind, variation.props),
+  }));
+  return [base, ...variations];
+}).filter((item) => matches(item.label, item.hint, ...item.terms)));
 const categories = computed(() => {
   const groups = new Map();
   for (const item of paletteItems.value) {

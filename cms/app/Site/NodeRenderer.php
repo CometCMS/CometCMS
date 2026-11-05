@@ -2347,6 +2347,46 @@ final class NodeRenderer
      */
     private function background(array $node, array $state = [], bool $tall = false): array
     {
+        $media = $this->backgroundMedia($node, $state, $tall);
+        $effect = $this->backgroundEffect($node, $state);
+        if ($effect === '') {
+            return $media;
+        }
+
+        return ['classes' => [...$media['classes'], 'c-has-bg-fx'], 'style' => $media['style'], 'layer' => $media['layer'] . $effect];
+    }
+
+    /**
+     * An extension background (style background_fx) as its own decorative layer over
+     * the color and image layers and under the overlay. Its template renders with the
+     * resolved props; a view.js mounts on the layer, which receives the same props.
+     * A background whose extension is missing or disabled draws nothing.
+     */
+    private function backgroundEffect(array $node, array $state): string
+    {
+        $value = $node['style']['background_fx'] ?? null;
+        $kind = is_array($value) && is_string($value['kind'] ?? null) ? $value['kind'] : '';
+        $block = $kind !== '' ? $this->ctx->site->blocks()->get($kind) : null;
+        if ($block === null || !$block['background']) {
+            return '';
+        }
+
+        $values = $this->blockValues($block['props'], is_array($value['props'] ?? null) ? $value['props'] : [], $state);
+        $html = BlockTemplate::render($block['template'], $values + $this->blockSettings($block['extension']), $this->ctx->blockAssetUrl(...));
+        $this->blockStyles[$block['extension']][$kind] = true;
+        $attributes = '';
+        if ($block['script'] !== '') {
+            $this->blockScripts[$kind] = true;
+            $attributes = ' data-comet-block="' . Security::e($block['name']) . '" data-comet-props="'
+                . Security::e(json_encode($values, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR)) . '"';
+        }
+
+        return '<div class="c-background-fx ' . Security::e(ExtensionRegistry::cssClass($block['name'])) . '" aria-hidden="true"' . $attributes . '>' . $html . '</div>';
+    }
+
+    /** The color, gradient, image and video part of a background. */
+    private function backgroundMedia(array $node, array $state = [], bool $tall = false): array
+    {
         $style = $node['style'] ?? [];
         $gradient = Gradient::css($style['background_gradient'] ?? []);
         if ($gradient !== '') {

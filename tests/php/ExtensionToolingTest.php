@@ -57,7 +57,7 @@ test('the extension CLI scaffolds, validates, renders and reports errors as JSON
 
     [$code, $output] = comet_extension_cli('validate', $folder, '--json');
     assert_same(0, $code, $output);
-    assert_same(['ok' => true, 'name' => 'acme/demo', 'version' => '0.1.0', 'blocks' => ['acme/greeting'], 'scripts' => [], 'seeds' => []], json_decode($output, true));
+    assert_same(['ok' => true, 'name' => 'acme/demo', 'version' => '0.1.0', 'blocks' => ['acme/greeting'], 'backgrounds' => [], 'scripts' => [], 'seeds' => []], json_decode($output, true));
 
     [$code, $output] = comet_extension_cli('render', $folder, 'greeting', '--json');
     assert_same(0, $code, $output);

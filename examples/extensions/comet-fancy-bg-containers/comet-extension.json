@@ -2,9 +2,9 @@
   "$schema": "../../../schemas/comet-extension.schema.json",
   "api_version": 1,
   "name": "cometcms/fancy-bg-containers",
-  "title": "Fancy BG Containers",
-  "description": "Content containers with geometric forms, soft moving lights, deep-space skies and futuristic grids. Theme-aware accents, adjustable layouts and CSS-only motion.",
-  "version": "1.1.0",
+  "title": "Fancy Backgrounds",
+  "description": "Section backgrounds with geometric forms, soft moving lights, deep-space skies and futuristic grids. Theme-aware accents, adjustable intensity and CSS-only motion.",
+  "version": "1.2.0",
   "author": "CometCMS",
   "license": "MIT",
   "shared_props": {

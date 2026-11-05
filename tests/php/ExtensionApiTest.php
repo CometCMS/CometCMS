@@ -65,7 +65,7 @@ test('connect permissions need scripts, are reviewed and extend the CSP only on 
     foreach ([['connect' => ['http://api.example.com']], ['connect' => ['https://api.example.com/v1']], ['frame' => ['https://a.example.com']], ['connect' => []], ['https://a.example.com']] as $bad) {
         assert_throws(ExtensionException::class, fn() => Extension::compile(comet_api_kit(['permissions' => $bad], [], ['blocks/thing/view.js' => $script])));
     }
-    assert_same(['comet-extension.json: permissions only apply to block scripts (blocks/<name>/view.js), and this extension has none. Remove permissions.'],
+    assert_same(['comet-extension.json: permissions only apply to block and background scripts (blocks/<name>/view.js, backgrounds/<name>/view.js), and this extension has none. Remove permissions.'],
         comet_block_errors(fn() => Extension::compile(comet_api_kit(['permissions' => ['connect' => ['https://api.example.com']]]))));
 
     $site = comet_site_test_setup();

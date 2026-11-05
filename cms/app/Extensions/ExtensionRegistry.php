@@ -19,7 +19,7 @@ final class ExtensionRegistry
     public const MAX_EXTENSIONS = 64;
     public const MAX_BLOCKS = 256;
     /** Bump whenever compiled extensions change shape, so cached indexes are rebuilt. */
-    private const COMPILER = 9;
+    private const COMPILER = 10;
     private const SETTINGS = 'extensions-settings';
 
     private ?array $index = null;
@@ -58,6 +58,18 @@ final class ExtensionRegistry
     public function all(): array
     {
         return array_filter($this->index()['blocks'], fn(array $block): bool => $this->index()['extensions'][$block['extension']]['enabled']);
+    }
+
+    /** @return list<string> kinds of the enabled blocks that are placed as elements */
+    public function elementKinds(): array
+    {
+        return array_keys(array_filter($this->all(), static fn(array $block): bool => !($block['background'] ?? false)));
+    }
+
+    /** @return list<string> kinds of the enabled backgrounds, which sections, rows and columns show behind their content */
+    public function backgroundKinds(): array
+    {
+        return array_keys(array_filter($this->all(), static fn(array $block): bool => $block['background'] ?? false));
     }
 
     public function get(string $kind): ?array
@@ -141,7 +153,7 @@ final class ExtensionRegistry
                 'settings_values' => $this->settings($extension['name']),
                 'enabled' => $extension['enabled'],
                 'dependency_errors' => $extension['dependency_errors'],
-                'counts' => ['blocks' => count($extension['blocks'])] + array_count_values(array_column($extension['seeds'], 'kind')),
+                'counts' => array_filter(['blocks' => count(array_filter($extension['blocks'], static fn(string $kind): bool => !($index['blocks'][$kind]['background'] ?? false))), 'backgrounds' => count(array_filter($extension['blocks'], static fn(string $kind): bool => $index['blocks'][$kind]['background'] ?? false))], static fn(int $count, string $key): bool => $key === 'blocks' || $count > 0, ARRAY_FILTER_USE_BOTH) + array_count_values(array_column($extension['seeds'], 'kind')),
                 'scripts' => self::scriptBlocks($extension['blocks'], $index['blocks']) !== [],
                 'blocks' => array_map(static fn(string $kind): array => [
                     'name' => $index['blocks'][$kind]['name'],
@@ -149,6 +161,7 @@ final class ExtensionRegistry
                     'description' => $index['blocks'][$kind]['description'],
                     'icon' => $index['blocks'][$kind]['icon'],
                     'script' => $index['blocks'][$kind]['script'] !== '',
+                    'background' => $index['blocks'][$kind]['background'] ?? false,
                     'deprecated' => $index['blocks'][$kind]['deprecated'],
                     'l10n' => $index['blocks'][$kind]['l10n'] ?? (object) [],
                 ], $extension['blocks']),

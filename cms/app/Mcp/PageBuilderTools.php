@@ -53,7 +53,7 @@ final class PageBuilderTools
         ], ['kind'])];
         $contracts = [
             'get_builder_schema' => ['Discover builder vocabulary', 'Without kind: kinds, allowed children, every style key\'s values and limits; call this first. With kind (one or a list): props with defaults and the style keys each kind takes.', ['kind' => ['anyOf' => [$string, ['type' => 'array', 'items' => $string, 'minItems' => 1]]]], []],
-            'list_extensions' => ['List installed extensions', 'Installed extensions with their status, settings and blocks: each block\'s kind for layouts, what it is for, its palette category, whether it holds child elements (slot) and its variations. Disabled extensions\' blocks do not render. Use get_builder_schema with a kind for its props.', [], []],
+            'list_extensions' => ['List installed extensions', 'Installed extensions with their status, settings and blocks: each block\'s kind for layouts, what it is for, its palette category, whether it holds child elements (slot) and its variations. Blocks with background: true are section backgrounds: set them on a section, row or column as style.background_fx = {kind, props} instead of placing them. Disabled extensions\' blocks do not render. Use get_builder_schema with a kind for its props.', [], []],
             'get_layout' => ['Read layout overview or scoped tree', 'Read ordered section IDs, kinds, counts and revision. Use section_ids to select top-level sections; depth or mode opts into a tree. Summary mode omits props. Reads always return the whole layout revision. Start here before reading or writing sections.', $target + $read + ['section_ids' => ['type' => 'array', 'items' => $string, 'minItems' => 1, 'uniqueItems' => true, 'description' => 'Only these top-level section IDs, returned in layout order. Unknown IDs fail with 404; call get_layout without selectors to discover IDs.']], ['collection', 'variant']],
             'get_section' => ['Read one section', 'Read one top-level section subtree and whole layout revision. Limit child levels with depth or use mode: summary for IDs, kinds, names and styles without props. Default props are omitted in full mode; use get_builder_schema(kind) for defaults.', $target + ['section_id' => $string] + $read, ['collection', 'variant', 'section_id']],
             'get_element' => ['Read one element', 'Read a node by ID, its props/style and immediate child summaries, enclosing section and layout revision.', $target + ['element_id' => $string], ['collection', 'variant', 'element_id']],
@@ -300,8 +300,10 @@ final class PageBuilderTools
         if (array_key_exists('kind', $args)) {
             $kinds = is_array($args['kind']) && array_is_list($args['kind']) && $args['kind'] !== [] ? $args['kind'] : [$args['kind']];
             $result = [];
+            // Backgrounds are never children, but their props are what style.background_fx takes.
+            $describable = [...$usable, ...($spec['backgrounds'] ?? [])];
             foreach ($kinds as $index => $kind) {
-                if (!is_string($kind) || !in_array($kind, $usable, true)) $this->invalid('kind', 'Unknown kind. Call get_builder_schema without kind to list available kinds.');
+                if (!is_string($kind) || !in_array($kind, $describable, true)) $this->invalid('kind', 'Unknown kind. Call get_builder_schema without kind to list available kinds, and list_extensions for backgrounds.');
                 $node = $spec['kinds'][$kind];
                 // Icon names are listed once, without kind.
                 $props = array_map(static fn(array $prop): array => $prop['type'] === 'icon' ? ['options' => in_array('', $prop['options'], true) ? 'icons, or "" for none' : 'icons'] + $prop : $prop, $node['props']);
@@ -338,6 +340,8 @@ final class PageBuilderTools
                 return [
                     'kind' => 'block:' . $block['name'], 'title' => $block['title'], 'description' => $block['description'],
                     'category' => $spec['category'] ?? '', 'slot' => $spec['slot'] ?? false,
+                    // Backgrounds are not placed as elements: a section, row or column shows one with style.background_fx.
+                    'background' => $spec['background'] ?? false,
                     'variations' => array_map(static fn(array $variation): array => ['name' => $variation['name'], 'title' => $variation['title'], 'props' => $variation['props']], $spec['variations'] ?? []),
                     'script' => $block['script'], 'deprecated' => $block['deprecated'] !== null,
                 ];
@@ -706,6 +710,14 @@ final class PageBuilderTools
                 if (!in_array($condition['op'] ?? null, ElementConditions::OPS, true)) $this->invalid($path . '.conditions.' . $index . '.op', 'Use one of: ' . implode(', ', ElementConditions::OPS) . '.');
                 if (isset($condition['value']) && !is_scalar($condition['value'])) $this->invalid($path . '.conditions.' . $index . '.value', 'Expected a string, number or boolean.');
             }
+            return;
+        }
+        if ($type === 'background_fx') {
+            if ($value === []) return;
+            $this->map($value, $path);
+            $this->keys($value, ['kind', 'props'], $path);
+            if (!is_string($value['kind'] ?? null)) $this->invalid($path . '.kind', 'Expected a background kind such as "block:vendor/name"; list_extensions lists them with background: true.');
+            if (array_key_exists('props', $value)) $this->map($value['props'], $path . '.props');
             return;
         }
         if (in_array($type, ['link', 'gradient', 'spans'], true)) {

@@ -1,0 +1,80 @@
+{
+  "$schema": "../../../../../schemas/background.schema.json",
+  "title": "Water Ripple",
+  "description": "A reactive dot lattice behind the content. Moving the pointer or tapping sends ripples, broken data columns and delayed flares through it.",
+  "icon": "mdi:waves",
+  "keywords": ["interactive", "dots", "glitch", "water", "canvas"],
+  "props": {
+    "color": {
+      "type": "color",
+      "label": "Dot color",
+      "default": "accent",
+      "group": "Colors",
+      "help": "None uses the text color of the section."
+    },
+    "highlight": {
+      "type": "color",
+      "label": "Highlight color",
+      "default": "primary",
+      "group": "Colors",
+      "help": "Only the strongest flares reach it."
+    },
+    "intensity": {
+      "type": "int",
+      "label": "Reaction strength",
+      "control": "slider",
+      "min": 0,
+      "max": 100,
+      "default": 100,
+      "group": "Motion",
+      "help": "Lower values let the lattice sit quietly behind long text."
+    },
+    "drift": {
+      "type": "int",
+      "label": "Ambient drift",
+      "control": "slider",
+      "min": 0,
+      "max": 100,
+      "default": 0,
+      "group": "Motion",
+      "help": "Broad dithered bands roll across the lattice. At 0 a settled lattice stops animating."
+    },
+    "interaction": {
+      "type": "enum",
+      "label": "Reacts to",
+      "options": ["pointer", "taps", "none"],
+      "default": "pointer",
+      "option_labels": {
+        "pointer": "Pointer movement and taps",
+        "taps": "Taps and clicks only",
+        "none": "Nothing (ambient only)"
+      },
+      "group": "Motion"
+    },
+    "density": {
+      "type": "enum",
+      "label": "Dot spacing",
+      "options": ["fine", "medium", "coarse"],
+      "default": "medium",
+      "option_labels": {
+        "fine": "Fine",
+        "medium": "Medium",
+        "coarse": "Coarse"
+      },
+      "group": "Lattice"
+    }
+  },
+  "variations": [
+    {
+      "name": "drifting",
+      "title": "Drifting Ripple",
+      "description": "The water lattice with slow ambient bands, also when nobody moves the pointer.",
+      "icon": "mdi:wave",
+      "props": { "drift": 60, "intensity": 70 }
+    }
+  ],
+  "section": {
+    "props": { "min_height": "half", "vertical_align": "center" },
+    "style": { "background": "text", "text_color": "background", "link_color": "background" }
+  }
+}

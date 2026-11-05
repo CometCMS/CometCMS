@@ -208,6 +208,10 @@ final class ExtensionSeeder
             if (is_string($kind) && str_starts_with($kind, 'block:') && $blocks->get($kind) === null) {
                 throw new ValidationException(['nodes' => 'Unknown extension block: ' . $kind]);
             }
+            $background = $node['style']['background_fx']['kind'] ?? null;
+            if (is_string($background) && $background !== '' && !($blocks->get($background)['background'] ?? false)) {
+                throw new ValidationException(['nodes' => 'Unknown extension background: ' . $background]);
+            }
             if ($kind === LayoutSchema::COMPONENT) {
                 $id = $node['props']['component'] ?? '';
                 $component = is_string($id) ? ($components[$id] ?? null) : null;

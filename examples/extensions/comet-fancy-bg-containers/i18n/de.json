@@ -1,7 +1,7 @@
 {
   "$schema": "../../../../schemas/i18n.schema.json",
-  "title": "Fancy-BG-Container",
-  "description": "Inhalts-Container mit geometrischen Formen, weich bewegten Lichtern, Weltraum-Himmeln und futuristischen Rastern. Theme-Akzente, anpassbare Layouts und reine CSS-Bewegung.",
+  "title": "Fancy-Hintergründe",
+  "description": "Abschnitts-Hintergründe mit geometrischen Formen, weich bewegten Lichtern, Weltraum-Himmeln und futuristischen Rastern. Theme-Akzente, einstellbare Stärke und reine CSS-Bewegung.",
   "shared_props": {
     "accent": {
       "label": "Primäre Effektfarbe",
@@ -85,7 +85,8 @@
             "angular": "Kantig"
           }
         }
-      }
+      },
+      "deprecated": "Verwende stattdessen einen Abschnitt mit dem Hintergrund „Geometrische Formen“ (Stil → Hintergrund → Hintergrundeffekt); er nimmt Zeilen und Spalten auf."
     },
     "fancy-grid": {
       "title": "Futuristisches Raster",
@@ -98,7 +99,8 @@
             "flat": "Flaches Raster"
           }
         }
-      }
+      },
+      "deprecated": "Verwende stattdessen einen Abschnitt mit dem Hintergrund „Futuristisches Raster“ (Stil → Hintergrund → Hintergrundeffekt); er nimmt Zeilen und Spalten auf."
     },
     "fancy-lights": {
       "title": "Weiche Lichter",
@@ -111,7 +113,8 @@
             "aurora": "Polarlicht-Band"
           }
         }
-      }
+      },
+      "deprecated": "Verwende stattdessen einen Abschnitt mit dem Hintergrund „Weiche Lichter“ (Stil → Hintergrund → Hintergrundeffekt); er nimmt Zeilen und Spalten auf."
     },
     "fancy-space": {
       "title": "Weltraum",
@@ -122,6 +125,82 @@
           "options": {
             "nebula": "Nebel",
             "starfield": "Sternenfeld"
+          }
+        }
+      },
+      "deprecated": "Verwende stattdessen einen Abschnitt mit dem Hintergrund „Weltraum“ (Stil → Hintergrund → Hintergrundeffekt); er nimmt Zeilen und Spalten auf."
+    }
+  },
+  "backgrounds": {
+    "geometric-forms": {
+      "title": "Geometrische Formen",
+      "description": "Schwebende Ringe, kantige Flächen und geometrische Konturen hinter einem Abschnitt, einer Zeile oder Spalte.",
+      "keywords": [
+        "Formen",
+        "Ringe",
+        "geometrisch"
+      ],
+      "props": {
+        "variant": {
+          "label": "Hintergrundstil",
+          "options": {
+            "mixed": "Gemischte Formen",
+            "rings": "Ringe",
+            "angular": "Kantig"
+          }
+        }
+      }
+    },
+    "soft-lights": {
+      "title": "Weiche Lichter",
+      "description": "Sanft treibende Lichtkugeln oder ein atmendes Polarlicht-Band hinter einem Abschnitt, einer Zeile oder Spalte.",
+      "keywords": [
+        "Leuchten",
+        "Polarlicht",
+        "Verlauf"
+      ],
+      "props": {
+        "variant": {
+          "label": "Hintergrundstil",
+          "options": {
+            "orbs": "Lichtkugeln",
+            "aurora": "Polarlicht-Band"
+          }
+        }
+      }
+    },
+    "deep-space": {
+      "title": "Weltraum",
+      "description": "Mehrschichtige Sternenfelder mit optionalem, sanft leuchtendem Nebel hinter einem Abschnitt, einer Zeile oder Spalte.",
+      "keywords": [
+        "Sterne",
+        "Nacht",
+        "Nebel"
+      ],
+      "props": {
+        "variant": {
+          "label": "Hintergrundstil",
+          "options": {
+            "nebula": "Nebel",
+            "starfield": "Sternenfeld"
+          }
+        }
+      }
+    },
+    "futuristic-grid": {
+      "title": "Futuristisches Raster",
+      "description": "Ein industrielles Raster mit Scan-Licht, leuchtendem Horizont und technischen Eckmarken hinter einem Abschnitt, einer Zeile oder Spalte.",
+      "keywords": [
+        "Technik",
+        "futuristisch",
+        "Linien"
+      ],
+      "props": {
+        "variant": {
+          "label": "Hintergrundstil",
+          "options": {
+            "perspective": "Perspektivischer Boden",
+            "flat": "Flaches Raster"
           }
         }
       }

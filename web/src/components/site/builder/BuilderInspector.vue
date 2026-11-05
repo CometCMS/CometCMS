@@ -345,16 +345,23 @@
             @update="(values) => builder.editValues(node.id, 'style', values)"
           />
           <template v-else>
-            <BuilderControl
-              v-for="key in group.keys"
-              :key="`${node.id}-${group.part}-${key}`"
-              :node="node"
-              :name="key"
-              :group="group.part"
-              :def="group.part === 'props' ? propSpec[key] : styleSpec[key]"
-              :value="builder.viewValue(node, group.part, key) ?? (group.part === 'props' ? propSpec[key] : styleSpec[key]).default"
-              @update="(value) => builder.editValue(node.id, group.part, key, value)"
-            />
+            <template v-for="key in group.keys" :key="`${node.id}-${group.part}-${key}`">
+              <BackgroundEffectControl
+                v-if="group.part === 'style' && key === 'background_fx'"
+                :node="node"
+                :value="node.style?.background_fx"
+                @update="(value) => builder.editValue(node.id, 'style', 'background_fx', value)"
+              />
+              <BuilderControl
+                v-else
+                :node="node"
+                :name="key"
+                :group="group.part"
+                :def="group.part === 'props' ? propSpec[key] : styleSpec[key]"
+                :value="builder.viewValue(node, group.part, key) ?? (group.part === 'props' ? propSpec[key] : styleSpec[key]).default"
+                @update="(value) => builder.editValue(node.id, group.part, key, value)"
+              />
+            </template>
           </template>
         </BuilderGroup>
         <p v-if="!styleGroups.length" class="text-xs text-slate-500">{{ t("site.builder.noOptions") }}</p>
@@ -377,6 +384,7 @@
 import { computed, reactive, ref, watch } from "vue";
 import { Icon } from "@iconify/vue";
 import BuilderControl from "./BuilderControl.vue";
+import BackgroundEffectControl from "./BackgroundEffectControl.vue";
 import SpacingControl from "./SpacingControl.vue";
 import BuilderHelp from "./BuilderHelp.vue";
 import BuilderGroup from "./BuilderGroup.vue";
@@ -387,7 +395,7 @@ import SegmentedControl from "../SegmentedControl.vue";
 import { DEVICE_ICONS, STATE_ICONS } from "./controlOptions.js";
 import { nodeIcon } from "./kindIcons.js";
 import KindIcon from "./KindIcon.vue";
-import { COMPONENT, findNode, locate } from "../../../composables/layoutTree.js";
+import { COMPONENT, findNode, hasBackgroundEffect, locate } from "../../../composables/layoutTree.js";
 import { FRAME_DEFAULT, FRAME_NONE, frameLabel } from "../../../composables/templates.js";
 import { useBuilderBreadcrumbs } from "../../../composables/useBuilderBreadcrumbs.js";
 import { useSiteBuilder } from "../../../composables/useSiteBuilder.js";
@@ -415,7 +423,7 @@ const STYLE_GROUPS = [
   { key: "button", part: "props", keys: BUTTON_COLORS },
   { key: "icon", part: "props", keys: ICON_SHAPE },
   { key: "spacing", keys: ["padding_top", "padding_right", "padding_bottom", "padding_left", "margin_top", "margin_right", "margin_bottom", "margin_left"] },
-  { key: "background", keys: ["background", "background_gradient", "background_image", "background_poster", "background_size", "background_position", "background_repeat", "background_blur", "background_effect", "overlay"] },
+  { key: "background", keys: ["background", "background_gradient", "background_image", "background_poster", "background_size", "background_position", "background_repeat", "background_blur", "background_effect", "overlay", "background_fx"] },
   { key: "dividerTop", part: "props", keys: dividerKeys("top") },
   { key: "dividerBottom", part: "props", keys: dividerKeys("bottom") },
   { key: "text", keys: ["text_color", "link_color", "text_gradient", "align", "font_size", "font_weight", "font_family", "text_shadow"] },
@@ -608,6 +616,8 @@ const POSITION_OPTIONS = ["pin", "offset_x", "offset_y"];
 
 function styleVisible(key) {
   const style = node.value?.style ?? {};
+  // Extension backgrounds appear once one is installed, or while a node still names one.
+  if (key === "background_fx") return !!builder.spec.value?.backgrounds?.length || hasBackgroundEffect(style.background_fx);
   if (style.background_gradient?.type && ["background_image", ...BACKGROUND_IMAGE_OPTIONS].includes(key)) return false;
   if (BACKGROUND_IMAGE_OPTIONS.includes(key) && !backgroundValues().length) return false;
   if (key === "background_poster") return backgroundValues().some((value) => typeof value !== "string" || isVideoFile(value));

@@ -1,0 +1,8 @@
+/* The canvas fills the background layer; the layer already ignores the pointer and is hidden from assistive technology. */
+.cometcms-ripple__canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}

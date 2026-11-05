@@ -101,6 +101,70 @@
           }
         }
       }
+    },
+    "backgrounds": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120,
+            "description": ""
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500,
+            "description": ""
+          },
+          "deprecated": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300,
+            "description": ""
+          },
+          "keywords": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40
+            },
+            "maxItems": 12
+          },
+          "variations": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "title": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 120,
+                  "description": ""
+                },
+                "description": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500,
+                  "description": ""
+                }
+              }
+            }
+          },
+          "props": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/definitions/propTexts"
+            }
+          }
+        }
+      },
+      "description": "Backgrounds (backgrounds/<name>/) by folder name, with the same texts as blocks except category."
     }
   },
   "definitions": {

@@ -223,6 +223,18 @@ html:has(.c-sticky, .c-overlap) { container-type: scroll-state; }
     animation-timeline: --c-bg-parallax;
   }
 }
+/*
+ * Extension backgrounds (style background_fx): a decorative layer of their own over the
+ * color and image layers, under the overlay and the content. Only the layer is clipped.
+ * Forced colors replace decoration with the system palette, so the layer is hidden.
+ */
+:where(.c-has-bg-fx) { position: relative; }
+.c-has-bg-fx { isolation: isolate; }
+.c-background-fx {
+  position: absolute; inset: 0; z-index: -2; overflow: clip; pointer-events: none; user-select: none;
+  border-radius: inherit;
+}
+@media (forced-colors: active) { .c-background-fx { display: none; } }
 .c-overlay-dark, .c-overlay-light { isolation: isolate; }
 .c-overlay-dark::before, .c-overlay-light::before { content: ""; position: absolute; inset: 0; z-index: -1; }
 .c-overlay-dark::before { background: rgb(0 0 0 / 0.5); }

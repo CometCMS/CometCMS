@@ -11,8 +11,10 @@ import {
   detachedCopy,
   fillAllAreas,
   duplicateNode,
+  effectSection,
   effectiveSpan,
   findNode,
+  hasBackgroundEffect,
   insertNode,
   instanceNode,
   moveNode,
@@ -302,4 +304,52 @@ it('detaches an instance with its area content in place of each area', () => {
   expect(copy.children[0]).toMatchObject({ props: { text: 'Own' } })
   expect(copy.children[0].id).not.toBe('before')
   expect(copy.children[0].editable).toBeUndefined()
+})
+
+describe('effect sections', () => {
+  const fx = 'block:acme/aurora'
+  const effects = {
+    ...spec,
+    max_row_depth: 1,
+    backgrounds: [fx],
+    kinds: {
+      ...spec.kinds,
+      section: { ...spec.kinds.section, style: ['background', 'background_fx', 'text_color', 'padding_top'] },
+      row: { ...spec.kinds.row, style: ['background', 'background_fx', 'text_color'] },
+      column: { ...spec.kinds.column, children: [...ELEMENTS, 'row'] },
+      [fx]: {
+        props: { tone: { default: 'violet' }, speed: { default: 40 } },
+        background: true,
+        section: { props: { width: 'full' }, style: { background: 'text', text_color: 'background', padding_top: 'xl' } },
+      },
+    },
+  }
+
+  it('starts a one-column section with the background, its starting look and its prop defaults', () => {
+    const section = effectSection(effects, fx, { speed: 10 })
+    expect(section).toMatchObject({ kind: 'section', props: { width: 'full' } })
+    expect(section.style).toEqual({ background: 'text', text_color: 'background', padding_top: 'xl', background_fx: { kind: fx, props: { tone: 'violet', speed: 10 } } })
+    expect(section.children[0].children).toHaveLength(1)
+    // Variations and the spec stay untouched by later edits.
+    section.style.background_fx.props.tone = 'teal'
+    expect(effects.kinds[fx].section.style).not.toHaveProperty('background_fx')
+    expect(effectSection(effects, fx).style.background_fx.props.tone).toBe('violet')
+  })
+
+  it('keeps the background on its row when dropped where only rows fit', () => {
+    const column = createNode(effects, 'column')
+    const nodes = [createNode(effects, 'section', {}, {}, [createNode(effects, 'row', {}, {}, [column])])]
+    const placed = resolveDrop(effects, nodes, effectSection(effects, fx), column.id, 'inside')
+    expect(placed).toMatchObject({ parentId: column.id, node: { kind: 'row' } })
+    expect(placed.node.style).toEqual({ background: 'text', text_color: 'background', background_fx: { kind: fx, props: { tone: 'violet', speed: 40 } } })
+    // At the top level the whole section goes in, and only it carries the background.
+    const top = resolveDrop(effects, nodes, effectSection(effects, fx), null, 'inside')
+    expect(top.node.kind).toBe('section')
+    expect(top.node.children[0].style).toEqual({})
+  })
+
+  it('tells a chosen background from none', () => {
+    expect(hasBackgroundEffect({ kind: fx, props: {} })).toBe(true)
+    for (const none of [[], {}, null, undefined, '', { kind: '' }]) expect(hasBackgroundEffect(none)).toBe(false)
+  })
 })

@@ -132,16 +132,16 @@ try {
 }
 
 $scripts = array_values(array_map(static fn(array $block): string => $block['name'], array_filter($extension['blocks'], static fn(array $block): bool => $block['script'] !== '')));
-$blocks = implode(', ', array_map(static fn(string $kind): string => substr($kind, 6), array_keys($extension['blocks'])));
-if ($scripts !== []) {
-    $blocks .= ' (JavaScript: ' . implode(', ', $scripts) . ')';
-}
-$summary = implode(' · ', array_filter([$blocks, count($extension['seeds']) ? count($extension['seeds']) . ' site items' : '']));
+$names = static fn(bool $background): array => array_map(static fn(array $block): string => $block['name'], array_values(array_filter($extension['blocks'], static fn(array $block): bool => ($block['background'] ?? false) === $background)));
+$blocks = implode(', ', $names(false));
+$backgrounds = $names(true) !== [] ? 'backgrounds: ' . implode(', ', $names(true)) : '';
+$scriptNote = $scripts !== [] ? 'JavaScript: ' . implode(', ', $scripts) : '';
+$summary = implode(' · ', array_filter([$blocks, $backgrounds, $scriptNote, count($extension['seeds']) ? count($extension['seeds']) . ' site items' : '']));
 
 if ($command === 'validate') {
     if ($json) {
         $emit(['ok' => true, 'name' => $extension['name'], 'version' => $extension['version'],
-            'blocks' => array_map(static fn(string $kind): string => substr($kind, 6), array_keys($extension['blocks'])), 'scripts' => $scripts,
+            'blocks' => $names(false), 'backgrounds' => $names(true), 'scripts' => $scripts,
             'seeds' => array_map(static fn(array $seed): array => ['kind' => $seed['kind'], 'id' => $seed['id'], 'source' => $seed['source']], $extension['seeds'])], 0);
     }
     echo "OK {$extension['name']} {$extension['version']}: $summary" . PHP_EOL;

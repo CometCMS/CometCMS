@@ -251,6 +251,8 @@ final class LayoutSchema
             // Fixed holds the image still while the page scrolls; parallax moves it slower than the page.
             'background_effect' => ['type' => 'enum', 'options' => ['none', 'fixed', 'parallax'], 'default' => 'none'],
             'overlay' => ['type' => 'enum', 'options' => ['none', 'light', 'dark'], 'default' => 'none'],
+            // An extension background drawn behind the content, over the color and image: its kind and its own props.
+            'background_fx' => ['type' => 'background_fx', 'default' => [], 'description' => 'An extension background effect behind the content: {"kind": "block:vendor/name", "props": {...}}. Kinds are the backgrounds listed by list_extensions (background: true); their props are in get_builder_schema(kind). It is drawn over the background color and image and below the overlay. Omit it, or use [], for none.'],
             'text_color' => ['type' => 'color', 'options' => ['', ...Theme::COLOR_KEYS, 'inverse'], 'default' => ''],
             // Links inside the node; buttons keep their own colors.
             'link_color' => ['type' => 'color', 'options' => ['', ...Theme::COLOR_KEYS, 'inverse'], 'default' => ''],
@@ -299,12 +301,12 @@ final class LayoutSchema
     public static function styleKeys(string $kind): array
     {
         return match ($kind) {
-            'section' => [...self::SPACING_KEYS, 'background', 'background_gradient', ...self::BACKGROUND_IMAGE_KEYS, 'text_color', 'link_color', 'align', ...self::BORDER_KEYS, 'radius', 'shadow', ...self::MASK_KEYS, ...self::ANIMATION_KEYS, 'z_index', 'opacity', 'class', 'anchor', 'hide_on', 'visible_if'],
-            'row' => [...self::SPACING_KEYS, 'background', 'background_gradient', ...self::BACKGROUND_IMAGE_KEYS, 'text_color', 'link_color', 'radius', 'shadow', ...self::BORDER_KEYS, ...self::MASK_KEYS, ...self::ANIMATION_KEYS, 'z_index', 'opacity', 'class', 'anchor', 'hide_on', 'visible_if'],
+            'section' => [...self::SPACING_KEYS, 'background', 'background_gradient', ...self::BACKGROUND_IMAGE_KEYS, 'background_fx', 'text_color', 'link_color', 'align', ...self::BORDER_KEYS, 'radius', 'shadow', ...self::MASK_KEYS, ...self::ANIMATION_KEYS, 'z_index', 'opacity', 'class', 'anchor', 'hide_on', 'visible_if'],
+            'row' => [...self::SPACING_KEYS, 'background', 'background_gradient', ...self::BACKGROUND_IMAGE_KEYS, 'background_fx', 'text_color', 'link_color', 'radius', 'shadow', ...self::BORDER_KEYS, ...self::MASK_KEYS, ...self::ANIMATION_KEYS, 'z_index', 'opacity', 'class', 'anchor', 'hide_on', 'visible_if'],
             self::COMPONENT, self::PAGE_CONTENT, self::COMPONENT_AREA, self::AREA_CONTENT => [],
             self::MODAL => [...self::SPACING_KEYS, 'background', 'background_gradient', ...self::BACKGROUND_IMAGE_KEYS, 'text_color', 'link_color', 'align', ...self::BORDER_KEYS, 'radius', 'shadow', 'class'],
             self::SITE_CONTENT => [...self::SPACING_KEYS, 'background', ...self::BORDER_KEYS, 'radius', 'shadow', 'class'],
-            'column' => [...self::SPACING_KEYS, 'background', 'background_gradient', ...self::BACKGROUND_IMAGE_KEYS, 'text_color', 'link_color', 'align', 'radius', 'shadow', ...self::BORDER_KEYS, ...self::MASK_KEYS, ...self::POSITION_KEYS, ...self::ANIMATION_KEYS, 'z_index', 'opacity', 'class', 'hide_on', 'visible_if'],
+            'column' => [...self::SPACING_KEYS, 'background', 'background_gradient', ...self::BACKGROUND_IMAGE_KEYS, 'background_fx', 'text_color', 'link_color', 'align', 'radius', 'shadow', ...self::BORDER_KEYS, ...self::MASK_KEYS, ...self::POSITION_KEYS, ...self::ANIMATION_KEYS, 'z_index', 'opacity', 'class', 'hide_on', 'visible_if'],
             default => [...self::SPACING_KEYS, 'background', 'background_gradient', ...self::BACKGROUND_IMAGE_KEYS, 'text_color', ...($kind === 'button' ? [] : ['link_color']), 'align', 'font_size', 'font_weight', 'font_family', ...(in_array($kind, ['text', 'heading'], true) ? ['text_gradient', 'text_shadow'] : []), 'radius', 'shadow', ...self::BORDER_KEYS, ...self::MASK_KEYS, 'max_width', ...self::POSITION_KEYS, 'z_index', 'opacity', ...self::ANIMATION_KEYS, 'class', 'anchor', 'hide_on', 'visible_if'],
         };
     }
@@ -651,7 +653,7 @@ final class LayoutSchema
     /** Kinds a node of $parent may contain; "root" is the layout itself. */
     public static function allowedChildren(string $parent, ?ExtensionRegistry $blocks = null): array
     {
-        $custom = in_array($parent, ['column', 'tab', 'field', 'slot', 'item-slot', self::MODAL, self::AREA_CONTENT], true) ? array_keys(($blocks ?? ExtensionRegistry::active())->all()) : [];
+        $custom = in_array($parent, ['column', 'tab', 'field', 'slot', 'item-slot', self::MODAL, self::AREA_CONTENT], true) ? ($blocks ?? ExtensionRegistry::active())->elementKinds() : [];
         return match ($parent) {
             'root' => ['section'],
             'section' => ['row'],
@@ -687,10 +689,11 @@ final class LayoutSchema
     public static function spec(bool $pageContent = false, bool $modal = false, ?ExtensionRegistry $blocks = null, bool $component = false): array
     {
         $blocks ??= ExtensionRegistry::active();
-        $custom = array_keys($blocks->all());
+        $custom = $blocks->elementKinds();
+        $backgrounds = $blocks->backgroundKinds();
         $kinds = [];
 
-        foreach ([...self::STRUCTURE, ...self::ELEMENTS, ...$custom, 'tab', self::COMPONENT, self::PAGE_CONTENT, self::COMPONENT_AREA, self::AREA_CONTENT, self::MODAL, ...self::MODAL_ELEMENTS] as $kind) {
+        foreach ([...self::STRUCTURE, ...self::ELEMENTS, ...$custom, ...$backgrounds, 'tab', self::COMPONENT, self::PAGE_CONTENT, self::COMPONENT_AREA, self::AREA_CONTENT, self::MODAL, ...self::MODAL_ELEMENTS] as $kind) {
             $props = self::propSpec($kind, $blocks);
             foreach (self::localizedProps($kind, $blocks) as $key) $props[$key]['localized'] = true;
             foreach (self::bindings($kind, $blocks) as $key => $binding) {
@@ -718,6 +721,8 @@ final class LayoutSchema
                     'variations' => $blocks->get($kind)['variations'],
                     'deprecated' => $blocks->get($kind)['deprecated'],
                     'l10n' => $blocks->get($kind)['l10n'] ?? (object) [],
+                    // A background is drawn behind a section, row or column and starts a palette section.
+                    ...($blocks->get($kind)['background'] ? ['background' => true, 'section' => $blocks->get($kind)['section']] : []),
                 ] : []),
             ];
         }
@@ -735,6 +740,7 @@ final class LayoutSchema
             'style' => $style,
             'elements' => [...self::ELEMENTS, ...$custom, ...($pageContent ? [self::PAGE_CONTENT] : []), ...($component ? [self::COMPONENT_AREA] : []), ...($modal ? self::MODAL_ELEMENTS : [])],
             'item_elements' => [...self::ITEM_ELEMENTS, ...$custom],
+            'backgrounds' => $backgrounds,
             'field_displays' => self::FIELD_DISPLAYS,
             'system_fields' => self::SYSTEM_FIELDS,
             'variants' => self::VARIANTS,
@@ -1471,6 +1477,10 @@ final class LayoutSchema
             if (ExtensionRegistry::isKind($kind) && $blocks->get($kind) === null && ($current = $blocks->alias($kind)) !== null) {
                 $node['kind'] = $kind = $current;
             }
+            // A background is shown behind its section, row or column (style background_fx), never as an element.
+            if (ExtensionRegistry::isKind($kind) && ($blocks->get($kind)['background'] ?? false)) {
+                continue;
+            }
             $placed = self::placementKind($node);
             $missingBlock = ExtensionRegistry::isKind($kind) && in_array($parent, ['column', 'tab', 'field', 'slot', 'item-slot', self::MODAL, self::AREA_CONTENT], true)
                 && ($only === null || in_array($kind, $only, true));
@@ -1541,7 +1551,7 @@ final class LayoutSchema
                 'id' => $id,
                 'kind' => $kind,
                 'props' => self::normalizeProps($kind, $props, $blocks),
-                'style' => self::normalizeStyle($kind, $style),
+                'style' => self::normalizeStyle($kind, $style, $blocks),
                 'children' => $children,
             ];
             foreach (['responsive' => array_keys(StyleVariants::DEVICES), 'states' => StyleVariants::STATES] as $group => $variants) {
@@ -1609,14 +1619,28 @@ final class LayoutSchema
         return $node;
     }
 
+    /**
+     * Section props or style as a palette entry starts them (see Extension::sectionStart()):
+     * props with their defaults filled in, style with only the values that differ from them.
+     */
+    public static function normalizeSection(string $part, array $values): array
+    {
+        return $part === 'props' ? self::normalizeProps('section', $values) : self::normalizeStyle('section', $values);
+    }
+
     /** Only values that differ from their default are kept. */
-    private static function normalizeStyle(string $kind, array $style): array
+    private static function normalizeStyle(string $kind, array $style, ?ExtensionRegistry $blocks = null): array
     {
         $specs = self::styleSpec();
         $normalized = [];
 
         foreach (self::styleKeys($kind) as $key) {
             if (!array_key_exists($key, $style)) {
+                continue;
+            }
+            if ($key === 'background_fx') {
+                $value = self::normalizeBackgroundFx($style[$key], $blocks ?? ExtensionRegistry::active());
+                if ($value !== []) $normalized[$key] = $value;
                 continue;
             }
 
@@ -1642,6 +1666,31 @@ final class LayoutSchema
         }
 
         return $normalized;
+    }
+
+    /**
+     * An extension background: its kind and props, normalized like the props of a
+     * block. A background of an extension that is missing or disabled keeps bounded
+     * inert props, so it returns with a reinstall; blocks that are no background do not.
+     *
+     * @return array{kind: string, props: array}|array{}
+     */
+    public static function normalizeBackgroundFx(mixed $value, ExtensionRegistry $blocks): array
+    {
+        $kind = is_array($value) && is_string($value['kind'] ?? null) ? $value['kind'] : '';
+        if (!ExtensionRegistry::isKind($kind)) {
+            return [];
+        }
+        if ($blocks->get($kind) === null && ($current = $blocks->alias($kind)) !== null) {
+            $kind = $current;
+        }
+        $block = $blocks->get($kind);
+        if ($block !== null && !$block['background']) {
+            return [];
+        }
+        $props = is_array($value['props'] ?? null) && ($value['props'] === [] || !array_is_list($value['props'])) ? $value['props'] : [];
+
+        return ['kind' => $kind, 'props' => self::normalizeProps($kind, $props, $blocks)];
     }
 
     /**
