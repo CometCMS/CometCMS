@@ -17,8 +17,9 @@
             <p class="text-sm text-slate-500 mt-0.5">
               {{ t("webhooks.description") }}
               <a
-                href="/docs/guide/webhooks"
+                href="https://cometcms.github.io/documentation/guide/webhooks.html"
                 target="_blank"
+                rel="noreferrer"
                 class="text-theme-600 hover:underline"
                 >{{ t("webhooks.documentation") }}</a
               >

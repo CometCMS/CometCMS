@@ -3,16 +3,17 @@
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { spawn, spawnSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'node:net';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
+assert(existsSync(join(root, 'documentation/.vitepress/config.js')), 'Clone https://github.com/CometCMS/documentation.git into documentation/ before capturing screenshots.');
 const temporary = mkdtempSync(join(tmpdir(), 'comet-docs-'));
 const install = join(temporary, 'site');
-const output = join(root, 'docs/screenshots');
+const output = join(root, 'documentation/screenshots');
 const workspace = 'northstar-studio';
 let php, browser, page;
 const errors = [];

@@ -1,10 +1,16 @@
 <p align="center">
-  <img src="docs/public/cms-logo-safe.png" alt="CometCMS" height="52" />
+  <img src="https://raw.githubusercontent.com/CometCMS/documentation/main/public/cms-logo-safe.png" alt="CometCMS" height="52" />
 </p>
 
 <p align="center">
   A visual page builder and content CMS that runs on any shared PHP host.<br />
   No Node, no Composer, no database, no CLI, no SSH required.
+</p>
+
+<p align="center">
+  <a href="https://cometcms.github.io">Website</a> ·
+  <a href="https://cometcms.github.io/documentation/">Documentation</a> ·
+  <a href="https://github.com/CometCMS/CometCMS">GitHub</a>
 </p>
 
 ---
@@ -30,12 +36,12 @@ The entire CMS is a single PHP folder you upload to your server. That's it.
 - **Intentionally simple.** Not a framework, not extensible to infinity. Visual editing, structured content and a clean JSON API in one admin UI.
 
 <p align="center">
-  <img src="docs/screenshots/view-dashboard.png" alt="CometCMS admin dashboard" width="860" />
+  <img src="https://raw.githubusercontent.com/CometCMS/documentation/main/screenshots/view-dashboard.png" alt="CometCMS admin dashboard" width="860" />
 </p>
 
 ## Quick Start
 
-1. Download the latest release from the Github releases.
+1. Download the latest release from [GitHub Releases](https://github.com/CometCMS/CometCMS/releases/latest).
 2. Upload the contents of the .zip to your hosting account via FTP or your host's file manager.
 3. Navigate to `https://yourdomain.com/admin` in your browser.
 4. Configure your workspace and create your admin account on the setup screen. **Start with a website** is selected by default for a Pages collection with Landing Page, About and Hello World entries, and an Events collection with two sample events. Events demonstrate custom fields for date and time, location, event type, capacity, and registration status. The website starter enables frontend pages, sets the Landing Page entry as your homepage, and downloads Inter and Lora as normal installed fonts that you can replace or remove. If font downloads are unavailable, the website uses system fonts. Empty workspaces start without installed fonts. You can change or remove these defaults anytime, or choose **Start empty** for a blank workspace.
@@ -45,7 +51,7 @@ No SSH. No CLI. No `composer install`. No environment variables required. Runs o
 
 ## Public REST API
 
-Public API endpoints must include a workspace slug: `/api/v1/workspaces/{workspace}/...`. Content types require explicit API exposure; published, unprotected entries are then public. Drafts and protected entries keep their access rules. Existing schemas retain their previous API access until reconfigured. A machine-readable OpenAPI contract is available at `docs/public/api/openapi.yaml` and is served in the docs as `/api/openapi.yaml`.
+Public API endpoints must include a workspace slug: `/api/v1/workspaces/{workspace}/...`. Content types require explicit API exposure; published, unprotected entries are then public. Drafts and protected entries keep their access rules. Existing schemas retain their previous API access until reconfigured. A machine-readable [OpenAPI contract](https://cometcms.github.io/documentation/api/openapi.yaml) is published with the documentation.
 
 ### Health
 
@@ -105,7 +111,7 @@ The embedded MCP uses the same access tokens and permission grants as the REST A
 
 Each workspace can also publish its content as a website, rendered by PHP on the same server. Enable **Page Builder** in a content type's settings and choose its page URLs (e.g. `/blog/{slug}`). Choose a homepage under **Website → Website settings → General** and design one layout per content type in the visual builder: sections, columns, field bindings, entry lists, menus and more, styled by a shared theme. The website is online while it has a homepage or at least one content type with the Page Builder enabled. Header, footer and menus are edited the same way. Private content types and unpublished entries are never shown; authorized editors can preview drafts.
 
-Pages are cached, set no cookies, and include canonical URLs, `hreflang`, `/sitemap.xml` and `/robots.txt`. JavaScript is included only for interactive elements, including gallery viewers, internal link modals and custom blocks that bring their own script, each allowed individually by the Content-Security-Policy. Markdown is rendered with the bundled [Parsedown](https://parsedown.org) (MIT). See the [website guide](docs/guide/website.md). Developers can add their own page-builder elements as [extensions](docs/guide/extensions.md): ZIPs of reusable blocks and optional content types, components, templates and theme presets. Blocks render on the server; seeded content belongs to the site after installation. See [Comet Essentials](examples/extensions/comet-essentials), the builder extension with ready-to-use blocks including Maps, Slideshow and Stats, and [Comet ThemePack](examples/extensions/comet-theme-pack), four design presets covering Neo-Brutalism, Industrial, Material-inspired and Orbital, with editable Neo-Brutalism components.
+Pages are cached, set no cookies, and include canonical URLs, `hreflang`, `/sitemap.xml` and `/robots.txt`. JavaScript is included only for interactive elements, including gallery viewers, internal link modals and custom blocks that bring their own script, each allowed individually by the Content-Security-Policy. Markdown is rendered with the bundled [Parsedown](https://parsedown.org) (MIT). See the [website guide](https://cometcms.github.io/documentation/guide/website.html). Developers can add their own page-builder elements as [extensions](https://cometcms.github.io/documentation/guide/extensions.html): ZIPs of reusable blocks and optional content types, components, templates and theme presets. Blocks render on the server; seeded content belongs to the site after installation. See [Comet Essentials](examples/extensions/comet-essentials), the builder extension with ready-to-use blocks including Maps, Slideshow and Stats, and [Comet ThemePack](examples/extensions/comet-theme-pack), four design presets covering Neo-Brutalism, Industrial, Material-inspired and Orbital, with editable Neo-Brutalism components.
 
 ### Filtering, Sorting, and Pagination
 
@@ -166,11 +172,13 @@ Configure outbound webhook URLs in the admin under **Webhooks**. CometCMS sends 
 
 Each webhook fires on the events you select: `content.published`, `content.updated`, `content.deleted`, and more. Payloads are signed with HMAC-SHA256 via the `X-CometCMS-Signature` header.
 
-See the [webhook documentation](docs/guide/webhooks.md) for the full payload format and signature verification examples.
+See the [webhook documentation](https://cometcms.github.io/documentation/guide/webhooks.html) for the full payload format and signature verification examples.
 
 ## Updates
 
-The admin sidebar version and **Updates** navigation item open `/admin/update`. Update checks read GitHub release metadata from `updates.repository_url` in `config/config.php`, which defaults to `https://github.com/GetCometCMS/CometCMS`, and then try any configured `updates.fallback_repository_urls` if the primary release endpoint is unavailable. Installable releases should include a built ZIP asset matching `updates.release_asset_pattern` and a `.sha256` checksum asset matching `updates.checksum_asset_pattern`.
+The admin sidebar version and **Updates** navigation item open `/admin/update`. Update checks read GitHub release metadata from `updates.repository_url` in `config/config.php`, which defaults to `https://github.com/CometCMS/CometCMS`, and then try any configured `updates.fallback_repository_urls` if the primary release endpoint is unavailable. Installable releases should include a built ZIP asset matching `updates.release_asset_pattern` and a `.sha256` checksum asset matching `updates.checksum_asset_pattern`.
+
+Existing installations preserve `config/config.php` during updates. Set `updates.repository_url` to `https://github.com/CometCMS/CometCMS` there as well. Leave `updates.releases_api_url` empty to derive the endpoint from the repository, or update it if you configured an explicit endpoint.
 
 CometCMS supports public GitHub releases for update checks and downloads. The update flow downloads and verifies a release ZIP first, then installs the staged package in a separate step.
 
@@ -206,11 +214,11 @@ Roles can be customized or created in **Administration → Users & roles → Rol
 
 | Dashboard                                                                          | Content types                                                                                  |
 | ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| <img src="docs/screenshots/view-dashboard.png" alt="Dashboard view" width="420" /> | <img src="docs/screenshots/view-content-types.png" alt="Content types overview" width="420" /> |
+| <img src="https://raw.githubusercontent.com/CometCMS/documentation/main/screenshots/view-dashboard.png" alt="Dashboard view" width="420" /> | <img src="https://raw.githubusercontent.com/CometCMS/documentation/main/screenshots/view-content-types.png" alt="Content types overview" width="420" /> |
 
 | Media library                                                                      | Role permissions                                                                                             |
 | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| <img src="docs/screenshots/view-media.png" alt="Media library view" width="420" /> | <img src="docs/screenshots/view-user-role-permissions.png" alt="User role permissions editor" width="420" /> |
+| <img src="https://raw.githubusercontent.com/CometCMS/documentation/main/screenshots/view-media.png" alt="Media library view" width="420" /> | <img src="https://raw.githubusercontent.com/CometCMS/documentation/main/screenshots/view-user-role-permissions.png" alt="User role permissions editor" width="420" /> |
 
 ## Storage layout
 

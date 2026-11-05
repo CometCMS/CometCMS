@@ -202,7 +202,7 @@
           {{ t("updates.getHelpText") }}
         </p>
         <a
-          href="https://getcometcms.github.io/CometCMS/"
+          href="https://cometcms.github.io/documentation/"
           target="_blank"
           rel="noreferrer"
           class="btn-secondary mt-4 inline-flex items-center gap-2"

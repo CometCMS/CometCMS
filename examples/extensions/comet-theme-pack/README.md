@@ -13,7 +13,7 @@ Upload `examples/extensions/comet-theme-pack.zip` in **Website Settings → Exte
 | **Material-inspired** | Tonal blue surfaces, generous rounded corners and soft elevation, set in the bundled Inter font. Uses built-in elements; no Material UI dependency. |
 | **Orbital** | A space-inspired dark default, violet, cyan and pink accents, geometric headings and glow shadows. Includes a light palette. |
 
-Presets control colors, typography, spacing, corners, shadows and motion timing. Element styles remain editable in the builder. A preset does not replace layouts, add backgrounds or change the site's custom CSS. These are token-based designs; glass effects and other theme-specific CSS need a separate theme stylesheet capability, proposed in [the theme direction](../../../docs/design/theme-packs.md).
+Presets control colors, typography, spacing, corners, shadows and motion timing. Element styles remain editable in the builder. A preset does not replace layouts, add backgrounds or change the site's custom CSS. These are token-based designs; glass effects and other theme-specific CSS need a separate theme stylesheet capability, proposed in [the theme direction](https://github.com/CometCMS/documentation/blob/main/design/theme-packs.md).
 
 ## Bundled font
 

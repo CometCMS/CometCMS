@@ -3,7 +3,7 @@
 ## Local Development
 
 PHP 8.2+ and Node 24 LTS must be installed locally. No Composer or database needed.
-The Node version is pinned in `.nvmrc`, which is also used by the CI, release, and documentation workflows. If you use a Node version manager, select that version before installing dependencies.
+The Node version is pinned in `.nvmrc`, which is also used by the CI and release workflows. If you use a Node version manager, select that version before installing dependencies.
 I'm primarily a JavaScript developer so the setup is done with npm scripts and Makefile commands, but the PHP code is vanilla and does not require a local server to run tests or build.
 
 ```bash
@@ -14,7 +14,7 @@ make dev      # start PHP + Vite together
 Open `http://localhost:8000/admin`. The first visit shows the setup screen.
 
 <p align="center">
-  <img src="docs/screenshots/first-login.png" alt="CometCMS first-run workspace setup" width="860" />
+  <img src="https://raw.githubusercontent.com/CometCMS/documentation/main/screenshots/first-login.png" alt="CometCMS first-run workspace setup" width="860" />
 </p>
 
 ## Build for production
@@ -33,7 +33,7 @@ After a production build, `node tests/browser/typography.mjs` checks the font ma
 
 The small font fixtures and their licences under `tests/fixtures/fonts/` are used only by tests and are excluded from production builds. They cover variable weights and static italics without requiring a network connection.
 
-After a production build, `node tests/browser/extensions.mjs` verifies the example extensions through ZIP selection and drops, asset serving, palette insertion, inspector editing, live preview, saving, public rendering, deletion, reinstallation and a confirmed breaking update. It uses an isolated temporary installation and Chrome/Chromium (`CHROME_BIN` may override the executable), without network dependencies. `npm run extensions -- validate <folder-or-zip>` checks an extension with the installer's rules. See [Extensions](docs/guide/extensions.md) for the extension format and trust limits.
+After a production build, `node tests/browser/extensions.mjs` verifies the example extensions through ZIP selection and drops, asset serving, palette insertion, inspector editing, live preview, saving, public rendering, deletion, reinstallation and a confirmed breaking update. It uses an isolated temporary installation and Chrome/Chromium (`CHROME_BIN` may override the executable), without network dependencies. `npm run extensions -- validate <folder-or-zip>` checks an extension with the installer's rules. See [Extensions](https://cometcms.github.io/documentation/guide/extensions.html) for the extension format and trust limits.
 
 ## Testing
 
@@ -80,14 +80,15 @@ After `npm run build`, add `--builder` to also check the **Modal** template in t
 
 ## Documentation and screenshots
 
-The documentation lives in `docs/` and uses VitePress. Build it separately from the CMS:
+The [documentation](https://cometcms.github.io/documentation/) lives in the separate [CometCMS/documentation repository](https://github.com/CometCMS/documentation) and uses VitePress. Clone it into the ignored `documentation/` directory to build it or refresh screenshots from this checkout:
 
 ```bash
-npm --prefix docs ci
-npm --prefix docs run build
+git clone https://github.com/CometCMS/documentation.git documentation
+npm --prefix documentation ci
+npm --prefix documentation run build
 ```
 
-Check UI labels and navigation against `web/src`, API routes against `cms/index.php`, and request/response behavior against the controllers and `docs/public/api/openapi.yaml` when updating the guides.
+Check UI labels and navigation against `web/src`, API routes against `cms/index.php`, and request/response behavior against the controllers and `documentation/public/api/openapi.yaml` when updating the guides. Commit and publish documentation changes in that repository; its GitHub Pages workflow handles deployment.
 
 Refresh the browser screenshots with fictional data:
 
@@ -98,7 +99,7 @@ npm run docs:screenshots
 
 The capture needs PHP with `zip` and GD, Node 24, Playwright Chromium, and outbound HTTPS to Iconify for the admin icons. Set `CHROME_BIN=/path/to/chrome` to use an existing browser. It builds a temporary installation, seeds fictional studio pages, translations, users, tokens, media, workspaces and a backup, and captures the actual admin UI. It never uses the local `cms/storage/` data. Demo webhooks are disabled. Temporary data is removed after success or failure, and browser errors or failed admin requests fail the capture.
 
-Images are saved in `docs/screenshots/` and used by the guides, README and documentation homepage gallery. Review their framing and text after changing the UI, then rebuild the docs to check image references.
+Images are saved in `documentation/screenshots/` and used by the guides, README and documentation homepage gallery. Review their framing and text after changing the UI, then rebuild the docs to check image references.
 
 ## Local reset
 
@@ -125,7 +126,7 @@ rm -f cms/storage/settings.json
 
 ## Reporting Issues
 
-Found a bug or have a feature request? Open an issue on the [GitHub repository](https://github.com/GetCometCMS/CometCMS/issues). Please include:
+Found a bug or have a feature request? Open an issue on the [GitHub repository](https://github.com/CometCMS/CometCMS/issues). Please include:
 
 - A clear, descriptive title.
 - Steps to reproduce the issue (if applicable).

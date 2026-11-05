@@ -215,7 +215,7 @@ const statusItems = computed(() => [
     value: t("dashboard.stats.openDocs"),
     caption: t("dashboard.stats.docsCaption"),
     icon: "mdi:book-open-page-variant-outline",
-    href: "https://GetCometCMS.github.io/CometCMS/",
+    href: "https://cometcms.github.io/documentation/",
   },
 ]);
 

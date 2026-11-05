@@ -9,7 +9,7 @@ return [
     ],
     'updates' => [
         'enabled' => true,
-        'repository_url' => 'https://github.com/GetCometCMS/CometCMS',
+        'repository_url' => 'https://github.com/CometCMS/CometCMS',
         'fallback_repository_urls' => [],
         'releases_api_url' => '',
         'release_asset_pattern' => '/cometcms.*\.zip$/i',
