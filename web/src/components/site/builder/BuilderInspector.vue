@@ -394,6 +394,7 @@ import { useSiteBuilder } from "../../../composables/useSiteBuilder.js";
 import { useI18n } from "../../../i18n/index.js";
 import { conditionsHold, extensionText } from "../../../composables/extensionText.js";
 import { resolveLocalized } from "../../../composables/localizedValues.js";
+import { isVideoFile } from "../../../composables/mediaUtils.js";
 
 const props = defineProps({
   templatePart: { type: String, default: null },
@@ -614,7 +615,15 @@ function styleVisible(key) {
   if (key === "animation_trigger" && builder.styleState.value !== "normal") return false;
   if (ANIMATION_OPTIONS.includes(key) && (builder.viewValue(node.value, "style", "animation") || "none") === "none") return false;
   if (POSITION_OPTIONS.includes(key) && !["absolute", "fixed"].includes(builder.viewValue(node.value, "style", "position"))) return false;
-  return key !== "background_repeat" || (style.background_size ?? styleSpec.value.background_size?.default) !== "cover";
+  if (key !== "background_repeat") return true;
+  // Videos never tile; covering images never repeat.
+  return !backgroundIsVideo(style.background_image) && (style.background_size ?? styleSpec.value.background_size?.default) !== "cover";
+}
+
+/** A background video picked from the library (bound field values are only known on the canvas). */
+function backgroundIsVideo(value) {
+  const file = resolveLocalized(value, builder.locale.value || builder.defaultLocale?.value || "en", builder.defaultLocale?.value || "en");
+  return typeof file === "string" && isVideoFile(file);
 }
 
 /** A divider's color, height and direction only apply once it has a shape. */

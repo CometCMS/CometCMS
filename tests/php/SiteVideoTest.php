@@ -2,7 +2,10 @@
 
 declare(strict_types=1);
 
+use CometCMS\Site\BackgroundVideo;
 use CometCMS\Site\LayoutSchema;
+use CometCMS\Site\SiteScripts;
+use CometCMS\Site\SiteService;
 use CometCMS\Site\NodeRenderer;
 use CometCMS\Site\VideoEmbed;
 
@@ -111,4 +114,52 @@ test('the editing canvas shows library videos without autoplay', function (): vo
     $html = (new NodeRenderer($ctx))->render([LayoutSchema::node('video', ['media' => 'clip.mp4', 'autoplay' => true])]);
     assert_true(str_contains($html, '<video src="'), $html);
     assert_false(str_contains($html, 'autoplay'));
+});
+
+test('library videos play as muted looping backgrounds on the background layer', function (): void {
+    comet_site_test_setup();
+    file_put_contents(comet_test_workspace_path() . '/media/clip.mp4', "\x00\x00\x00\x18ftypmp42\x00\x00\x00\x00mp42isom");
+
+    $heading = LayoutSchema::node('heading', ['text' => 'Over the video']);
+    $column = LayoutSchema::node('column', [], [], [$heading]);
+    $style = ['background_image' => 'clip.mp4', 'background_size' => 'contain', 'background_position' => 'top-right', 'background_repeat' => true, 'background_blur' => 6, 'background_effect' => 'parallax', 'overlay' => 'dark'];
+    foreach (['section' => [LayoutSchema::node('row', [], [], [$column])], 'row' => [$column], 'column' => [$heading]] as $kind => $children) {
+        $node = LayoutSchema::node($kind, [], $style, $children);
+        $html = (new NodeRenderer(comet_site_test_context()))->render([$node]);
+        assert_same(1, substr_count($html, '<video class="c-background-video"'), $html);
+        assert_true(str_contains($html, '<span class="c-background-layer" aria-hidden="true"><video'));
+        assert_true(str_contains($html, 'clip.mp4'));
+        foreach ([' muted ', ' loop ', ' playsinline ', ' data-background-video>', 'object-fit:contain;object-position:top right'] as $part) {
+            assert_true(str_contains($html, $part), $part);
+        }
+        assert_false(str_contains($html, ' autoplay'), 'The site script starts playback, so reduced motion and canvases stay still.');
+        assert_false(str_contains($html, ' controls'));
+        foreach (['c-has-bg-video', 'c-has-bg-layer', 'c-bg-effect-parallax', 'c-overlay-dark', '--c-background-blur:6px'] as $part) {
+            assert_true(str_contains($html, $part), $part);
+        }
+        assert_false(str_contains($html, 'c-bg-repeat'), 'Videos never tile.');
+        assert_false(str_contains($html, 'background-image'), 'A video is no CSS image.');
+    }
+
+    $html = (new NodeRenderer(comet_site_test_context()))->render([LayoutSchema::node('column', [], ['background_image' => 'clip.mp4', 'background_size' => 'original'], [$heading])]);
+    assert_true(str_contains($html, 'object-fit:none;object-position:center'));
+
+    (new \CometCMS\Media\MediaRepository())->updateVisibility('clip.mp4', 'private');
+    $html = (new NodeRenderer(comet_site_test_context()))->render([LayoutSchema::node('column', [], ['background_image' => 'clip.mp4'], [$heading])]);
+    assert_true(str_contains($html, 'Over the video'));
+    assert_false(str_contains($html, '<video'), 'Private videos are never shown.');
+});
+
+test('pages with background videos load the hashed playback module', function (): void {
+    $site = comet_site_test_setup();
+    file_put_contents(comet_test_workspace_path() . '/media/clip.mp4', "\x00\x00\x00\x18ftypmp42\x00\x00\x00\x00mp42isom");
+    $site->saveLayout('blog', 'index', [LayoutSchema::node('section', [], ['background_image' => 'clip.mp4'], [LayoutSchema::node('row', [], [], [LayoutSchema::node('column', [], [], [LayoutSchema::node('heading', ['text' => 'Over the video'])])])])]);
+
+    $page = (new SiteService(comet_site_test_context($site)))->respond('/blog', []);
+    assert_true(str_contains($page['body'], '<script type="module">' . BackgroundVideo::script() . '</script>'), $page['body']);
+    assert_true(str_contains(SiteScripts::cspDirective($page['body']), BackgroundVideo::cspSource()));
+
+    $site->saveLayout('blog', 'index', [LayoutSchema::node('section', [], [], [LayoutSchema::node('row', [], [], [LayoutSchema::node('column', [], [], [LayoutSchema::node('heading', ['text' => 'No video'])])])])]);
+    $page = (new SiteService(comet_site_test_context($site)))->respond('/blog', []);
+    assert_false(str_contains($page['body'], 'initBackgroundVideos'));
 });

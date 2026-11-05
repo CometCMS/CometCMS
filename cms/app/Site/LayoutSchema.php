@@ -238,9 +238,10 @@ final class LayoutSchema
             'margin_left' => ['type' => 'enum', 'options' => ['', ...self::SPACE], 'default' => ''],
             'background' => ['type' => 'color', 'options' => ['', ...Theme::COLOR_KEYS], 'default' => ''],
             'background_gradient' => ['type' => 'gradient', 'options' => Theme::COLOR_KEYS, 'default' => []],
-            // An image is layered over the background color, which shows
-            // through transparent images and while the image loads.
-            'background_image' => ['type' => 'media', 'default' => '', 'localized' => true],
+            // An image or video is layered over the background color, which shows
+            // through transparent images and while the media loads. Videos play
+            // muted in a loop; size and position become their fit and focal point.
+            'background_image' => ['type' => 'media', 'default' => '', 'localized' => true, 'description' => 'A library image or video file shown behind the content. Videos play muted in a loop without controls (paused offscreen and for visitors who prefer reduced motion); background_size, background_position, background_blur, background_effect and overlay apply to both, background_repeat only to images.'],
             'background_size' => ['type' => 'enum', 'options' => ['cover', 'contain', 'original'], 'default' => 'cover'],
             'background_position' => ['type' => 'enum', 'options' => self::POSITIONS, 'default' => 'center'],
             'background_repeat' => ['type' => 'bool', 'default' => false],

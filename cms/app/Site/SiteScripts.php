@@ -10,7 +10,7 @@ final class SiteScripts
     public static function cspDirective(string $html, ?SiteContext $ctx = null): string
     {
         $sources = [];
-        foreach ([GalleryLightbox::class, LinkModal::class, Tabs::class, SiteSearch::class, ThemeToggle::class, Menus::class, ListFilters::class, FormCaptcha::class] as $module) {
+        foreach ([GalleryLightbox::class, LinkModal::class, Tabs::class, SiteSearch::class, ThemeToggle::class, Menus::class, ListFilters::class, FormCaptcha::class, BackgroundVideo::class] as $module) {
             if (str_contains($html, '>' . $module::script() . '</script>')) {
                 $sources[] = $module::cspSource();
             }

@@ -198,6 +198,27 @@ html:has(.c-sticky, .c-overlap) { container-type: scroll-state; }
   from { translate: 0 calc(var(--c-parallax-shift) * -1); }
   to { translate: 0 var(--c-parallax-shift); }
 }
+/*
+ * Background videos sit on the same layer as images and follow its blur and effects.
+ * A video is a replaced element, so it is sized explicitly: by the element, or by the
+ * viewport when fixed. Fit and focal point are set inline.
+ */
+.c-has-bg-video > .c-background-layer::before { content: none; }
+.c-background-video {
+  position: absolute; display: block; max-width: none; pointer-events: none;
+  top: calc(-3 * var(--c-background-blur, 0px)); left: calc(-3 * var(--c-background-blur, 0px));
+  width: calc(100% + 6 * var(--c-background-blur, 0px)); height: calc(100% + 6 * var(--c-background-blur, 0px));
+  filter: blur(var(--c-background-blur));
+}
+.c-bg-effect-fixed > .c-background-layer > .c-background-video { position: fixed; }
+@supports (animation-timeline: view()) {
+  .c-bg-effect-parallax > .c-background-layer > .c-background-video {
+    top: calc(-3 * var(--c-background-blur, 0px) - var(--c-parallax-shift));
+    height: calc(100% + 6 * var(--c-background-blur, 0px) + 2 * var(--c-parallax-shift));
+    animation: c-bg-parallax linear both;
+    animation-timeline: --c-bg-parallax;
+  }
+}
 .c-overlay-dark, .c-overlay-light { isolation: isolate; }
 .c-overlay-dark::before, .c-overlay-light::before { content: ""; position: absolute; inset: 0; z-index: -1; }
 .c-overlay-dark::before { background: rgb(0 0 0 / 0.5); }

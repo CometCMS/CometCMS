@@ -1,5 +1,6 @@
 import { APP_BASE } from '../basePath.js'
 const IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "gif", "webp", "svg", "avif"]);
+const VIDEO_EXTENSIONS = new Set(["mp4", "webm", "mov", "m4v", "avi", "mkv", "mpeg", "mpg", "ogv", "3gp", "3g2"]);
 
 export function fileExtension(name) {
   return String(name).split(".").pop()?.toLowerCase() ?? "";
@@ -7,6 +8,10 @@ export function fileExtension(name) {
 
 export function isImageFile(name) {
   return IMAGE_EXTENSIONS.has(fileExtension(name));
+}
+
+export function isVideoFile(name) {
+  return VIDEO_EXTENSIONS.has(fileExtension(name));
 }
 
 export function getFileIcon(name) {
@@ -20,21 +25,7 @@ export function getFileIcon(name) {
     return { icon: "mdi:file-powerpoint-box", class: "text-orange-500" };
   if (["zip", "rar", "7z", "tar", "gz", "bz2"].includes(ext))
     return { icon: "mdi:zip-box", class: "text-yellow-600" };
-  if (
-    [
-      "mp4",
-      "webm",
-      "mov",
-      "m4v",
-      "avi",
-      "mkv",
-      "mpeg",
-      "mpg",
-      "ogv",
-      "3gp",
-      "3g2",
-    ].includes(ext)
-  )
+  if (VIDEO_EXTENSIONS.has(ext))
     return { icon: "mdi:file-video-outline", class: "text-pink-500" };
   if (["mp3", "wav", "ogg", "m4a", "aac", "flac"].includes(ext))
     return { icon: "mdi:file-music-outline", class: "text-purple-500" };

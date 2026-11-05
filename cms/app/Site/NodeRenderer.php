@@ -2344,13 +2344,17 @@ final class NodeRenderer
         }
         $file = (string) ($style['background_image'] ?? '');
         $item = $file !== '' ? $this->ctx->mediaItem($file) : null;
-
-        if ($item === null || !str_starts_with((string) $item['mime'], 'image/')) {
-            return ['classes' => [], 'style' => '', 'layer' => ''];
-        }
+        $mime = (string) ($item['mime'] ?? '');
 
         $spec = LayoutSchema::styleSpec();
         $option = static fn(string $key): mixed => $style[$key] ?? $spec[$key]['default'];
+        if ($item !== null && str_starts_with($mime, 'video/')) {
+            return $this->videoBackground($item, $option);
+        }
+        if ($item === null || !str_starts_with($mime, 'image/')) {
+            return ['classes' => [], 'style' => '', 'layer' => ''];
+        }
+
         $sources = $this->backgroundSources($item, $this->slot($state), $tall);
         $image = 'url(\'' . $sources['desktop'] . '\')';
         $responsive = count(array_unique($sources)) > 1;
@@ -2388,6 +2392,41 @@ final class NodeRenderer
             'classes' => $classes,
             'style' => ($responsive ? $images : '--c-background-image:' . $image) . ($blur > 0 ? ';--c-background-blur:' . $blur . 'px' : ''),
             'layer' => '<span class="c-background-layer" aria-hidden="true"></span>',
+        ];
+    }
+
+    /**
+     * A library video behind the content: muted, looping and without
+     * controls, on the same layer image backgrounds use, so blur, scroll
+     * effects and overlays work alike. Size and focal point become the
+     * video's fit and position. The site script starts playback (see
+     * BackgroundVideo), so editor canvases and visitors who prefer reduced
+     * motion see a still first frame.
+     *
+     * @param callable(string): mixed $option
+     * @return array{classes: list<string>, style: string, layer: string}
+     */
+    private function videoBackground(array $item, callable $option): array
+    {
+        $blur = (int) $option('background_blur');
+        $effect = (string) $option('background_effect');
+        $classes = ['c-has-bg-image', 'c-has-bg-video', 'c-has-bg-layer'];
+        if ($effect !== 'none') {
+            $classes[] = 'c-bg-effect-' . $effect;
+        }
+        if ($option('overlay') !== 'none') {
+            $classes[] = 'c-overlay-' . $option('overlay');
+        }
+        $fit = ['cover' => 'cover', 'contain' => 'contain', 'original' => 'none'][$option('background_size')] ?? 'cover';
+        $position = str_replace('-', ' ', (string) $option('background_position'));
+        $video = '<video class="c-background-video" src="' . Security::e($this->ctx->mediaUrl($item['name'])) . '"'
+            . ' style="object-fit:' . $fit . ';object-position:' . $position . '"'
+            . ' muted loop playsinline disablepictureinpicture preload="metadata" tabindex="-1" data-background-video></video>';
+
+        return [
+            'classes' => $classes,
+            'style' => $blur > 0 ? '--c-background-blur:' . $blur . 'px' : '',
+            'layer' => '<span class="c-background-layer" aria-hidden="true">' . $video . '</span>',
         ];
     }
 
