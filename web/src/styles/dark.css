@@ -1,3 +1,8 @@
+/* Emit Tailwind's state variants (hover:, focus:, …) here instead of at the
+   end of the bundle, so the unlayered dark remaps below (e.g.
+   .hover\:bg-white:hover) follow them and win at equal specificity. */
+@tailwind variants;
+
 @layer base {
   /* Dark mode: an inverted, slightly cool neutral scale plus distinct
      elevation levels (app < sidebar < surface < raised) so panels read as

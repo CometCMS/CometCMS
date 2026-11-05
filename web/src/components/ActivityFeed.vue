@@ -274,9 +274,24 @@ const EVENT_LABELS = {
   "site.form_deleted": "activity.siteFormDeleted",
   "site.form_submitted": "activity.siteFormSubmitted",
   "site.revision_restored": "activity.siteRevisionRestored",
+  "site.template_created": "activity.siteTemplateCreated",
+  "site.area_deleted": "activity.siteAreaDeleted",
+  "site.form_settings_updated": "activity.siteFormSettingsUpdated",
+  "site.extension_installed": "activity.siteExtensionInstalled",
+  "site.extension_configured": "activity.siteExtensionConfigured",
+  "site.extension_toggled": "activity.siteExtensionToggled",
+  "site.extension_deleted": "activity.siteExtensionDeleted",
+  "media.sizes_updated": "activity.mediaSizesUpdated",
+  "content.bulk_delete_failed": "activity.contentBulkDeleteFailed",
+  "backup note updated": "activity.backupNoteUpdated",
+  "invalid api token": "activity.invalidApiToken",
+  "invalid mcp api token": "activity.invalidMcpApiToken",
 };
 
 function label(item) {
+  if (item.message === "site.extension_toggled" && typeof item.context?.enabled === "boolean") {
+    return t(item.context.enabled ? "activity.siteExtensionEnabled" : "activity.siteExtensionDisabled");
+  }
   return EVENT_LABELS[item.message]
     ? t(EVENT_LABELS[item.message])
     : item.message;
@@ -288,6 +303,7 @@ function sub(item) {
   if (ctx.type && ctx.variant) return `${ctx.type} · ${t(`site.variant.${ctx.variant}`)}`;
   if (ctx.region) return t(`site.region.${ctx.region}`);
   if (ctx.target === "theme") return t("activity.siteTheme");
+  if (ctx.extension) return ctx.extension;
   if (ctx.component) return ctx.component;
   if (ctx.name) return ctx.name;
   if (ctx.file) return ctx.file;
@@ -348,6 +364,18 @@ const EVENT_ICONS = {
   "site.form_deleted": "mdi:delete-outline",
   "site.form_submitted": "mdi:send-outline",
   "site.revision_restored": "mdi:history",
+  "site.template_created": "mdi:file-document-plus-outline",
+  "site.area_deleted": "mdi:delete-outline",
+  "site.form_settings_updated": "mdi:form-select",
+  "site.extension_installed": "mdi:puzzle-plus-outline",
+  "site.extension_configured": "mdi:puzzle-edit-outline",
+  "site.extension_toggled": "mdi:toggle-switch-outline",
+  "site.extension_deleted": "mdi:puzzle-remove-outline",
+  "media.sizes_updated": "mdi:image-size-select-large",
+  "content.bulk_delete_failed": "mdi:alert-circle-outline",
+  "backup note updated": "mdi:note-edit-outline",
+  "invalid api token": "mdi:key-alert-outline",
+  "invalid mcp api token": "mdi:key-alert-outline",
 };
 
 function eventIcon(item) {

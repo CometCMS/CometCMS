@@ -13,8 +13,8 @@
     <div
       v-for="item in items"
       :key="item.value"
-      class="group relative inline-flex shrink-0 items-center"
-      :class="itemWrapperClass(item)"
+      class="group relative inline-flex shrink-0"
+      :class="[variant === 'segmented' ? 'items-stretch' : 'items-center', itemWrapperClass(item)]"
       :data-tab-value="item.value"
     >
       <component
@@ -112,7 +112,7 @@ function itemButtonClass(item) {
   if (props.variant === "segmented") {
     return [
       base,
-      "min-h-9 w-full justify-center px-3 py-2 text-xs",
+      "min-h-9 w-full justify-center px-3 py-2 text-center text-xs",
       item.value === props.modelValue
         ? "bg-white text-theme-700 shadow-sm"
         : "text-slate-600 hover:bg-white hover:text-slate-900",
