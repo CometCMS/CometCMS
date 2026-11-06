@@ -15,12 +15,13 @@ final class PermissionService
 
     /**
      * Narrower actions that a broader one also grants: managing the website
-     * includes editing page content and layouts in the page builder. A deny
-     * grant on the narrower action still wins.
+     * includes editing page content, layouts and the global design (theme and
+     * fonts) in the page builder. A deny grant on the narrower action still wins.
      */
     public const IMPLIED_BY = [
         'site.pages' => 'site.manage',
         'site.layouts' => 'site.manage',
+        'site.design' => 'site.manage',
     ];
 
     public function allows(array $principal, string $action, array $context = []): bool

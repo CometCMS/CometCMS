@@ -24,7 +24,8 @@ final class FontsController extends BaseController
 
     private function access(bool $mutating = false): void
     {
-        $this->requirePermission('site.manage', ['resource' => 'site:*']);
+        // Fonts belong to the site's global design.
+        $this->requirePermission('site.design', ['resource' => 'site:*']);
         if ($mutating) {
             $this->verifyCsrf();
         }

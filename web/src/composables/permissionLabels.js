@@ -31,7 +31,7 @@ export const PERMISSION_ACTIONS = {
     'content.revisions.restore',
   ],
   media: ['media.read', 'media.upload', 'media.update', 'media.delete'],
-  site: ['site.manage', 'site.layouts', 'site.pages'],
+  site: ['site.manage', 'site.design', 'site.layouts', 'site.pages'],
   users: [
     'users.read',
     'users.create',

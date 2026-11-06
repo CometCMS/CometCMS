@@ -31,7 +31,7 @@ describe('permission category selection', () => {
 
     const grants = changes.at(-1)
     expect(grants.flatMap((grant) => grant.actions)).toEqual(Object.values(PERMISSION_ACTIONS).flat())
-    expect(grants).toContainEqual({ effect: 'allow', actions: ['site.manage', 'site.layouts', 'site.pages'], resources: ['*'] })
+    expect(grants).toContainEqual({ effect: 'allow', actions: ['site.manage', 'site.design', 'site.layouts', 'site.pages'], resources: ['*'] })
   })
 
   it('can deselect website management without removing other categories', async () => {

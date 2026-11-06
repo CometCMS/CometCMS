@@ -1236,6 +1236,7 @@ const messages = {
     'perm.action.workspaces.read': 'View workspaces',
     'perm.action.workspaces.manage': 'Manage workspaces',
     'perm.action.site.manage': 'Manage the website',
+    'perm.action.site.design': 'Edit global design & fonts',
     'perm.action.site.layouts': 'Edit layouts & templates',
     'perm.action.site.pages': 'Edit page content',
     'perm.action.updates.read': 'View updates',

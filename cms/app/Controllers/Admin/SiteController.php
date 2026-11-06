@@ -310,7 +310,7 @@ final class SiteController extends BaseController
 
     public function updateTheme(): never
     {
-        $user = $this->requirePermission('site.manage', ['resource' => 'site:*']);
+        $user = $this->requirePermission('site.design', ['resource' => 'site:*']);
         $this->verifyCsrf();
         $input = $this->requestJson();
         $current = $this->site->theme();
@@ -328,7 +328,7 @@ final class SiteController extends BaseController
     /** Body: {name, theme}: the design to keep under that name. */
     public function createThemePreset(): never
     {
-        $this->requirePermission('site.manage', ['resource' => 'site:*']);
+        $this->requirePermission('site.design', ['resource' => 'site:*']);
         $this->verifyCsrf();
         $input = $this->requestJson();
         $preset = $this->validated(fn() => $this->site->createThemePreset($input['name'] ?? '', $input['theme'] ?? null));
@@ -339,7 +339,7 @@ final class SiteController extends BaseController
     /** Body: {theme}: the design that replaces a site-owned theme's definition. */
     public function updateThemePreset(string $id): never
     {
-        $this->requirePermission('site.manage', ['resource' => 'site:*']);
+        $this->requirePermission('site.design', ['resource' => 'site:*']);
         $this->verifyCsrf();
         $input = $this->requestJson();
         $preset = $this->validated(fn() => $this->site->updateThemePreset($id, $input['theme'] ?? null));
@@ -352,7 +352,7 @@ final class SiteController extends BaseController
 
     public function deleteThemePreset(string $id): never
     {
-        $this->requirePermission('site.manage', ['resource' => 'site:*']);
+        $this->requirePermission('site.design', ['resource' => 'site:*']);
         $this->verifyCsrf();
         if ($this->site->themePreset($id) === null) {
             $this->json(['error' => ['code' => 'not_found', 'message' => 'Preset not found.']], 404);
@@ -854,13 +854,13 @@ final class SiteController extends BaseController
 
     public function themeRevisions(): never
     {
-        $this->requirePermission('site.manage', ['resource' => 'site:*']);
+        $this->requirePermission('site.design', ['resource' => 'site:*']);
         $this->json(['data' => $this->site->themeRevisions()]);
     }
 
     public function themeRevision(string $id): never
     {
-        $user = $this->requirePermission('site.manage', ['resource' => 'site:*']);
+        $user = $this->requirePermission('site.design', ['resource' => 'site:*']);
         $this->sendRevision($this->site->themeRevision($id, Auth::allows($user, 'admin')));
     }
 
@@ -895,7 +895,7 @@ final class SiteController extends BaseController
 
     public function restoreThemeRevision(string $id): never
     {
-        $user = $this->requirePermission('site.manage', ['resource' => 'site:*']);
+        $user = $this->requirePermission('site.design', ['resource' => 'site:*']);
         $this->verifyCsrf();
         $theme = $this->site->restoreThemeRevision($id, $user, Auth::allows($user, 'admin'));
         $this->sendRestoredRevision($theme, ['target' => 'theme', 'revision' => $id]);
@@ -956,10 +956,14 @@ final class SiteController extends BaseController
         $this->verifyCsrf();
         $body = $this->requestJson();
         $site = ['resource' => 'site:*'];
-        // Page content checks its own permissions (requirePage); everything else previews shared layouts.
-        if (($body['target'] ?? 'page') !== 'entry_page') $this->requirePermission('site.layouts', $site);
+        // Page content checks its own permissions (requirePage); everything else previews shared layouts,
+        // except the design settings' specimen, which renders sample blocks in the header region.
+        $target = (string) ($body['target'] ?? 'page');
+        $designSpecimen = $target === 'region' && $this->can($user, 'site.design', $site);
+        if ($target !== 'entry_page' && !$designSpecimen) $this->requirePermission('site.layouts', $site);
         // The builder always sends the draft design along; unsaved design only counts for those who may change it.
-        if (!$this->can($user, 'site.manage', $site)) unset($body['theme'], $body['menus']);
+        if (!$this->can($user, 'site.design', $site)) unset($body['theme']);
+        if (!$this->can($user, 'site.manage', $site)) unset($body['menus']);
         if (!$this->can($user, 'site.layouts', $site)) unset($body['templates']);
         $context = $this->context();
         $context->preview = true;
@@ -1109,9 +1113,13 @@ final class SiteController extends BaseController
         }
         // The builder always sends the draft design along; unsaved design is only shown to those who may change it.
         $site = ['resource' => 'site:*'];
-        if ((isset($body['theme']) || isset($body['menus'])) && !$this->can($user, 'site.manage', $site)) {
+        if (isset($body['theme']) && !$this->can($user, 'site.design', $site)) {
+            if ($target === 'entry') $this->requirePermission('site.design', $site);
+            unset($body['theme']);
+        }
+        if (isset($body['menus']) && !$this->can($user, 'site.manage', $site)) {
             if ($target === 'entry') $this->requirePermission('site.manage', $site);
-            unset($body['theme'], $body['menus']);
+            unset($body['menus']);
         }
         if (isset($body['templates']) && !$this->can($user, 'site.layouts', $site)) {
             if ($target === 'entry') $this->requirePermission('site.layouts', $site);
@@ -1359,14 +1367,15 @@ final class SiteController extends BaseController
         ];
     }
 
-    /** What every builder page reads: open to those who edit page content or layouts. */
+    /** What every builder page reads: open to those who edit page content, layouts or the design. */
     private function requireBuilder(): array
     {
         $user = $this->requireUser();
+        $site = ['resource' => 'site:*'];
 
-        return $this->can($user, 'site.pages', ['resource' => 'site:*'])
+        return $this->can($user, 'site.pages', $site) || $this->can($user, 'site.design', $site)
             ? $user
-            : $this->requirePermission('site.layouts', ['resource' => 'site:*']);
+            : $this->requirePermission('site.layouts', $site);
     }
 
     private function requireComponent(string $id): array

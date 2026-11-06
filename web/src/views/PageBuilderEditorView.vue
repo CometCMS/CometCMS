@@ -267,7 +267,7 @@
             <Icon icon="mdi:information-outline" class="mt-px h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden="true" />
             <span>{{ panelHint(panel.value) }}</span>
           </p>
-          <div v-if="panel.value === 'history' && canManage" class="border-b border-slate-200 p-2">
+          <div v-if="panel.value === 'history' && canDesign" class="border-b border-slate-200 p-2">
             <SegmentedControl
               v-model="historyScope"
               :options="[
@@ -446,8 +446,8 @@ const selectedTemplatePart = ref(null);
 const site = useSiteStore();
 const auth = useAuthStore();
 const { canContent } = usePermissions();
-/** The site's design belongs to managing the website; templates, header, footer and components to editing layouts. */
-const canManage = computed(() => auth.can("site.manage"));
+/** The site's global design has its own permission; templates, header, footer and components belong to editing layouts. */
+const canDesign = computed(() => auth.can("site.design"));
 const canEditLayouts = computed(() => auth.can("site.layouts"));
 const toast = useToastStore();
 const fullPreview = useSitePreview();
@@ -573,7 +573,7 @@ const panels = computed(() => [
   { value: "inspector", label: t("site.builder.inspector"), icon: "mdi:tune-variant" },
   { value: "outline", label: t("site.builder.outline"), icon: "mdi:file-tree-outline" },
   ...(hasEntryFields.value ? [{ value: "fields", label: t("site.builder.entryFields"), icon: "mdi:file-document-edit-outline", dirty: entryFields.isDirty.value }] : []),
-  ...(canManage.value ? [
+  ...(canDesign.value ? [
     { value: "design", label: t("site.builder.designSettings"), icon: "mdi:palette-outline", dirty: themeDirty.value && !cssOnlyDirty.value },
     { value: "css", label: t("site.theme.customCss"), icon: "mdi:language-css3", dirty: cssDirty.value },
   ] : []),

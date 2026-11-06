@@ -1241,6 +1241,7 @@ const messages = {
   'perm.action.workspaces.read': 'Workspaces ansehen',
   'perm.action.workspaces.manage': 'Workspaces verwalten',
   'perm.action.site.manage': 'Website verwalten',
+  'perm.action.site.design': 'Globales Design & Schriften bearbeiten',
   'perm.action.site.layouts': 'Layouts & Vorlagen bearbeiten',
   'perm.action.site.pages': 'Seiteninhalte bearbeiten',
   'perm.action.updates.read': 'Updates ansehen',

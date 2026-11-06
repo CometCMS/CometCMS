@@ -34,6 +34,7 @@ final class RoleRepository
                     'workspaces.read',
                     'workspaces.manage',
                     'site.manage',
+                    'site.design',
                     'site.layouts',
                     'site.pages',
                 ], 'resources' => ['*']],

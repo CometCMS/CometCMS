@@ -7,7 +7,7 @@
         <p class="mt-0.5 text-sm text-slate-500">{{ t("site.description") }}</p>
       </div>
 
-      <router-link v-if="site.data" :to="builderLink" class="btn-secondary">
+      <router-link v-if="site.data && canEditLayouts" :to="builderLink" class="btn-secondary">
         <Icon icon="mdi:view-dashboard-edit-outline" class="h-4 w-4" />
         {{ t("site.builderCta.open") }}
       </router-link>
@@ -130,11 +130,12 @@ const toast = useToastStore();
 const { t } = useI18n();
 const cssEditorOpen = ref(false);
 provideLanguageSwitcher();
-/** Design and menus belong to managing the website; templates and components to editing layouts. */
+/** Design and fonts belong to the global design, menus to managing the website; templates and components to editing layouts. */
 const canManage = computed(() => auth.can("site.manage"));
+const canDesign = computed(() => auth.can("site.design"));
 const canEditLayouts = computed(() => auth.can("site.layouts"));
 /** Global design, menus and templates share a draft across these tabs. */
-const PARTS = computed(() => [...(canManage.value ? ["theme", "menus"] : []), ...(canEditLayouts.value ? ["templates"] : [])]);
+const PARTS = computed(() => [...(canDesign.value ? ["theme"] : []), ...(canManage.value ? ["menus"] : []), ...(canEditLayouts.value ? ["templates"] : [])]);
 const isDirty = computed(() => site.dirtyParts.some((part) => PARTS.value.includes(part)));
 // Opens the homepage layout, or the header when no homepage is chosen. Uses saved
 // settings because leaving discards any pending edits.
@@ -151,11 +152,11 @@ const builderLink = computed(() => {
 const { leavePromptOpen, confirmLeave } = useUnsavedChangesGuard(isDirty);
 
 const tabs = computed(() => [
-  canManage.value && { value: "design", label: t("site.builder.designSettings"), icon: "mdi:palette-outline", to: "/page-builder/design" },
+  canDesign.value && { value: "design", label: t("site.builder.designSettings"), icon: "mdi:palette-outline", to: "/page-builder/design" },
   canEditLayouts.value && { value: "templates", label: t("site.templates.title"), icon: "mdi:page-layout-header-footer", to: "/page-builder/templates" },
   canManage.value && { value: "menus", label: t("site.tab.menus"), icon: "mdi:menu", to: "/page-builder/menus" },
   canEditLayouts.value && { value: "components", label: t("site.component.group"), icon: "mdi:puzzle-outline", to: "/page-builder/components" },
-  canManage.value && { value: "fonts", label: t("site.tab.fonts"), icon: "mdi:format-font", to: "/page-builder/fonts" },
+  canDesign.value && { value: "fonts", label: t("site.tab.fonts"), icon: "mdi:format-font", to: "/page-builder/fonts" },
 ].filter(Boolean));
 // Only the tabs this user may open; a tab they may not falls back to the first.
 const activeTab = computed(() => tabs.value.find((tab) => tab.value === route.params.tab)?.value ?? tabs.value[0]?.value ?? "");

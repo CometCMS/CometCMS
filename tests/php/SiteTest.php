@@ -1047,7 +1047,7 @@ test('managing the website implies editing page content and layouts, which stay 
     $token = static fn(array $grants): array => ['_principal_type' => 'token', 'permissions' => $grants];
 
     $manager = $token([['actions' => ['site.manage'], 'resources' => ['site:*']]]);
-    foreach (['site.manage', 'site.layouts', 'site.pages'] as $action) {
+    foreach (['site.manage', 'site.design', 'site.layouts', 'site.pages'] as $action) {
         assert_true($permissions->allows($manager, $action, $site), $action);
         assert_true($permissions->grantsAction($manager, $action), $action);
     }
@@ -1066,8 +1066,15 @@ test('managing the website implies editing page content and layouts, which stay 
     assert_false($permissions->allows($denied, 'site.layouts', $site), 'A deny on the narrower action wins over the broader allow.');
     assert_true($permissions->allows($denied, 'site.pages', $site));
 
+    $design = $token([['actions' => ['site.design'], 'resources' => ['*']]]);
+    assert_true($permissions->allows($design, 'site.design', $site));
+    assert_false($permissions->allows($design, 'site.layouts', $site));
+    assert_false($permissions->allows($design, 'site.manage', $site));
+
+    assert_true($permissions->allows(['id' => 'a', 'role' => 'admin'], 'site.design', $site));
     assert_true($permissions->allows(['id' => 'e', 'role' => 'editor'], 'site.pages', $site), 'Editors design their entries\' page content.');
     assert_false($permissions->allows(['id' => 'e', 'role' => 'editor'], 'site.layouts', $site));
+    assert_false($permissions->allows(['id' => 'e', 'role' => 'editor'], 'site.design', $site));
 });
 
 test('background images and cropped images follow their size and focal point', function (): void {

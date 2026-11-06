@@ -53,7 +53,7 @@ export function useNavigation() {
     allTypes.value.filter((type) => auth.can('content.read', `content:${type.name}:*`)),
   )
 
-  const showPageBuilder = computed(() => (auth.can('site.manage') || auth.can('site.layouts')) && site.pageBuilderActive)
+  const showPageBuilder = computed(() => (auth.can('site.manage') || auth.can('site.design') || auth.can('site.layouts')) && site.pageBuilderActive)
 
   const groups = computed(() => {
     const result = [
@@ -83,15 +83,16 @@ export function useNavigation() {
 
     const website = []
     if (showPageBuilder.value) {
-      // Design, menus and fonts belong to managing the website; templates and components to editing layouts.
+      // Design and fonts belong to the global design, menus to managing the website; templates and components to editing layouts.
       const manages = auth.can('site.manage')
+      const designs = auth.can('site.design')
       const layouts = auth.can('site.layouts')
       website.push(section({ key: 'page-builder', label: t('app.nav.website'), description: t('app.nav.designHint'), icon: 'mdi:palette-outline', match: ['/page-builder'] }, [
-        manages && { key: 'website-design', label: t('site.builder.designSettings'), to: '/page-builder/design', match: ['/page-builder/design'] },
+        designs && { key: 'website-design', label: t('site.builder.designSettings'), to: '/page-builder/design', match: ['/page-builder/design'] },
         layouts && { key: 'website-templates', label: t('site.templates.title'), to: '/page-builder/templates', match: ['/page-builder/templates'] },
         manages && { key: 'website-menus', label: t('site.tab.menus'), to: '/page-builder/menus', match: ['/page-builder/menus'] },
         layouts && { key: 'website-components', label: t('site.component.group'), to: '/page-builder/components', match: ['/page-builder/components'] },
-        manages && { key: 'website-fonts', label: t('site.tab.fonts'), to: '/page-builder/fonts', match: ['/page-builder/fonts'] },
+        designs && { key: 'website-fonts', label: t('site.tab.fonts'), to: '/page-builder/fonts', match: ['/page-builder/fonts'] },
       ]))
     }
     if (auth.can('site.manage')) {

@@ -2,6 +2,7 @@
 export const IMPLIED_BY = {
   'site.pages': 'site.manage',
   'site.layouts': 'site.manage',
+  'site.design': 'site.manage',
 }
 
 export function allowsPermission(grants = [], action, resource = null) {
