@@ -396,8 +396,10 @@
 }
 
 /* Checkboxes and radios fill with currentColor behind a white tick, so they
-   keep the filled-button accent instead of the light accent text above. */
-:where(:root[data-mode="dark"]) input:is([type="checkbox"], [type="radio"]) {
+   keep the filled-button accent instead of the light accent text above.
+   Not wrapped in :where(): it must outrank that rule's
+   .hover\:text-theme-600:hover selector (two classes). */
+:root[data-mode="dark"] input:is([type="checkbox"], [type="radio"]) {
   color: rgb(var(--color-theme-600));
 }
 
