@@ -144,7 +144,7 @@
             />
           </span>
           <span v-else class="h-5 w-3 shrink-0" />
-          <Icon :icon="category.icon" class="h-5 w-5 shrink-0 text-theme-600" />
+          <Icon icon="mdi:folder-outline" class="h-5 w-5 shrink-0 text-theme-600" />
           <span class="min-w-0 flex-1 truncate text-sm font-medium">{{
             category.label
           }}</span>
@@ -343,18 +343,6 @@ function categoryMatchesPath(category, categoryPath) {
   );
 }
 
-function categoryIcon(category) {
-  const normalized = String(category).toLowerCase();
-  if (normalized.includes("logo")) return "mdi:star-outline";
-  if (normalized.includes("document") || normalized.includes("pdf"))
-    return "mdi:file-document-outline";
-  if (normalized.includes("image") || normalized.includes("photo"))
-    return "mdi:image-outline";
-  if (normalized.includes("video")) return "mdi:video-outline";
-  if (normalized.includes("audio")) return "mdi:music-note-outline";
-  return "mdi:folder-outline";
-}
-
 // ---- Computed ----
 const allCategoryCount = computed(() => props.stats?.total ?? props.statsFiles.length);
 const uncategorizedCount = computed(
@@ -385,7 +373,6 @@ const categoryTree = computed(() =>
       path: category,
       label,
       depth,
-      icon: categoryIcon(category),
       count,
       hasChildren,
     };
