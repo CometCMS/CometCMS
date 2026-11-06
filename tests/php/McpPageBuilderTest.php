@@ -61,7 +61,8 @@ test('mcp builder discovery and execution require workspace site manage grants',
             [$response, $payload] = comet_test_mcp_tool($token, $name);
             assert_true($response['result']['isError']);
             assert_same($token === null ? 401 : 403, $payload['error']['status']);
-            assert_same(['site.manage'], $payload['error']['required_permissions'][0]['actions']);
+            $expected = in_array($name, ['get_builder_schema', 'list_extensions', 'list_templates'], true) ? 'site.pages' : 'site.layouts';
+            assert_same([$expected], $payload['error']['required_permissions'][0]['actions']);
         }
     }
     [$response] = comet_test_mcp_request(comet_test_builder_token(), 'tools/list');
@@ -514,6 +515,32 @@ test('mcp builder entry content needs content grants, a placed area and the deta
     [, $unplaced] = comet_test_mcp_tool($token, 'get_layout', $target);
     assert_same('no_entry_content_area', $unplaced['error']['details']['code'], json_encode($unplaced));
     assert_true(str_contains($unplaced['error']['recovery'][0], 'without entry'));
+});
+
+test('mcp builder separates entry page content (site.pages) from templates (site.layouts)', function (): void {
+    [$token] = comet_test_builder_entry_setup(['site.pages', 'content.*']);
+    $target = ['collection' => 'pages', 'variant' => 'detail', 'entry' => 'home'];
+    [$response] = comet_test_mcp_request($token, 'tools/list');
+    assert_same(PageBuilderTools::NAMES, array_values(array_intersect(PageBuilderTools::NAMES, array_column($response['result']['tools'], 'name'))));
+    [, $templates] = comet_test_mcp_tool($token, 'list_templates', ['collection' => 'pages', 'variant' => 'detail']);
+    assert_true(isset($templates['data']), json_encode($templates));
+
+    [, $read] = comet_test_mcp_tool($token, 'get_layout', $target);
+    assert_true(isset($read['data']['revision']), json_encode($read));
+    [, $saved] = comet_test_mcp_tool($token, 'set_layout', $target + ['revision' => $read['data']['revision'], 'sections' => []]);
+    assert_true(isset($saved['data']['revision']), json_encode($saved));
+
+    foreach ([['get_layout', []], ['set_layout', ['revision' => 'x', 'sections' => []]], ['set_template_parts', ['header' => 'none']]] as [$tool, $extra]) {
+        [, $denied] = comet_test_mcp_tool($token, $tool, ['collection' => 'pages', 'variant' => 'detail'] + $extra);
+        assert_same(403, $denied['error']['status'], $tool);
+        assert_same(['site.layouts'], $denied['error']['required_permissions'][0]['actions']);
+    }
+
+    $layoutsOnly = comet_test_mcp_token([['actions' => ['site.layouts', 'content.*'], 'resources' => ['workspace:default:*']]]);
+    [, $denied] = comet_test_mcp_tool($layoutsOnly, 'get_layout', $target);
+    assert_same(403, $denied['error']['status']);
+    assert_same(['site.pages'], $denied['error']['required_permissions'][0]['actions']);
+    assert_true(isset(comet_test_mcp_tool($layoutsOnly, 'get_layout', ['collection' => 'pages', 'variant' => 'detail'])[1]['data']['revision']));
 });
 
 test('mcp entry tools leave page content to the builder tools', function (): void {

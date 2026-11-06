@@ -395,6 +395,12 @@
   color: rgb(var(--color-theme-text));
 }
 
+/* Checkboxes and radios fill with currentColor behind a white tick, so they
+   keep the filled-button accent instead of the light accent text above. */
+:where(:root[data-mode="dark"]) input:is([type="checkbox"], [type="radio"]) {
+  color: rgb(var(--color-theme-600));
+}
+
 /* Page builder: a darker, dotted stage keeps the previewed page in focus. */
 :root[data-mode="dark"] .builder-shell {
   background-color: rgb(var(--color-app-bg));

@@ -129,6 +129,7 @@ import { useSiteBuilder } from "../../../composables/useSiteBuilder.js";
 import { DEFAULT_TEMPLATE, FRAME_DEFAULT, frameLabel, templateList, templateName, usesTemplates } from "../../../composables/templates.js";
 import { hasListPage } from "../../../composables/siteLinks.js";
 import { useSiteStore } from "../../../stores/site.js";
+import { useAuthStore } from "../../../stores/auth.js";
 import { useI18n } from "../../../i18n/index.js";
 
 /** The builder title, opening a menu of every page, region and component to edit instead, and a search for entries. */
@@ -147,7 +148,10 @@ const route = useRoute();
 const router = useRouter();
 const builder = useSiteBuilder();
 const site = useSiteStore();
+const auth = useAuthStore();
 const { t } = useI18n();
+/** Without layout rights, only entries' own page content can be opened from here. */
+const canEditLayouts = computed(() => auth.can("site.layouts"));
 const rootRef = ref(null);
 const triggerRef = ref(null);
 const menuRef = ref(null);
@@ -210,7 +214,7 @@ function typeItems(type) {
   });
 }
 
-const allGroups = computed(() => [
+const allGroups = computed(() => !canEditLayouts.value ? [] : [
   ...builder.pageTypes.value.map((type) => ({
     key: `type:${type.name}`,
     label: type.label ?? type.name,
@@ -251,7 +255,7 @@ const groups = computed(() => {
     ...allGroups.value
       // Rows no longer repeat their type's name, so a match on the heading keeps the whole group.
       .map((group) => ({ ...group, items: !terms || group.label.toLowerCase().includes(terms) ? group.items : group.items.filter((item) => `${item.label} ${item.detail ?? ""}`.toLowerCase().includes(terms)) })),
-    { key: "entries", label: t("site.builder.entries"), items: entryResults.value },
+    { key: "entries", label: t("site.builder.entries"), items: canEditLayouts.value ? entryResults.value : entryResults.value.filter((item) => item.path.startsWith("/page-builder/builder/page/")) },
   ].filter((group) => group.items.length);
 });
 

@@ -44,7 +44,7 @@ final class SiteController extends BaseController
 
     public function index(): never
     {
-        $user = $this->requirePermission('site.manage', ['resource' => 'site:*']);
+        $user = $this->requireBuilder();
 
         $layouts = [];
         foreach ($this->site->types() as $name => $type) {
@@ -216,6 +216,8 @@ final class SiteController extends BaseController
         $this->json(['data' => [
             'enabled' => $settings['enabled'],
             'can_manage' => $this->can($user, 'site.manage', ['resource' => 'site:*']),
+            'can_edit_layouts' => $this->can($user, 'site.layouts', ['resource' => 'site:*']),
+            'can_edit_pages' => $this->can($user, 'site.pages', ['resource' => 'site:*']),
             'site_url' => $this->siteUrl(),
             'homepage_editor' => $homepageEditor,
             'homepage_preview' => $homepageEditor !== null
@@ -272,6 +274,8 @@ final class SiteController extends BaseController
             'url_conflict' => $this->liveUrlConflict($url),
             'previewable' => $entry !== null && $context->isPublicType($type),
             'can_manage' => $this->can($user, 'site.manage', ['resource' => 'site:*']),
+            'can_edit_layouts' => $this->can($user, 'site.layouts', ['resource' => 'site:*']),
+            'can_edit_pages' => $this->can($user, 'site.pages', ['resource' => 'site:*']),
             // Page fields with a place in the content area this entry's template shows.
             'page_fields' => $routed && isset($this->site->types()[$type]) ? $this->placedPageFields($this->site->types()[$type], $type, $entry) : [],
             'template' => $routed && $entry !== null ? $this->entryTemplate($type, $entry) : null,
@@ -374,7 +378,7 @@ final class SiteController extends BaseController
     /** Body: {templates: {type: {variant: [template, …]}}, revision}; page kinds left out stay as they are. */
     public function updateTemplates(): never
     {
-        $this->requirePermission('site.manage', ['resource' => 'site:*']);
+        $this->requirePermission('site.layouts', ['resource' => 'site:*']);
         $this->verifyCsrf();
         $templates = $this->validated(fn() => $this->site->saveTemplates($this->requestJson()['templates'] ?? [], $this->requestJson()['revision'] ?? null));
         $this->logger->info('site.templates_updated', ['workspace' => $this->site->workspace()->slug()]);
@@ -388,7 +392,7 @@ final class SiteController extends BaseController
      */
     public function createTemplate(string $type, string $variant): never
     {
-        $this->requirePermission('site.manage', ['resource' => 'site:*']);
+        $this->requirePermission('site.layouts', ['resource' => 'site:*']);
         $this->verifyCsrf();
         $this->requireType($type, $variant);
         $body = $this->requestJson();
@@ -402,7 +406,7 @@ final class SiteController extends BaseController
     /** The standard card of a type, for a collection that gets a card of its own. */
     public function cardTemplate(string $type): never
     {
-        $this->requirePermission('site.manage', ['resource' => 'site:*']);
+        $this->requireBuilder();
         $this->requireType($type, 'detail');
 
         $this->json(['data' => ['nodes' => LayoutSchema::withNewIds($this->site->cardTemplate($type))]]);
@@ -414,7 +418,7 @@ final class SiteController extends BaseController
      */
     public function layout(string $type, string $variant): never
     {
-        $this->requirePermission('site.manage', ['resource' => 'site:*']);
+        $this->requirePermission('site.layouts', ['resource' => 'site:*']);
         $schema = $this->requireType($type, $variant);
         $identifier = LayoutSchema::key($_GET['entry'] ?? '');
         $sample = $variant === 'detail' && $identifier !== '' && ($_GET['template'] ?? '') === '' ? $this->findAdminEntry($type, $identifier) : null;
@@ -446,7 +450,7 @@ final class SiteController extends BaseController
 
     public function updateLayout(string $type, string $variant): never
     {
-        $user = $this->requirePermission('site.manage', ['resource' => 'site:*']);
+        $user = $this->requirePermission('site.layouts', ['resource' => 'site:*']);
         $this->verifyCsrf();
         $this->requireType($type, $variant);
         $area = $this->requestedTemplate($type, $variant, $this->requestJson()['template'] ?? null);
@@ -458,7 +462,7 @@ final class SiteController extends BaseController
 
     public function resetLayout(string $type, string $variant): never
     {
-        $user = $this->requirePermission('site.manage', ['resource' => 'site:*']);
+        $user = $this->requirePermission('site.layouts', ['resource' => 'site:*']);
         $this->verifyCsrf();
         $this->requireType($type, $variant);
         $area = $this->requestedTemplate($type, $variant, $_GET['template'] ?? null);
@@ -472,7 +476,7 @@ final class SiteController extends BaseController
     /** The type's Entry content areas, where its templates place them and how many entries designed each. */
     public function areas(string $type): never
     {
-        $this->requirePermission('site.manage', ['resource' => 'site:*']);
+        $this->requireBuilder();
         $this->requireType($type, 'detail');
         $this->json(['data' => $this->site->areas($type)]);
     }
@@ -480,7 +484,7 @@ final class SiteController extends BaseController
     /** Delete an area and every entry's design in it; templates placing it show it as missing. */
     public function deleteArea(string $type, string $key): never
     {
-        $user = $this->requirePermission('site.manage', ['resource' => 'site:*']);
+        $user = $this->requirePermission('site.layouts', ['resource' => 'site:*']);
         $this->requirePermission('schema.update', ['type' => 'schema', 'name' => $type]);
         $this->verifyCsrf();
         $this->requireType($type, 'detail');
@@ -611,7 +615,7 @@ final class SiteController extends BaseController
      */
     private function requirePage(string $type, string $id, string $field, bool $placed = false): array
     {
-        $user = $this->requirePermission('site.manage', ['resource' => 'site:*']);
+        $user = $this->requirePermission('site.pages', ['resource' => 'site:*']);
         $schema = $this->requireType($type, 'detail');
         $entry = $this->findAdminEntry($type, $id);
         if ($entry === null) {
@@ -694,7 +698,7 @@ final class SiteController extends BaseController
 
     public function region(string $region): never
     {
-        $this->requirePermission('site.manage', ['resource' => 'site:*']);
+        $this->requirePermission('site.layouts', ['resource' => 'site:*']);
         $this->requireRegion($region);
 
         $context = $this->context();
@@ -712,7 +716,7 @@ final class SiteController extends BaseController
 
     public function updateRegion(string $region): never
     {
-        $user = $this->requirePermission('site.manage', ['resource' => 'site:*']);
+        $user = $this->requirePermission('site.layouts', ['resource' => 'site:*']);
         $this->verifyCsrf();
         $this->requireRegion($region);
         $nodes = $this->validated(fn() => $this->site->saveRegion($region, $this->requestJson()['nodes'] ?? [], $user, 'saved', $this->requestJson()['revision'] ?? null));
@@ -722,7 +726,7 @@ final class SiteController extends BaseController
 
     public function resetRegion(string $region): never
     {
-        $user = $this->requirePermission('site.manage', ['resource' => 'site:*']);
+        $user = $this->requirePermission('site.layouts', ['resource' => 'site:*']);
         $this->verifyCsrf();
         $this->requireRegion($region);
         $nodes = $this->site->resetRegion($region, $user);
@@ -733,7 +737,7 @@ final class SiteController extends BaseController
     /** Components with the number of places each one is used. */
     public function components(): never
     {
-        $this->requirePermission('site.manage', ['resource' => 'site:*']);
+        $this->requireBuilder();
         $this->json(['data' => array_map(fn(array $component): array => $component + [
             'usages' => count($this->site->componentUsages($component['id'])),
         ], $this->site->components())]);
@@ -742,7 +746,7 @@ final class SiteController extends BaseController
     /** Body: {name, nodes: [one section, row or column], type}. */
     public function createComponent(): never
     {
-        $user = $this->requirePermission('site.manage', ['resource' => 'site:*']);
+        $user = $this->requirePermission('site.layouts', ['resource' => 'site:*']);
         $this->verifyCsrf();
         $input = $this->requestJson();
         $component = $this->validated(fn() => $this->site->createComponent($input['name'] ?? '', $input['nodes'] ?? [], $input['type'] ?? '', $user));
@@ -752,7 +756,7 @@ final class SiteController extends BaseController
 
     public function component(string $id): never
     {
-        $this->requirePermission('site.manage', ['resource' => 'site:*']);
+        $this->requireBuilder();
         $component = $this->requireComponent($id);
         $context = $this->context();
         // Components fit every type, so they preview with entries of any of them: the requested one, else the component's own type first.
@@ -788,7 +792,7 @@ final class SiteController extends BaseController
 
     public function updateComponent(string $id): never
     {
-        $user = $this->requirePermission('site.manage', ['resource' => 'site:*']);
+        $user = $this->requirePermission('site.layouts', ['resource' => 'site:*']);
         $this->verifyCsrf();
         $this->requireComponent($id);
         $component = $this->validated(fn() => $this->site->saveComponent($id, $this->requestJson()['nodes'] ?? [], $user, 'saved', $this->requestJson()['revision'] ?? null));
@@ -798,7 +802,7 @@ final class SiteController extends BaseController
 
     public function patchComponent(string $id): never
     {
-        $this->requirePermission('site.manage', ['resource' => 'site:*']);
+        $this->requirePermission('site.layouts', ['resource' => 'site:*']);
         $this->verifyCsrf();
         $this->requireComponent($id);
         $input = $this->requestJson();
@@ -809,7 +813,7 @@ final class SiteController extends BaseController
 
     public function deleteComponent(string $id): never
     {
-        $this->requirePermission('site.manage', ['resource' => 'site:*']);
+        $this->requirePermission('site.layouts', ['resource' => 'site:*']);
         $this->verifyCsrf();
         $this->requireComponent($id);
         $component = $this->site->deleteComponent($id);
@@ -819,14 +823,14 @@ final class SiteController extends BaseController
 
     public function componentRevisions(string $id): never
     {
-        $this->requirePermission('site.manage', ['resource' => 'site:*']);
+        $this->requirePermission('site.layouts', ['resource' => 'site:*']);
         $this->requireComponent($id);
         $this->json(['data' => $this->site->componentRevisions($id)]);
     }
 
     public function restoreComponentRevision(string $id, string $revision): never
     {
-        $user = $this->requirePermission('site.manage', ['resource' => 'site:*']);
+        $user = $this->requirePermission('site.layouts', ['resource' => 'site:*']);
         $this->verifyCsrf();
         $this->requireComponent($id);
         $result = $this->validated(fn() => $this->site->restoreComponentRevision($id, $revision, $user));
@@ -838,7 +842,7 @@ final class SiteController extends BaseController
     /** Forms with the places each one is used, and the content types they can submit to. */
     public function forms(): never
     {
-        $this->requirePermission('site.manage', ['resource' => 'site:*']);
+        $this->requireBuilder();
         $this->json(['data' => [
             'forms' => array_map(fn(array $form): array => $form + ['usages' => $this->site->formUsages($form['id'])], $this->forms->all()),
             'types' => array_values($this->forms->types()),
@@ -862,21 +866,21 @@ final class SiteController extends BaseController
 
     public function layoutRevision(string $type, string $variant, string $id): never
     {
-        $this->requirePermission('site.manage', ['resource' => 'site:*']);
+        $this->requirePermission('site.layouts', ['resource' => 'site:*']);
         $this->requireType($type, $variant);
         $this->sendRevision($this->site->layoutRevision($type, $variant, $id, $this->requestedTemplate($type, $variant, $_GET['template'] ?? null)));
     }
 
     public function regionRevision(string $region, string $id): never
     {
-        $this->requirePermission('site.manage', ['resource' => 'site:*']);
+        $this->requirePermission('site.layouts', ['resource' => 'site:*']);
         $this->requireRegion($region);
         $this->sendRevision($this->site->regionRevision($region, $id));
     }
 
     public function componentRevision(string $component, string $id): never
     {
-        $this->requirePermission('site.manage', ['resource' => 'site:*']);
+        $this->requirePermission('site.layouts', ['resource' => 'site:*']);
         $this->requireComponent($component);
         $this->sendRevision($this->site->componentRevision($component, $id));
     }
@@ -899,14 +903,14 @@ final class SiteController extends BaseController
 
     public function layoutRevisions(string $type, string $variant): never
     {
-        $this->requirePermission('site.manage', ['resource' => 'site:*']);
+        $this->requirePermission('site.layouts', ['resource' => 'site:*']);
         $this->requireType($type, $variant);
         $this->json(['data' => $this->site->layoutRevisions($type, $variant, $this->requestedTemplate($type, $variant, $_GET['template'] ?? null))]);
     }
 
     public function restoreLayoutRevision(string $type, string $variant, string $id): never
     {
-        $user = $this->requirePermission('site.manage', ['resource' => 'site:*']);
+        $user = $this->requirePermission('site.layouts', ['resource' => 'site:*']);
         $this->verifyCsrf();
         $this->requireType($type, $variant);
         $area = $this->requestedTemplate($type, $variant, $_GET['template'] ?? null);
@@ -916,14 +920,14 @@ final class SiteController extends BaseController
 
     public function regionRevisions(string $region): never
     {
-        $this->requirePermission('site.manage', ['resource' => 'site:*']);
+        $this->requirePermission('site.layouts', ['resource' => 'site:*']);
         $this->requireRegion($region);
         $this->json(['data' => $this->site->regionRevisions($region)]);
     }
 
     public function restoreRegionRevision(string $region, string $id): never
     {
-        $user = $this->requirePermission('site.manage', ['resource' => 'site:*']);
+        $user = $this->requirePermission('site.layouts', ['resource' => 'site:*']);
         $this->verifyCsrf();
         $this->requireRegion($region);
         $result = $this->site->restoreRegionRevision($region, $id, $user);
@@ -948,9 +952,15 @@ final class SiteController extends BaseController
      */
     public function preview(): never
     {
-        $user = $this->requirePermission('site.manage', ['resource' => 'site:*']);
+        $user = $this->requireBuilder();
         $this->verifyCsrf();
         $body = $this->requestJson();
+        $site = ['resource' => 'site:*'];
+        // Page content checks its own permissions (requirePage); everything else previews shared layouts.
+        if (($body['target'] ?? 'page') !== 'entry_page') $this->requirePermission('site.layouts', $site);
+        // The builder always sends the draft design along; unsaved design only counts for those who may change it.
+        if (!$this->can($user, 'site.manage', $site)) unset($body['theme'], $body['menus']);
+        if (!$this->can($user, 'site.layouts', $site)) unset($body['templates']);
         $context = $this->context();
         $context->preview = true;
         if (!empty($body['entries'])) {
@@ -1093,8 +1103,19 @@ final class SiteController extends BaseController
         if (!in_array($target, ['entry', 'entry_page', 'layout', 'region', 'component'], true)) {
             throw new ValidationException(['target' => 'Choose a valid preview target.']);
         }
-        if ($target !== 'entry' || isset($body['theme']) || isset($body['menus']) || isset($body['templates'])) {
-            $this->requirePermission('site.manage', ['resource' => 'site:*']);
+        // Entry pages check their own permissions below (requirePage); the shared parts need layout rights.
+        if (in_array($target, ['layout', 'region', 'component'], true)) {
+            $this->requirePermission('site.layouts', ['resource' => 'site:*']);
+        }
+        // The builder always sends the draft design along; unsaved design is only shown to those who may change it.
+        $site = ['resource' => 'site:*'];
+        if ((isset($body['theme']) || isset($body['menus'])) && !$this->can($user, 'site.manage', $site)) {
+            if ($target === 'entry') $this->requirePermission('site.manage', $site);
+            unset($body['theme'], $body['menus']);
+        }
+        if (isset($body['templates']) && !$this->can($user, 'site.layouts', $site)) {
+            if ($target === 'entry') $this->requirePermission('site.layouts', $site);
+            unset($body['templates']);
         }
         if ((isset($body['theme']) && !is_array($body['theme'])) || (isset($body['menus']) && !is_array($body['menus']))) {
             throw new ValidationException(['preview' => 'Invalid preview settings.']);
@@ -1229,7 +1250,7 @@ final class SiteController extends BaseController
     /** The homepage with the saved header and footer, for the builder's Preview action. */
     public function previewHome(): never
     {
-        $user = $this->requirePermission('site.manage', ['resource' => 'site:*']);
+        $user = $this->requireBuilder();
         $this->sendPreview((new SiteService($this->adminPreviewContext($user)))->previewHome((string) ($_GET['locale'] ?? '')), '');
     }
 
@@ -1286,7 +1307,7 @@ final class SiteController extends BaseController
         $context->adminUser = $user;
         $context->setPreviewReturnUrl($_GET['returnTo'] ?? null);
         $context->adminCan = fn(string $action, array $scope): bool => $this->can($user, $action,
-            $action === 'site.manage' ? ['resource' => 'site:*'] : $scope);
+            str_starts_with($action, 'site.') ? ['resource' => 'site:*'] : $scope);
         return $context;
     }
 
@@ -1336,6 +1357,16 @@ final class SiteController extends BaseController
             'components' => $this->site->components(),
             'forms' => array_map(fn(array $form): array => ['id' => $form['id'], 'name' => $form['name'], 'type' => $form['type'], 'fields' => count($this->forms->inputs($form))], $this->forms->all()),
         ];
+    }
+
+    /** What every builder page reads: open to those who edit page content or layouts. */
+    private function requireBuilder(): array
+    {
+        $user = $this->requireUser();
+
+        return $this->can($user, 'site.pages', ['resource' => 'site:*'])
+            ? $user
+            : $this->requirePermission('site.layouts', ['resource' => 'site:*']);
     }
 
     private function requireComponent(string $id): array

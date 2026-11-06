@@ -38,11 +38,13 @@ final class PreviewAdminBar
         $variant = $entry !== null ? 'detail' : 'index';
         if ($type !== null && $this->ctx->isPublicType($name)
             && in_array($variant, $this->ctx->site->enabledVariantsFor($type), true)
-            && $this->ctx->adminAllows('site.manage') && ($entry === null || $savedEntry !== null)) {
+            && ($entry === null || $savedEntry !== null)) {
             $entryId = $savedEntry !== null ? (string) ($savedEntry['uid'] ?? $savedEntry['id']) : '';
-            $builderUrl = $this->ctx->adminUrl('/page-builder/builder/layout/' . rawurlencode($name) . '/' . $variant,
-                $entryId !== '' ? ['entry' => $entryId] : []);
-            if ($savedEntry !== null) {
+            if ($this->ctx->adminAllows('site.layouts')) {
+                $builderUrl = $this->ctx->adminUrl('/page-builder/builder/layout/' . rawurlencode($name) . '/' . $variant,
+                    $entryId !== '' ? ['entry' => $entryId] : []);
+            }
+            if ($savedEntry !== null && $this->ctx->adminAllows('site.pages')) {
                 foreach ($type['fields'] ?? [] as $field => $config) {
                     if (($config['type'] ?? '') === 'page' && $this->ctx->adminAllows('content.update', $name, $savedEntry, [$field])) {
                         $builderUrl = $this->ctx->adminUrl('/page-builder/builder/page/' . rawurlencode($name) . '/' . rawurlencode($entryId), ['field' => $field]);
@@ -154,7 +156,7 @@ final class PreviewAdminBar
     private function templateMenu(array $state, ?array $savedEntry, bool $de): string
     {
         $shown = $state['template'] ?? null;
-        if ($shown === null || !$this->ctx->adminAllows('site.manage')) {
+        if ($shown === null || !$this->ctx->adminAllows('site.layouts')) {
             return '';
         }
         // Only once the page kind uses more than its default template.

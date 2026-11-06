@@ -34,6 +34,8 @@ final class RoleRepository
                     'workspaces.read',
                     'workspaces.manage',
                     'site.manage',
+                    'site.layouts',
+                    'site.pages',
                 ], 'resources' => ['*']],
                 ['effect' => 'allow', 'actions' => [
                     'schema.read',
@@ -85,6 +87,7 @@ final class RoleRepository
                     'updates.read',
                     'profile.read',
                     'profile.update',
+                    'site.pages',
                 ], 'resources' => ['*']],
                 ['effect' => 'allow', 'actions' => [
                     'schema.read',

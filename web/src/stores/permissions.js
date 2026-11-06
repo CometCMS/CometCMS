@@ -1,4 +1,17 @@
+/** Narrower actions that a broader one also grants (mirrors PermissionService::IMPLIED_BY). */
+export const IMPLIED_BY = {
+  'site.pages': 'site.manage',
+  'site.layouts': 'site.manage',
+}
+
 export function allowsPermission(grants = [], action, resource = null) {
+  const own = allowsOwn(grants, action, resource)
+  if (own !== null) return own
+  return IMPLIED_BY[action] ? allowsPermission(grants, IMPLIED_BY[action], resource) : false
+}
+
+/** true/false when a grant names the action itself, null when none does. */
+function allowsOwn(grants, action, resource) {
   function globMatch(pattern, value) {
     if (pattern === '*' || pattern === value) return true
     const regex = new RegExp(
@@ -22,5 +35,5 @@ export function allowsPermission(grants = [], action, resource = null) {
 
   if (grants.some((grant) => grant.effect === 'deny' && matches(grant))) return false
 
-  return grants.some((grant) => grant.effect !== 'deny' && matches(grant))
+  return grants.some((grant) => grant.effect !== 'deny' && matches(grant)) ? true : null
 }

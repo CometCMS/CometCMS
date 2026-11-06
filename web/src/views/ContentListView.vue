@@ -578,7 +578,7 @@ const hasListPage = computed(() => !!websiteStatus.value?.types?.[collection.val
 const canEditTemplates = computed(() =>
   contentTypeSchema.value
   && contentTypeSchema.value.visibility !== "private"
-  && websiteStatus.value?.can_manage
+  && websiteStatus.value?.can_edit_layouts
   && websiteStatus.value.types?.[collection.value]?.routed,
 );
 

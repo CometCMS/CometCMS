@@ -287,7 +287,7 @@ test('the preview admin bar names the template of the page, why it applies and l
     assert_true(in_array(true, array_map(static fn(string $href): bool => str_contains($href, '/page-builder/builder/component/' . $footer['id']), $links), true));
     assert_true((bool) array_filter($links, static fn(string $href): bool => str_contains($href, '/page-builder/templates') && str_contains($href, 'template=tips')));
 
-    $context->adminCan = static fn(string $action): bool => $action !== 'site.manage';
+    $context->adminCan = static fn(string $action): bool => !str_starts_with($action, 'site.') || $action === 'site.pages';
     assert_false(str_contains((new \CometCMS\Site\SiteService($context))->respond('/blog/hello', [])['body'], '<details class="c-admin-dropdown c-admin-templates"'), 'Only site designers see it.');
 });
 

@@ -112,7 +112,7 @@
         <div class="rounded-lg bg-slate-50 px-3 py-3 text-xs text-slate-600 ring-1 ring-slate-200">
           <p v-if="!component" class="text-amber-800">{{ t("site.component.missingHint") }}</p>
           <div class="mt-3 flex flex-wrap gap-2">
-            <button v-if="component" type="button" class="btn-primary btn-sm" @click="builder.editComponent(component.id)">
+            <button v-if="component && builder.canEditComponents" type="button" class="btn-primary btn-sm" @click="builder.editComponent(component.id)">
               <Icon icon="mdi:puzzle-edit-outline" class="mr-1 h-4 w-4" />{{ t("site.component.edit") }}
             </button>
             <button v-if="component" type="button" class="btn-secondary btn-sm" :title="t('site.component.detachHint')" @click="builder.detach(node.id)">

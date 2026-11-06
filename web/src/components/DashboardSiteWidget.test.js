@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 import DashboardSiteWidget from './DashboardSiteWidget.vue'
 
 const status = {
-  can_manage: true,
+  can_edit_layouts: true,
   enabled: true,
   types: { pages: { pages_enabled: true } },
   homepage_editor: null,
@@ -50,7 +50,7 @@ describe('dashboard website widget', () => {
   })
 
   it('stays hidden for headless workspaces, unavailable status, and users without site management permission', async () => {
-    for (const value of [null, { ...status, enabled: false, types: {} }, { ...status, can_manage: false }]) {
+    for (const value of [null, { ...status, enabled: false, types: {} }, { ...status, can_edit_layouts: false }]) {
       const html = await renderWidget(value)
       expect(html).not.toContain('page-builder-cta')
       expect(html).not.toContain('Open Page Builder')

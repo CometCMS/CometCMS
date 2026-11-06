@@ -1041,6 +1041,35 @@ test('the locked admin role always holds new built-in permissions', function ():
     assert_false($permissions->allows(['id' => 'e', 'role' => 'editor'], 'site.manage', ['resource' => 'site:*']));
 });
 
+test('managing the website implies editing page content and layouts, which stay separate grants', function (): void {
+    $permissions = new PermissionService(new RoleRepository());
+    $site = ['resource' => 'site:*'];
+    $token = static fn(array $grants): array => ['_principal_type' => 'token', 'permissions' => $grants];
+
+    $manager = $token([['actions' => ['site.manage'], 'resources' => ['site:*']]]);
+    foreach (['site.manage', 'site.layouts', 'site.pages'] as $action) {
+        assert_true($permissions->allows($manager, $action, $site), $action);
+        assert_true($permissions->grantsAction($manager, $action), $action);
+    }
+    assert_same(null, $permissions->firstUncovered($manager, [['actions' => ['site.pages', 'site.layouts'], 'resources' => ['site:*']]]), 'Managers may hand out the narrower builder rights.');
+
+    $pages = $token([['actions' => ['site.pages'], 'resources' => ['*']]]);
+    assert_true($permissions->allows($pages, 'site.pages', $site));
+    assert_false($permissions->allows($pages, 'site.layouts', $site));
+    assert_false($permissions->allows($pages, 'site.manage', $site));
+    assert_same('site.layouts', $permissions->firstUncovered($pages, [['actions' => ['site.layouts'], 'resources' => ['*']]])['action'] ?? null);
+
+    $denied = $token([
+        ['actions' => ['site.manage'], 'resources' => ['*']],
+        ['effect' => 'deny', 'actions' => ['site.layouts'], 'resources' => ['*']],
+    ]);
+    assert_false($permissions->allows($denied, 'site.layouts', $site), 'A deny on the narrower action wins over the broader allow.');
+    assert_true($permissions->allows($denied, 'site.pages', $site));
+
+    assert_true($permissions->allows(['id' => 'e', 'role' => 'editor'], 'site.pages', $site), 'Editors design their entries\' page content.');
+    assert_false($permissions->allows(['id' => 'e', 'role' => 'editor'], 'site.layouts', $site));
+});
+
 test('background images and cropped images follow their size and focal point', function (): void {
     // Background images are stored in style.
     $nodes = LayoutSchema::normalize([

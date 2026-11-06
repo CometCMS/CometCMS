@@ -13,6 +13,16 @@ final class PermissionService
         $this->roles = $roles ?? new RoleRepository();
     }
 
+    /**
+     * Narrower actions that a broader one also grants: managing the website
+     * includes editing page content and layouts in the page builder. A deny
+     * grant on the narrower action still wins.
+     */
+    public const IMPLIED_BY = [
+        'site.pages' => 'site.manage',
+        'site.layouts' => 'site.manage',
+    ];
+
     public function allows(array $principal, string $action, array $context = []): bool
     {
         $fields = $this->changedFields($context);
@@ -30,6 +40,10 @@ final class PermissionService
             $allow = true;
         }
 
+        if (!$allow && isset(self::IMPLIED_BY[$action])) {
+            return $this->allows($principal, self::IMPLIED_BY[$action], $context);
+        }
+
         return $allow;
     }
 
@@ -37,12 +51,19 @@ final class PermissionService
     public function grantsAction(array $principal, string $action): bool
     {
         foreach ($this->grants($principal) as $grant) {
-            if (($grant['effect'] ?? 'allow') === 'allow' && $this->matchesAny((array) ($grant['actions'] ?? []), $action)) {
+            if (($grant['effect'] ?? 'allow') === 'allow' && $this->matchesAction((array) ($grant['actions'] ?? []), $action)) {
                 return true;
             }
         }
 
         return false;
+    }
+
+    /** Whether $patterns name $action itself or the broader action that implies it. */
+    private function matchesAction(array $patterns, string $action): bool
+    {
+        return $this->matchesAny($patterns, $action)
+            || (isset(self::IMPLIED_BY[$action]) && $this->matchesAny($patterns, self::IMPLIED_BY[$action]));
     }
 
     public function capabilities(array $principal): array
@@ -114,13 +135,15 @@ final class PermissionService
         $allowed = false;
 
         foreach ($own as $grant) {
-            if (!$this->matchesAny((array) ($grant['actions'] ?? []), $action)) {
+            $deny = ($grant['effect'] ?? 'allow') === 'deny';
+            // A deny only ever names what it blocks; an allow of the broader action covers the narrower one.
+            if (!($deny ? $this->matchesAny((array) ($grant['actions'] ?? []), $action) : $this->matchesAction((array) ($grant['actions'] ?? []), $action))) {
                 continue;
             }
 
             $patterns = (array) ($grant['resources'] ?? []);
 
-            if (($grant['effect'] ?? 'allow') === 'deny') {
+            if ($deny) {
                 foreach ($patterns as $pattern) {
                     foreach ($candidates as $candidate) {
                         if ($this->matches((string) $pattern, $candidate) || $this->matches($candidate, (string) $pattern)) {

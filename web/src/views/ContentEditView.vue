@@ -386,7 +386,7 @@
 
       <!-- Entries with page content design their own page; the layout around it is shared. -->
       <section
-        v-if="!isNew && siteLinks?.can_manage && siteLinks.routed && pageAreas.length"
+        v-if="!isNew && (siteLinks?.can_edit_pages || siteLinks?.can_edit_layouts) && siteLinks.routed && pageAreas.length"
         class="card page-builder-cta page-builder-overview"
         :aria-label="t('site.page.layoutAndContent')"
       >
@@ -418,7 +418,7 @@
             <div class="page-builder-overview-illustration" aria-hidden="true">
               <span class="page-builder-overview-pencil"><Icon icon="mdi:pencil-outline" class="h-7 w-7" /></span>
             </div>
-            <template v-if="!isReadOnly && activePageArea">
+            <template v-if="!isReadOnly && activePageArea && siteLinks.can_edit_pages">
               <router-link
                 :to="pageLink(activePageArea.key)"
                 class="btn-primary w-full !whitespace-normal !py-2.5"
@@ -442,7 +442,7 @@
             </template>
           </div>
         </div>
-        <div class="page-builder-overview-footer">
+        <div v-if="siteLinks.can_edit_layouts" class="page-builder-overview-footer">
           <span class="page-builder-overview-icon" aria-hidden="true"><Icon icon="mdi:layers-triple-outline" class="h-6 w-6" /></span>
           <p class="page-builder-cta-description text-sm text-slate-500">
             {{ t('site.page.layoutHint') }}
@@ -455,7 +455,7 @@
       </section>
       <!-- Pages and collection entries keep their design action alongside their content. -->
       <PageBuilderCta
-        v-else-if="!isNew && siteLinks?.can_manage && siteLinks.routed"
+        v-else-if="!isNew && siteLinks?.can_edit_layouts && siteLinks.routed"
         :title="t('site.builderCta.title')"
         :description="t('site.entry.editDesignHint')"
         :to="designLink"

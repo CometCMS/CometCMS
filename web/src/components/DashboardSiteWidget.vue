@@ -16,7 +16,7 @@ import { useI18n } from "../i18n/index.js";
 
 const props = defineProps({ status: { type: Object, default: null } });
 const { t } = useI18n();
-const visible = computed(() => props.status?.can_manage && (
+const visible = computed(() => props.status?.can_edit_layouts && (
   props.status.enabled || Object.values(props.status.types ?? {}).some((type) => type.pages_enabled)
 ));
 </script>

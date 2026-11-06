@@ -429,14 +429,14 @@ const areaUsage = ref({});
 const areaRows = computed(() => areaFields.value.map((field) => ({ ...field, ...areaUsage.value[field.key] })));
 const areaToDelete = ref(null);
 const deletingArea = ref(false);
-const canDeleteAreas = computed(() => auth.can("site.manage") && auth.can("schema.update"));
+const canDeleteAreas = computed(() => auth.can("site.layouts") && auth.can("schema.update"));
 
 function areaLabel(area) {
   return resolveLocalized(area.label, form.value.default_locale, form.value.default_locale) || area.key;
 }
 
 async function loadAreaUsage() {
-  if (!areaFields.value.length || !auth.can("site.manage")) return;
+  if (!areaFields.value.length || !auth.can("site.layouts")) return;
   try {
     const areas = (await api.site.areas(form.value.name)).data ?? [];
     areaUsage.value = Object.fromEntries(areas.map(({ key, templates, entries }) => [key, { templates, entries }]));

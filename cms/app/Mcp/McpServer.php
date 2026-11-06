@@ -153,7 +153,7 @@ final class McpServer
             'instructions' => implode(' ', [
                 $this->principal === [] ? 'Unauthenticated access is read-only: only public schemas, published entries, and public media are available. Send a bearer access token for private reads or writes.' : 'Authenticated access uses the bearer token permission grants.',
                 'Use CometCMS tools to inspect schemas, manage entries, and work with media.',
-                $this->canUseBuilder() ? 'Page-builder tools edit shared, live content areas and templates of collections. Start with get_builder_schema, list_templates and get_layout; list_extensions explains the installed extension blocks. Every layout write requires the latest revision.' : 'Page-builder tools are available to bearer tokens with site.manage permission.',
+                $this->canUseBuilder() ? 'Page-builder tools edit shared, live content areas and templates of collections. Start with get_builder_schema, list_templates and get_layout; list_extensions explains the installed extension blocks. Every layout write requires the latest revision.' : 'Page-builder tools are available to bearer tokens with site.pages (an entry\'s own page content) or site.layouts (templates) permission.',
                 'Content type updates are surgical by default: omitted label, icon, and fields are preserved. All content types use the workspace languages and default language.',
                 'When updating content type fields, pass only the fields to add or change; use remove_fields to delete fields, or replace_fields for a full field map replacement.',
                 'Entry writes target one locale and preserve other languages. Include locale, revision for optimistic concurrency, and reset_fields to remove translated overrides. Publication status and URL slugs belong to each locale.',
@@ -594,19 +594,42 @@ final class McpServer
         ], static fn(mixed $value): bool => $value !== [] || $value === $required);
     }
 
+    /** Page-builder tools are offered to tokens that may edit entries' page content or layouts. */
     private function canUseBuilder(): bool
     {
-        return $this->principal !== [] && $this->permissions->allows($this->principal, 'site.manage', [
+        return $this->allowsSite('site.pages') || $this->allowsSite('site.layouts');
+    }
+
+    private function allowsSite(string $action): bool
+    {
+        return $this->principal !== [] && $this->permissions->allows($this->principal, $action, [
             'type' => 'site', 'workspace' => $this->workspace->slug(), 'principal' => $this->principal,
         ]);
     }
 
+    /**
+     * The website permission a page-builder call needs: an entry's own content
+     * is page content, templates and their parts are layouts. Discovery tools
+     * need either (null).
+     */
+    private function builderAction(string $tool, array $args): ?string
+    {
+        if (in_array($tool, ['get_builder_schema', 'list_extensions', 'list_templates'], true)) return null;
+        if ($tool === 'set_template_parts') return 'site.layouts';
+
+        return trim((string) ($args['entry'] ?? '')) !== '' ? 'site.pages' : 'site.layouts';
+    }
+
     private function requirePermission(string $tool, array $args): void
     {
-        if (in_array($tool, PageBuilderTools::NAMES, true) && !$this->canUseBuilder()) {
-            throw new McpError('Page-builder tools require a bearer token with site.manage permission.', $this->principal === [] ? 401 : 403, ['code' => $this->principal === [] ? 'unauthorized' : 'forbidden'], $this->requiredPermissionsForTool($tool, $args), [
-                'Use an access token with site.manage on workspace:' . $this->workspace->slug() . ':site:*. Headless content grants do not grant builder access.',
-            ]);
+        if (in_array($tool, PageBuilderTools::NAMES, true)) {
+            $action = $this->builderAction($tool, $args);
+            if ($action === null ? !$this->canUseBuilder() : !$this->allowsSite($action)) {
+                $named = $action ?? 'site.pages or site.layouts';
+                throw new McpError('This page-builder tool requires a bearer token with ' . $named . ' permission.', $this->principal === [] ? 401 : 403, ['code' => $this->principal === [] ? 'unauthorized' : 'forbidden'], $this->requiredPermissionsForTool($tool, $args), [
+                    'Use an access token with ' . $named . ' (or site.manage) on workspace:' . $this->workspace->slug() . ':site:*. site.pages edits an entry\'s own page content (pass entry); site.layouts edits templates. Headless content grants do not grant builder access.',
+                ]);
+            }
         }
         if ($this->principal === []) {
             $schema = isset($args['collection']) ? $this->types->find((string) $args['collection']) : null;
@@ -672,7 +695,7 @@ final class McpServer
     private function requiredPermissionsForTool(string $tool, array $args): array
     {
         $workspace = $this->workspace->slug();
-        if (in_array($tool, PageBuilderTools::NAMES, true)) return [permissionGrant('site.manage', $workspace, 'site:*')];
+        if (in_array($tool, PageBuilderTools::NAMES, true)) return [permissionGrant($this->builderAction($tool, $args) ?? 'site.pages', $workspace, 'site:*')];
 
         return match ($tool) {
             'list_content_types' => [permissionGrant('schema.read', $workspace, 'schema:*')],

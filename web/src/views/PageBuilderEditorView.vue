@@ -11,7 +11,7 @@
       <nav class="builder-breadcrumbs min-w-0 flex-1 pl-1" :aria-label="t('app.breadcrumbs')">
         <ol class="flex min-w-0 items-center gap-1 sm:gap-2">
           <li class="breadcrumb-root w-max min-w-20 max-w-xs shrink-0">
-            <BuilderPageSwitcher :heading="target === 'page' ? builder.type.value?.label ?? name : heading" :target="target" :name="name" />
+            <BuilderPageSwitcher :heading="target === 'page' && canEditLayouts ? builder.type.value?.label ?? name : heading" :target="target" :name="name" />
             <p
               class="topbar-muted flex items-center gap-1 truncate text-[11px] leading-tight pl-1"
               :class="{ 'cursor-help': scopeBar }"
@@ -267,7 +267,7 @@
             <Icon icon="mdi:information-outline" class="mt-px h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden="true" />
             <span>{{ panelHint(panel.value) }}</span>
           </p>
-          <div v-if="panel.value === 'history'" class="border-b border-slate-200 p-2">
+          <div v-if="panel.value === 'history' && canManage" class="border-b border-slate-200 p-2">
             <SegmentedControl
               v-model="historyScope"
               :options="[
@@ -302,7 +302,7 @@
 
       <!-- Canvas -->
       <main class="builder-stage order-1 min-w-0 flex-1" :class="device === 'full' ? 'p-0' : 'p-2 xl:p-4'">
-        <BuilderCanvas ref="canvasRef" :body="previewBody" :device="device" :selected-template-part="selectedTemplatePart" :show-parent-outlines="auth.user?.builder_preferences?.show_parent_outlines === true" @keydown="onKeydown" @select-template-part="selectedTemplatePart = $event" @edit-field="editEntryField" @switch-page-area="selectPageArea" @rendered="onRendered" />
+        <BuilderCanvas ref="canvasRef" :body="previewBody" :device="device" :selected-template-part="selectedTemplatePart" :show-parent-outlines="auth.user?.builder_preferences?.show_parent_outlines === true" @keydown="onKeydown" @select-template-part="selectedTemplatePart = canEditLayouts ? $event : null" @edit-field="editEntryField" @switch-page-area="selectPageArea" @rendered="onRendered" />
       </main>
 
       <div
@@ -446,6 +446,9 @@ const selectedTemplatePart = ref(null);
 const site = useSiteStore();
 const auth = useAuthStore();
 const { canContent } = usePermissions();
+/** The site's design belongs to managing the website; templates, header, footer and components to editing layouts. */
+const canManage = computed(() => auth.can("site.manage"));
+const canEditLayouts = computed(() => auth.can("site.layouts"));
 const toast = useToastStore();
 const fullPreview = useSitePreview();
 const { t, locale: uiLocale } = useI18n();
@@ -453,9 +456,14 @@ const editorLanguages = useLanguages();
 const builder = createSiteBuilder({
   t,
   componentApi: {
-    create: async (body) => (await api.site.createComponent(body)).data,
-    rename: async (id, name) => (await api.site.renameComponent(id, name)).data,
-    remove: async (id) => (await api.site.deleteComponent(id)).data.component,
+    // Page content may place existing components; making and changing them is layout work.
+    ...(auth.can("site.layouts") ? {
+      create: async (body) => (await api.site.createComponent(body)).data,
+      rename: async (id, name) => (await api.site.renameComponent(id, name)).data,
+      remove: async (id) => (await api.site.deleteComponent(id)).data.component,
+      // Unsaved changes are guarded like any other way out of the builder.
+      edit: (id) => router.push({ path: `/page-builder/builder/component/${id}`, query: { back: route.fullPath } }),
+    } : {}),
     load: async (id) => {
       try {
         return (await api.site.component(id)).data.component;
@@ -464,8 +472,6 @@ const builder = createSiteBuilder({
         return null;
       }
     },
-    // Unsaved changes are guarded like any other way out of the builder.
-    edit: (id) => router.push({ path: `/page-builder/builder/component/${id}`, query: { back: route.fullPath } }),
   },
   templateApi: {
     load: async (type) => {
@@ -567,8 +573,10 @@ const panels = computed(() => [
   { value: "inspector", label: t("site.builder.inspector"), icon: "mdi:tune-variant" },
   { value: "outline", label: t("site.builder.outline"), icon: "mdi:file-tree-outline" },
   ...(hasEntryFields.value ? [{ value: "fields", label: t("site.builder.entryFields"), icon: "mdi:file-document-edit-outline", dirty: entryFields.isDirty.value }] : []),
-  { value: "design", label: t("site.builder.designSettings"), icon: "mdi:palette-outline", dirty: themeDirty.value && !cssOnlyDirty.value },
-  { value: "css", label: t("site.theme.customCss"), icon: "mdi:language-css3", dirty: cssDirty.value },
+  ...(canManage.value ? [
+    { value: "design", label: t("site.builder.designSettings"), icon: "mdi:palette-outline", dirty: themeDirty.value && !cssOnlyDirty.value },
+    { value: "css", label: t("site.theme.customCss"), icon: "mdi:language-css3", dirty: cssDirty.value },
+  ] : []),
   { value: "history", label: t("site.history.title"), icon: "mdi:history" },
 ]);
 const visiblePanels = computed(() => panels.value.filter((panel) => panelWindows.value[panel.value].open));
@@ -986,7 +994,7 @@ const scopeBar = computed(() => {
       title: t("site.scope.entryContent"),
       text: t(own ? "site.scope.pageOwn" : "site.scope.pageDefault"),
       actions: [
-        { key: "template", icon: "mdi:arrow-left", label: t("site.scope.toTemplate"), run: () => goToView(templateView.value) },
+        ...(canEditLayouts.value ? [{ key: "template", icon: "mdi:arrow-left", label: t("site.scope.toTemplate"), run: () => goToView(templateView.value) }] : []),
         // A reset already waiting to be saved has its own banner.
         ...(own && !loadedRevisions.value.layout ? [{ key: "reset", icon: "mdi:restore", label: t("site.page.reset"), run: resetToDefault }] : []),
       ],
@@ -1129,7 +1137,7 @@ const showsTemplates = computed(() => !!frameLayout.value && usesTemplates(site.
 /** The layout breadcrumb's menu, for layouts and entry pages. */
 const templateMenu = computed(() => {
   const layout = frameLayout.value;
-  if (!layout) return null;
+  if (!layout || !canEditLayouts.value) return null;
   // Until the first preview says why, a layout names the template it edits.
   const edited = target.value === "layout" ? templateById(site.draft?.templates, layout.type, layout.variant, editedTemplate.value) : null;
   return {
@@ -1146,7 +1154,7 @@ const templateMenu = computed(() => {
 const selectedFrame = computed(() => {
   const layout = frameLayout.value;
   const template = shownDraft.value;
-  if (!layout || !template || !FRAME_REGIONS.includes(selectedTemplatePart.value)) return null;
+  if (!canEditLayouts.value || !layout || !template || !FRAME_REGIONS.includes(selectedTemplatePart.value)) return null;
   return {
     value: template[selectedTemplatePart.value],
     components: frameComponents(builder.components.value),
@@ -1291,7 +1299,7 @@ async function load(next = requested) {
       return;
     }
     // The entry's template shows none of its areas: its template opens, which says why.
-    if (target === "page" && err.code === "page_not_placed") {
+    if (target === "page" && err.code === "page_not_placed" && canEditLayouts.value) {
       const back = typeof route.query.back === "string" ? { back: route.query.back } : {};
       router.replace({ path: `/page-builder/builder/layout/${name}/detail`, query: { entry: pageEntry, ...back } });
       return;

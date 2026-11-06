@@ -85,7 +85,8 @@
         </div>
         <FontLibrary layout="page" />
       </section>
-      <SiteMenusPanel v-else />
+      <SiteMenusPanel v-else-if="activeTab === 'menus'" />
+      <p v-else class="rounded-lg bg-slate-50 p-4 text-sm text-slate-600">{{ t("site.noAccess") }}</p>
     </template>
 
     <ConfirmModal
@@ -117,19 +118,24 @@ import SiteTemplatesPanel from "../components/site/SiteTemplatesPanel.vue";
 import FontLibrary from "../components/site/FontLibrary.vue";
 import { useUnsavedChangesGuard } from "../composables/useUnsavedChangesGuard.js";
 import { useSiteStore } from "../stores/site.js";
+import { useAuthStore } from "../stores/auth.js";
 import { useToastStore } from "../stores/toast.js";
 import { useI18n } from "../i18n/index.js";
 import { provideLanguageSwitcher } from "../composables/useLanguages.js";
 
 const route = useRoute();
 const site = useSiteStore();
+const auth = useAuthStore();
 const toast = useToastStore();
 const { t } = useI18n();
 const cssEditorOpen = ref(false);
 provideLanguageSwitcher();
+/** Design and menus belong to managing the website; templates and components to editing layouts. */
+const canManage = computed(() => auth.can("site.manage"));
+const canEditLayouts = computed(() => auth.can("site.layouts"));
 /** Global design, menus and templates share a draft across these tabs. */
-const PARTS = ["theme", "menus", "templates"];
-const isDirty = computed(() => site.dirtyParts.some((part) => PARTS.includes(part)));
+const PARTS = computed(() => [...(canManage.value ? ["theme", "menus"] : []), ...(canEditLayouts.value ? ["templates"] : [])]);
+const isDirty = computed(() => site.dirtyParts.some((part) => PARTS.value.includes(part)));
 // Opens the homepage layout, or the header when no homepage is chosen. Uses saved
 // settings because leaving discards any pending edits.
 const builderLink = computed(() => {
@@ -144,19 +150,19 @@ const builderLink = computed(() => {
 });
 const { leavePromptOpen, confirmLeave } = useUnsavedChangesGuard(isDirty);
 
-const validTabs = new Set(["design", "templates", "menus", "fonts", "components"]);
-const activeTab = computed(() => (validTabs.has(route.params.tab) ? route.params.tab : "design"));
 const tabs = computed(() => [
-  { value: "design", label: t("site.builder.designSettings"), icon: "mdi:palette-outline", to: "/page-builder/design" },
-  { value: "templates", label: t("site.templates.title"), icon: "mdi:page-layout-header-footer", to: "/page-builder/templates" },
-  { value: "menus", label: t("site.tab.menus"), icon: "mdi:menu", to: "/page-builder/menus" },
-  { value: "components", label: t("site.component.group"), icon: "mdi:puzzle-outline", to: "/page-builder/components" },
-  { value: "fonts", label: t("site.tab.fonts"), icon: "mdi:format-font", to: "/page-builder/fonts" },
-]);
+  canManage.value && { value: "design", label: t("site.builder.designSettings"), icon: "mdi:palette-outline", to: "/page-builder/design" },
+  canEditLayouts.value && { value: "templates", label: t("site.templates.title"), icon: "mdi:page-layout-header-footer", to: "/page-builder/templates" },
+  canManage.value && { value: "menus", label: t("site.tab.menus"), icon: "mdi:menu", to: "/page-builder/menus" },
+  canEditLayouts.value && { value: "components", label: t("site.component.group"), icon: "mdi:puzzle-outline", to: "/page-builder/components" },
+  canManage.value && { value: "fonts", label: t("site.tab.fonts"), icon: "mdi:format-font", to: "/page-builder/fonts" },
+].filter(Boolean));
+// Only the tabs this user may open; a tab they may not falls back to the first.
+const activeTab = computed(() => tabs.value.find((tab) => tab.value === route.params.tab)?.value ?? tabs.value[0]?.value ?? "");
 
 async function save() {
   try {
-    await site.save({ parts: PARTS });
+    await site.save({ parts: PARTS.value });
     toast.success(t("site.saved"));
   } catch (err) {
     toast.error(err.message);

@@ -535,7 +535,8 @@ PHP .
             'target' => 'entry_page', 'type' => 'posts', 'entry' => 'first', 'field' => 'design',
             'nodes' => [comet_page_test_section('preview', [comet_page_test_heading('preview-heading', 'Unsaved page content')])],
         ];
-        assert_same(403, $request('/admin/api/site/preview-snapshots', 'POST', $pageBody, 'editor')[0]);
+        assert_same(403, $request('/admin/api/site/preview-snapshots', 'POST', $pageBody, 'viewer')[0]);
+        assert_same(200, $request('/admin/api/site/preview-snapshots', 'POST', $pageBody, 'editor')[0], 'Editors may preview the page content they design.');
         [$status, $json] = $request('/admin/api/site/preview-snapshots', 'POST', $pageBody);
         assert_same(200, $status);
         $pagePath = substr(json_decode($json, true)['data']['url'], strlen('/cms'));
@@ -640,7 +641,7 @@ test('preview admin bar returns to admin and keeps current page editing separate
     assert_same($entryUrl, $xpath->query('//a[contains(@class,"c-admin-action-primary")]')->item(0)->getAttribute('href'));
     assert_false(str_contains($html, '/page-builder/'), 'Content editors keep their entry editor without a forbidden builder link.');
 
-    $context->adminCan = static fn(string $action): bool => $action === 'site.manage';
+    $context->adminCan = static fn(string $action): bool => str_starts_with($action, 'site.');
     $html = $bar->render(['type' => $type, 'entry' => $entry]);
     assert_true(str_contains($html, 'c-admin-action-primary'));
     assert_false(str_contains($html, 'Eintrag bearbeiten'), 'Builder access does not grant entry editing.');
@@ -880,11 +881,16 @@ test('preview edit page opens the entry page tab by stable ID with locale and fi
         $context->adminUser = ['language' => $language];
         assert_same($pageUrl . 'design', $primaryUrl($bar->render($state)), 'Page content need not be customized to open its entry tab.');
     }
-    $context->adminCan = static fn(string $action, array $scope): bool => $action === 'site.manage'
+    $context->adminCan = static fn(string $action, array $scope): bool => str_starts_with($action, 'site.')
         || ($action === 'content.update' && ($scope['fields'] ?? []) === ['aside']);
     assert_same($pageUrl . 'aside', $primaryUrl($bar->render($state)), 'Select a page field the user can edit.');
-    $context->adminCan = static fn(string $action): bool => $action === 'site.manage';
+    $context->adminCan = static fn(string $action): bool => $action === 'site.layouts';
     assert_same($layoutUrl, $primaryUrl($bar->render($state)), 'Layout-only access must not open a forbidden entry page.');
+    $context->adminCan = static fn(string $action): bool => in_array($action, ['site.pages', 'content.update'], true);
+    assert_same($pageUrl . 'design', $primaryUrl($bar->render($state)), 'Page content editors open the entry page.');
+    assert_false(str_contains($bar->render(['type' => $type, 'entry' => null]), '/page-builder/'), 'Page content editors get no link to the shared list layout.');
+    $context->adminCan = static fn(string $action): bool => $action === 'site.pages';
+    assert_false(str_contains($bar->render($state), '/page-builder/'), 'Page content rights need permission to edit the entry, too.');
     $context->adminCan = static fn(): bool => true;
     assert_same('/cms/admin/page-builder/builder/layout/pages/index?workspace=default&locale=de', $primaryUrl($bar->render(['type' => $type, 'entry' => null])));
     $context->adminCan = static fn(string $action): bool => $action === 'content.update';

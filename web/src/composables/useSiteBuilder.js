@@ -1309,6 +1309,8 @@ export function createSiteBuilder({ t, componentApi = {}, templateApi = {}, fiel
     clipboard, styleClipboard, contextMenu, copy, paste, pasteStyle,
     addColumn, addSectionAfter, openContextMenu, closeContextMenu,
     components, componentId, rootKind, componentDialog, isLockedRoot, componentOf, areaOf, isRemovedArea, instanceAreas, canConvert, canInsertComponent, deleteComponent, renameComponent,
+    /** Whether components can be opened in their own builder (editing them is layout work). */
+    canEditComponents: !!componentApi.edit,
     replaceWithInstance, convertToComponent, detach, editComponent,
     componentTrees, loadComponentTree, isEditable, toggleEditable, instanceFields, hasInstanceValue, setInstanceValue, resetInstanceValue,
     fieldDialog, canMakeField, convertToField,

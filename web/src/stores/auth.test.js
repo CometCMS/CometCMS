@@ -30,3 +30,20 @@ describe('auth permissions', () => {
     expect(allowsPermission(grants, 'roles.delete')).toBe(false)
   })
 })
+
+describe('website permissions', () => {
+  it('lets managing the website imply page content and layout editing, unless denied', () => {
+    const manage = [{ effect: 'allow', actions: ['site.manage'], resources: ['*'] }]
+    expect(allowsPermission(manage, 'site.pages')).toBe(true)
+    expect(allowsPermission(manage, 'site.layouts')).toBe(true)
+
+    const pages = [{ effect: 'allow', actions: ['site.pages'], resources: ['*'] }]
+    expect(allowsPermission(pages, 'site.pages')).toBe(true)
+    expect(allowsPermission(pages, 'site.layouts')).toBe(false)
+    expect(allowsPermission(pages, 'site.manage')).toBe(false)
+
+    const denied = [...manage, { effect: 'deny', actions: ['site.layouts'], resources: ['*'] }]
+    expect(allowsPermission(denied, 'site.layouts')).toBe(false)
+    expect(allowsPermission(denied, 'site.pages')).toBe(true)
+  })
+})
