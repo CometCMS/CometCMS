@@ -706,7 +706,8 @@ const visibleProps = computed(() => {
   // Each page content area owns its field; the inspector names it instead. Area content belongs to its component's area.
   if (["page_content", "component_area", "area_content"].includes(current.kind)) return [];
 
-  if (current.kind === "icon") return keys.filter((key) => !ICON_SHAPE.includes(key));
+  // The text's position and spacing only apply once there is text.
+  if (current.kind === "icon") return keys.filter((key) => !ICON_SHAPE.includes(key) && (!["text_position", "text_gap"].includes(key) || !!props.text));
 
   // Only a column component's instances have something of their own: their width.
   if (current.kind === COMPONENT) {

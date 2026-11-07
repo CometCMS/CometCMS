@@ -374,6 +374,16 @@ html:has(.c-sticky, .c-overlap) { container-type: scroll-state; }
 .c-muted { color: var(--c-muted); }
 .c-icon { display: inline-block; vertical-align: middle; max-width: 100%; height: auto; }
 .c-icon-link { display: inline-block; max-width: 100%; color: inherit; }
+/* An icon with visible text: the pair aligns like the icon alone, the text follows the element's font and color. */
+.c-icon-item { display: inline-flex; align-items: center; gap: 0.5em; max-width: 100%; vertical-align: middle; line-height: 1.3; text-align: start; }
+.c-icon-item > .c-icon, .c-icon-item > .c-icon-shape { flex: none; }
+.c-icon-item-start { flex-direction: row-reverse; }
+.c-icon-item-bottom, .c-icon-item-top { flex-direction: column; text-align: center; }
+.c-icon-item-top { flex-direction: column-reverse; }
+.c-icon-gap-xs { gap: 0.25em; } .c-icon-gap-md { gap: 0.75em; } .c-icon-gap-lg { gap: 1.1em; }
+.c-icon-text { min-width: 0; overflow-wrap: anywhere; }
+.c-icon-link:has(.c-icon-item) { text-decoration: none; }
+.c-icon-link:hover .c-icon-text { text-decoration-line: var(--link-hover-decoration, underline); }
 .c-icon-shape { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; max-width: 100%; aspect-ratio: 1; vertical-align: middle; }
 .c-icon-shape > .c-icon { display: block; min-width: 0; }
 .c-icon-shape-circle { border-radius: 50%; }

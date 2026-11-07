@@ -519,6 +519,7 @@ const INLINE_TEXT = {
   heading: { key: "text", selector: ".c-heading" },
   text: { key: "html", selector: ".c-prose", rich: true },
   button: { key: "label", selector: ".c-button-label" },
+  icon: { key: "text", selector: ".c-icon-text" },
   // Each cell is edited on its own; Tab moves through them.
   table: { key: "rows", selector: "[data-cell]", rich: true, cells: true },
 };

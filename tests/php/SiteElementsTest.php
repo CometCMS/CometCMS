@@ -259,6 +259,24 @@ test('icon shapes retain independent colors and padding with accessible links', 
     }
 });
 
+test('icon labels render beside the icon and name its link', function (): void {
+    comet_site_test_setup();
+    $renderer = new NodeRenderer(comet_site_test_context());
+    $nodes = LayoutSchema::normalizeComponent([LayoutSchema::node('column', [], [], [
+        LayoutSchema::node('icon', ['text' => 'Call <us>', 'text_position' => 'bottom', 'text_gap' => 'lg', 'link' => ['type' => 'home']]),
+        LayoutSchema::node('icon', ['text' => 'Mail', 'text_position' => 'sideways', 'text_gap' => 'huge']),
+        LayoutSchema::node('icon'),
+    ])], 'column')[0]['children'];
+    assert_same('end', $nodes[1]['props']['text_position']);
+    assert_same('sm', $nodes[1]['props']['text_gap']);
+    assert_same('', $nodes[2]['props']['text']);
+    $html = $renderer->render([$nodes[0]]);
+    assert_matches('/<a[^>]*class="c-icon-link"[^>]*><span class="c-icon-item c-icon-item-bottom c-icon-gap-lg"><svg[^>]*aria-hidden="true"[^>]*>.*<\/svg><span class="c-icon-text">Call &lt;us&gt;<\/span><\/span><\/a>/s', $html);
+    assert_false(str_contains($html, 'aria-label'));
+    assert_true(str_contains($renderer->render([$nodes[1]]), 'c-icon-item c-icon-item-end c-icon-gap-sm'));
+    assert_false(str_contains($renderer->render([$nodes[2]]), 'c-icon-item'));
+});
+
 test('icon shape validation defaults old blocks and rejects invalid styling', function (): void {
     $nodes = LayoutSchema::normalizeComponent([LayoutSchema::node('column', [], [], [
         LayoutSchema::node('icon'),

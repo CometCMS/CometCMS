@@ -956,9 +956,10 @@ final class NodeRenderer
         if ($icon === null) return '';
 
         $link = $this->resolveLink($props['link'], $state);
-        // Linked icons need a name even when no custom label was entered.
+        $text = trim((string) ($props['text'] ?? ''));
+        // Linked icons need a name even when no custom label was entered; visible text names them already.
         $label = $props['label'];
-        if ($label === '' && $link !== null) {
+        if ($label === '' && $link !== null && $text === '') {
             $label = ucwords(str_replace('-', ' ', substr($props['icon'], 4)));
         }
         $accessibility = $label !== '' ? ' role="img" aria-label="' . Security::e($label) . '"' : ' aria-hidden="true"';
@@ -968,6 +969,13 @@ final class NodeRenderer
             $padding = (int) $props['shape_padding'];
             $html = '<span class="c-icon-shape c-icon-shape-' . Security::e($props['shape']) . '" style="width:' . ((int) $props['size'] + 2 * $padding)
                 . 'px;padding:' . $padding . 'px;background-color:var(--c-' . Security::e($props['shape_color']) . ')">' . $html . '</span>';
+        }
+        if ($text !== '') {
+            $position = in_array($props['text_position'] ?? 'end', ['end', 'start', 'bottom', 'top'], true) ? $props['text_position'] : 'end';
+            $gap = in_array($props['text_gap'] ?? 'sm', ['xs', 'sm', 'md', 'lg'], true) ? $props['text_gap'] : 'sm';
+            // The text has an element of its own, so the builder edits it apart from the icon.
+            $html = '<span class="c-icon-item c-icon-item-' . $position . ' c-icon-gap-' . $gap . '">' . $html
+                . '<span class="c-icon-text">' . Security::e($text) . '</span></span>';
         }
         if ($link !== null) $html = $this->anchor($link, $html, 'c-icon-link');
 

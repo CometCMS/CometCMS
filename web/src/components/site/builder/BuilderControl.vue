@@ -484,6 +484,7 @@ const label = computed(() => {
   if (props.name === "text_color" && props.node.kind === "icon") return t("site.style.icon_color");
   if (props.name === "collections" && props.node.kind === "collection" && props.node.props?.list_source === "types") return t("site.prop.listTypes");
   if (props.name === "label" && props.node.kind === "icon") return t("site.prop.iconLabel");
+  if (props.name === "text" && props.node.kind === "icon") return t("site.prop.iconText");
   if (props.name === "label" && props.node.kind === "theme_toggle") return t("site.prop.toggleLabel");
   if (props.name === "label" && props.node.kind === "modal_close") return t("site.prop.closeLabel");
   if (props.name === "icon_position" && props.node.kind === "button") return t("site.prop.buttonIconPosition");
