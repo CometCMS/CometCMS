@@ -182,11 +182,13 @@ final class WorkspacesController extends BaseController
             $this->json(['error' => ['code' => 'file_type_not_allowed', 'message' => 'Only JPEG, PNG, WebP, or GIF images are allowed.']], 422);
         }
 
+        if (!function_exists('imagecreatefromstring')) {
+            $this->json(['error' => ['code' => 'image_support_missing', 'message' => 'Workspace icons need the PHP GD extension, which is not enabled on this server.']], 500);
+        }
+
         $slug = Security::slug($slug);
         $contents = file_get_contents((string) $file['tmp_name']);
-        $image = is_string($contents) && function_exists('imagecreatefromstring')
-            ? @imagecreatefromstring($contents)
-            : false;
+        $image = is_string($contents) ? @imagecreatefromstring($contents) : false;
 
         if (!$image instanceof \GdImage) {
             $this->json(['error' => ['code' => 'invalid_image', 'message' => 'Could not decode the uploaded image.']], 422);

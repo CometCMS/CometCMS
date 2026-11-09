@@ -390,7 +390,7 @@ async function handleUpdate(slug) {
     await load();
     window.dispatchEvent(new CustomEvent(workspaceSyncEvent));
   } catch (err) {
-    editError.value = err?.data?.error?.message ?? t("workspaces.updateFailed");
+    editError.value = err?.message ?? t("workspaces.updateFailed");
   } finally {
     saving.value = false;
   }
@@ -412,7 +412,7 @@ async function handleIconUpload(slug, file) {
     toast.success(t("workspaces.iconUpdated"));
     window.dispatchEvent(new CustomEvent(workspaceSyncEvent));
   } catch (err) {
-    toast.error(err?.data?.error?.message ?? t("workspaces.iconUploadFailed"));
+    toast.error(err?.message ?? t("workspaces.iconUploadFailed"));
   }
 }
 
@@ -425,7 +425,7 @@ async function handleIconDelete(slug) {
     toast.success(t("workspaces.iconRemoved"));
     window.dispatchEvent(new CustomEvent(workspaceSyncEvent));
   } catch (err) {
-    toast.error(err?.data?.error?.message ?? t("workspaces.iconRemoveFailed"));
+    toast.error(err?.message ?? t("workspaces.iconRemoveFailed"));
   }
 }
 
@@ -438,7 +438,7 @@ async function handleSetDefault(slug) {
     window.dispatchEvent(new CustomEvent(workspaceSyncEvent));
   } catch (err) {
     toast.error(
-      err?.data?.error?.message ?? t("workspaces.setAsDefaultFailed"),
+      err?.message ?? t("workspaces.setAsDefaultFailed"),
     );
   } finally {
     settingDefault.value = null;
@@ -455,7 +455,7 @@ async function doArchive() {
     await load();
     window.dispatchEvent(new CustomEvent(workspaceSyncEvent));
   } catch (err) {
-    toast.error(err?.data?.error?.message ?? t("workspaces.archiveFailed"));
+    toast.error(err?.message ?? t("workspaces.archiveFailed"));
     showArchiveModal.value = false;
   } finally {
     archiving.value = false;

@@ -23,7 +23,7 @@
       <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
           <label class="form-label" for="form-submit">{{ t("site.forms.submitLabel") }}</label>
-          <LocalizedInput id="form-submit" :model-value="settings.submit_label" @update:model-value="(value) => update({ submit_label: value })" type="text" maxlength="80" class="form-input w-full rounded-lg border-slate-300 text-sm" :placeholder="t('site.forms.submitDefault')"  />
+          <LocalizedInput id="form-submit" :model-value="settings.submit_label" @update:model-value="(value) => update({ submit_label: value })" maxlength="80" class="form-input w-full rounded-lg border-slate-300 text-sm" :placeholder="t('site.forms.submitDefault')"  />
         </div>
         <div class="md:col-span-2">
           <label class="form-label" for="form-success">{{ t("site.forms.successMessage") }}</label>
