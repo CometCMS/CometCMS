@@ -8,6 +8,7 @@ use CometCMS\Content\ContentTypeRepository;
 use CometCMS\Auth\ApiTokenRepository;
 use CometCMS\Auth\RoleRepository;
 use CometCMS\Core\Security;
+use CometCMS\Extensions\ExtensionRegistry;
 use CometCMS\Logging\Logger;
 use CometCMS\Storage\SettingsStore;
 use CometCMS\Workspaces\WorkspaceContext;
@@ -31,6 +32,7 @@ final class BackupService
         'api_tokens',
         'webhooks',
         'site',
+        'extensions',
     ];
 
     private const DEFAULT_PARTS = [
@@ -40,6 +42,7 @@ final class BackupService
         'api_tokens',
         'webhooks',
         'site',
+        'extensions',
     ];
 
     public function create(array $user, ?array $parts = null): array
@@ -66,6 +69,7 @@ final class BackupService
         $tokenCount = 0;
         $webhookCount = 0;
         $siteCount = 0;
+        $extensions = [];
 
         if (in_array('content_types', $parts, true)) {
             $contentTypeCount = $this->addDirectory($zip, $this->workspace->path('content-types'), 'content-types');
@@ -95,7 +99,11 @@ final class BackupService
         }
 
         if (in_array('site', $parts, true)) {
-            $siteCount = $this->addDirectory($zip, $this->workspace->path('site'), 'site');
+            $siteCount = $this->addDirectory($zip, $this->workspace->path('site'), 'site', ExtensionRegistry::ownsSitePath(...));
+        }
+
+        if (in_array('extensions', $parts, true)) {
+            $extensions = $this->addExtensions($zip);
         }
 
         $manifest = [
@@ -115,6 +123,8 @@ final class BackupService
             'token_count' => $tokenCount,
             'webhook_count' => $webhookCount,
             'site_count' => $siteCount,
+            'extensions' => $extensions,
+            'extension_count' => count($extensions),
             'includes_password_hashes' => (bool) comet_config('backups.include_password_hashes', false),
         ];
         $zip->addFromString('manifest.json', json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL);
@@ -317,7 +327,8 @@ final class BackupService
         return is_array($metadata) ? $metadata : [];
     }
 
-    private function addDirectory(\ZipArchive $zip, string $source, string $prefix): int
+    /** @param (callable(string): bool)|null $exclude tested with each path relative to $source */
+    private function addDirectory(\ZipArchive $zip, string $source, string $prefix, ?callable $exclude = null): int
     {
         if (!is_dir($source)) {
             return 0;
@@ -332,11 +343,38 @@ final class BackupService
             }
 
             $relative = ltrim(str_replace('\\', '/', substr($file->getPathname(), strlen($source))), '/');
+            if ($exclude !== null && $exclude($relative)) {
+                continue;
+            }
+
             $zip->addFile($file->getPathname(), $prefix . '/' . $relative);
             $count++;
         }
 
         return $count;
+    }
+
+    /**
+     * Extensions keep their paths below site/, so backups stay restorable by earlier releases.
+     *
+     * @return list<string> the names of the extensions added
+     */
+    private function addExtensions(\ZipArchive $zip): array
+    {
+        $directory = (new ExtensionRegistry($this->workspace))->directory();
+        $this->addDirectory($zip, $directory, 'site/extensions');
+
+        foreach (ExtensionRegistry::BACKUP_RECORDS as $record) {
+            $file = $this->workspace->path('site') . '/' . $record . '.json';
+            if (is_file($file)) {
+                $zip->addFile($file, 'site/' . $record . '.json');
+            }
+        }
+
+        $names = array_map(static fn(string $path): string => basename(dirname($path)) . '/' . basename($path), glob($directory . '/*/*', GLOB_ONLYDIR) ?: []);
+        sort($names);
+
+        return $names;
     }
 
     private function addUsers(\ZipArchive $zip): int

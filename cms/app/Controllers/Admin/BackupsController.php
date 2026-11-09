@@ -99,6 +99,11 @@ final class BackupsController extends BaseController
             $this->json(['error' => ['code' => 'validation_failed', 'message' => 'Select at least one part to restore.']], 422);
         }
 
+        // Restoring extensions installs them, which needs the same permission as an upload.
+        if (in_array('extensions', $parts ?? RestoreService::defaultParts(), true)) {
+            $this->requirePermission('site.manage', ['resource' => 'site:*']);
+        }
+
         try {
             $path = (new BackupService())->path($name);
             $summary = (new RestoreService())->restore($path, (bool) ($body['overwrite'] ?? false), $user, $parts);

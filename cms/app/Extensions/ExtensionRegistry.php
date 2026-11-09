@@ -21,6 +21,8 @@ final class ExtensionRegistry
     /** Bump whenever compiled extensions change shape, so cached indexes are rebuilt. */
     private const COMPILER = 10;
     private const SETTINGS = 'extensions-settings';
+    /** Site files keyed by extension name that are backed up and restored with the extensions. */
+    public const BACKUP_RECORDS = ['extensions-state', self::SETTINGS];
 
     private ?array $index = null;
     private ?string $signature = null;
@@ -36,6 +38,16 @@ final class ExtensionRegistry
     public function directory(): string
     {
         return $this->workspace->path('site') . '/extensions';
+    }
+
+    /** Whether a path below site/ belongs to the extensions backup part rather than the website. */
+    public static function ownsSitePath(string $path): bool
+    {
+        // Compare the way the file system resolves it: backups may come from elsewhere.
+        $segments = array_filter(explode('/', strtolower(str_replace('\\', '/', $path))), static fn(string $segment): bool => $segment !== '' && $segment !== '.');
+        $path = implode('/', $segments);
+
+        return str_starts_with($path, 'extensions/') || in_array(substr($path, 0, -5), self::BACKUP_RECORDS, true) && str_ends_with($path, '.json');
     }
 
     /** Site-owned types temporarily hidden with the extension that imported them. */
@@ -252,6 +264,33 @@ final class ExtensionRegistry
                 'scripts' => $scripts,
                 'permissions' => $extension['permissions'],
             ];
+        });
+    }
+
+    /**
+     * Put back an extension from a backup, replacing its folder whole so no files of another
+     * version stay behind. Seeds are not imported: what they created is restored with the site.
+     *
+     * @param array<string, string> $files extension path => bytes
+     * @param array<string, array> $records BACKUP_RECORDS file => values by extension name
+     */
+    public function restoreFiles(string $name, array $files, array $records): void
+    {
+        if (Extension::compile($files)['name'] !== $name) {
+            throw ExtensionException::single(Extension::MANIFEST, 'The extension does not match its folder in the backup.');
+        }
+        $this->locked(function () use ($name, $files, $records): void {
+            $this->write($name, $files, function () use ($name, $records): void {
+                $store = new JsonStore($this->workspace->path('site'));
+                foreach (self::BACKUP_RECORDS as $record) {
+                    $current = $store->read($record) ?? [];
+                    $restored = $current;
+                    unset($restored[$name]);
+                    if (array_key_exists($name, $records[$record] ?? [])) $restored[$name] = $records[$record][$name];
+                    if ($restored !== $current) $store->write($restored, $record);
+                }
+            });
+            $this->index = $this->signature = $this->settings = null;
         });
     }
 

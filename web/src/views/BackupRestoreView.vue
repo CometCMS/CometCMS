@@ -391,6 +391,18 @@
               </div>
             </div>
 
+            <div v-if="inspection.extensions?.length">
+              <p class="form-label">{{ t("backup.extensions") }}</p>
+              <div class="flex flex-wrap gap-1.5">
+                <span
+                  v-for="extension in inspection.extensions"
+                  :key="extension"
+                  class="badge bg-slate-100 text-slate-700"
+                  >{{ extension }}</span
+                >
+              </div>
+            </div>
+
             <div>
               <label class="form-label">{{ t("backup.whatToRestore") }}</label>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -427,6 +439,9 @@
                 class="mt-2 text-xs text-amber-700"
               >
                 {{ t("backup.noPasswordHashes") }}
+              </p>
+              <p v-if="restoreParts.extensions" class="mt-2 text-xs text-amber-700">
+                {{ t("backup.extensionsTrustHint") }}
               </p>
             </div>
 
@@ -553,6 +568,12 @@ const partOptions = [
     descriptionKey: "backup.partWebsiteDescription",
   },
   {
+    value: "extensions",
+    parts: ["extensions"],
+    labelKey: "backup.extensions",
+    descriptionKey: "backup.partExtensionsDescription",
+  },
+  {
     value: "webhooks",
     parts: ["webhooks"],
     labelKey: "backup.webhooks",
@@ -576,6 +597,7 @@ const backupParts = reactive({
   content_bundle: true,
   media: false,
   site: true,
+  extensions: true,
   webhooks: true,
   users: false,
   api_tokens: false,
@@ -584,6 +606,7 @@ const restoreParts = reactive({
   content_bundle: false,
   media: false,
   site: false,
+  extensions: false,
   webhooks: false,
   users: false,
   api_tokens: false,
@@ -605,6 +628,7 @@ const countItems = computed(() => {
     { label: t("backup.tokens"), value: counts.tokens ?? 0 },
     { label: t("backup.webhooks"), value: counts.webhooks ?? 0 },
     { label: t("backup.website"), value: counts.site ?? 0 },
+    { label: t("backup.extensions"), value: counts.extensions ?? 0 },
   ];
 });
 
@@ -622,6 +646,7 @@ const summaryRows = computed(() => {
     [t("backup.tokens"), "restored_tokens"],
     [t("backup.webhooks"), "restored_webhooks"],
     [t("backup.website"), "restored_site"],
+    [t("backup.extensions"), "restored_extensions"],
     [t("backup.skipped"), "skipped"],
   ].map(([label, key]) => ({ label, value: restoreSummary.value[key] ?? 0 }));
 });
@@ -860,6 +885,7 @@ function partCount(part) {
     return (counts.users ?? 0) + (counts.roles ?? 0) + (counts.tokens ?? 0);
   if (part === "webhooks") return counts.webhooks ?? 0;
   if (part === "site") return counts.site ?? 0;
+  if (part === "extensions") return counts.extensions ?? 0;
   return 0;
 }
 

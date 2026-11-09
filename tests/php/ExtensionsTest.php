@@ -461,15 +461,105 @@ test('deleting a extension preserves layout instances, invalidates public output
     assert_true(str_contains($respond()['body'], '>Restore this</h3>'));
 });
 
-test('extensions survive a site backup and restore', function (): void {
+test('extensions survive a backup and restore', function (): void {
     $blocks = ExtensionRegistry::active();
     $blocks->installFiles(comet_block_files(), allowScripts: true);
-    $backup = (new \CometCMS\Backups\BackupService())->create(['id' => 'admin'], ['site']);
+    $backup = (new \CometCMS\Backups\BackupService())->create(['id' => 'admin'], ['extensions']);
     comet_test_remove_directory($blocks->directory());
     assert_same([], ExtensionRegistry::active()->all());
-    (new \CometCMS\Backups\RestoreService())->restore(COMET_STORAGE . '/backups/' . $backup['name'], true, ['id' => 'admin'], ['site']);
+    $path = COMET_STORAGE . '/backups/' . $backup['name'];
+    $inspection = (new \CometCMS\Backups\RestoreService())->inspect($path);
+    assert_same(['cometcms/essentials'], $inspection['extensions']);
+    assert_same(1, $inspection['counts']['extensions']);
+    assert_same(['extensions'], $inspection['available_parts']);
+    $summary = (new \CometCMS\Backups\RestoreService())->restore($path, false, ['id' => 'admin'], ['extensions']);
+    assert_same(1, $summary['restored_extensions']);
     assert_same('Callout', ExtensionRegistry::active()->get('block:cometcms/callout')['title']);
     assert_same(comet_block_files()['assets/check.svg'], file_get_contents($blocks->directory() . '/cometcms/essentials/assets/check.svg'));
+});
+
+test('website backups leave extensions out unless they are selected', function (): void {
+    $blocks = ExtensionRegistry::active();
+    $blocks->installFiles(comet_block_files(), allowScripts: true);
+    $blocks->setEnabled('cometcms/essentials', false);
+    $backup = (new \CometCMS\Backups\BackupService())->create(['id' => 'admin'], ['site']);
+    $zip = new ZipArchive();
+    assert_true($zip->open(COMET_STORAGE . '/backups/' . $backup['name']));
+    assert_false($zip->locateName('site/extensions/cometcms/essentials/comet-extension.json'));
+    assert_false($zip->locateName('site/extensions-state.json'));
+    $zip->close();
+});
+
+test('restoring the website from a backup holding extensions leaves extensions alone', function (): void {
+    $blocks = ExtensionRegistry::active();
+    $blocks->installFiles(comet_block_files(), allowScripts: true);
+    $backup = (new \CometCMS\Backups\BackupService())->create(['id' => 'admin'], ['site', 'extensions']);
+    comet_test_remove_directory($blocks->directory());
+    $summary = (new \CometCMS\Backups\RestoreService())->restore(COMET_STORAGE . '/backups/' . $backup['name'], true, ['id' => 'admin'], ['site']);
+    assert_same(0, $summary['restored_extensions']);
+    assert_same([], ExtensionRegistry::active()->all());
+    assert_false(is_dir($blocks->directory() . '/cometcms'));
+});
+
+test('restoring extensions replaces each one whole or not at all', function (): void {
+    $blocks = ExtensionRegistry::active();
+    $files = comet_block_files();
+    $blocks->installFiles($files, allowScripts: true);
+    $backup = (new \CometCMS\Backups\BackupService())->create(['id' => 'admin'], ['extensions']);
+    $path = COMET_STORAGE . '/backups/' . $backup['name'];
+    $installed = $blocks->directory() . '/cometcms/essentials/';
+    file_put_contents($installed . 'assets/newer-version.svg', $files['assets/check.svg']);
+    file_put_contents($installed . 'assets/check.svg', '<svg xmlns="http://www.w3.org/2000/svg"></svg>');
+
+    $summary = (new \CometCMS\Backups\RestoreService())->restore($path, false, ['id' => 'admin'], ['extensions']);
+    assert_same(0, $summary['restored_extensions']);
+    assert_same(1, $summary['skipped']);
+    assert_file_exists_at($installed . 'assets/newer-version.svg');
+    assert_same('<svg xmlns="http://www.w3.org/2000/svg"></svg>', file_get_contents($installed . 'assets/check.svg'));
+
+    $summary = (new \CometCMS\Backups\RestoreService())->restore($path, true, ['id' => 'admin'], ['extensions']);
+    assert_same(1, $summary['restored_extensions']);
+    assert_false(is_file($installed . 'assets/newer-version.svg'));
+    assert_same($files['assets/check.svg'], file_get_contents($installed . 'assets/check.svg'));
+});
+
+test('restoring extensions rejects invalid ones without touching what is installed', function (): void {
+    $blocks = ExtensionRegistry::active();
+    $files = comet_block_files();
+    $blocks->installFiles($files, allowScripts: true);
+    $entries = ['manifest.json' => json_encode(['version' => '2.0.0', 'parts' => ['site']])];
+    // A file an extension may not hold, a folder that does not match the manifest, and an invalid name.
+    foreach (['cometcms/essentials' => ['shell.php' => '<?php'], 'cometcms/renamed' => [], '../evil/x' => []] as $name => $extra) {
+        foreach ($files + $extra as $file => $bytes) $entries['site/extensions/' . $name . '/' . $file] = $bytes;
+    }
+    $path = COMET_STORAGE . '/backups/invalid-extensions.zip';
+    $zip = new ZipArchive();
+    assert_true($zip->open($path, ZipArchive::CREATE | ZipArchive::OVERWRITE));
+    foreach ($entries as $name => $bytes) $zip->addFromString($name, $bytes);
+    $zip->close();
+
+    $summary = (new \CometCMS\Backups\RestoreService())->restore($path, true, ['id' => 'admin'], ['extensions']);
+    assert_same(0, $summary['restored_extensions']);
+    assert_true(count($summary['errors']) >= 2);
+    assert_false(is_file($blocks->directory() . '/cometcms/essentials/shell.php'));
+    assert_false(is_dir($blocks->directory() . '/cometcms/renamed'));
+    assert_same('Callout', ExtensionRegistry::active()->get('block:cometcms/callout')['title']);
+});
+
+test('restoring extensions needs the permission that installs them', function (): void {
+    $backup = <<<'PHP'
+$roles->create(['label' => 'Operator', 'permissions' => [['effect' => 'allow', 'actions' => ['backups.restore'], 'resources' => ['*']]]]);
+$users->create('olu', 'secret-password', 'operator');
+if (!is_dir(COMET_STORAGE . '/backups')) mkdir(COMET_STORAGE . '/backups', 0775, true);
+file_put_contents(COMET_STORAGE . '/backups/perm.zip', 'not-a-zip');
+PHP;
+    $action = '(new \CometCMS\Controllers\Admin\BackupsController(new \CometCMS\Core\Http()))->restore("perm.zip");';
+    [$status, $body] = comet_admin_request('olu', $backup, 'POST', '/admin/api/backups/perm.zip/restore', $action, ['parts' => ['extensions']]);
+    assert_same(403, $status);
+    assert_same('forbidden', $body['error']['code']);
+    [$status, $body] = comet_admin_request('olu', $backup, 'POST', '/admin/api/backups/perm.zip/restore', $action, ['parts' => ['site']]);
+    assert_same(500, $status);
+    assert_same('restore_failed', $body['error']['code']);
 });
 
 test('extension uploads report every problem and ask before breaking placed blocks', function (): void {
@@ -1487,13 +1577,13 @@ test('extension status API requires administrator permission CSRF and a boolean'
 });
 
 
-test('disabled extension status survives a site backup and restore', function (): void {
+test('disabled extension status survives a backup and restore', function (): void {
     $blocks = ExtensionRegistry::active();
     $blocks->installFiles(comet_block_files(), allowScripts: true);
     $blocks->setEnabled('cometcms/essentials', false);
-    $backup = (new \CometCMS\Backups\BackupService())->create(['id' => 'admin'], ['site']);
+    $backup = (new \CometCMS\Backups\BackupService())->create(['id' => 'admin'], ['extensions']);
     $blocks->setEnabled('cometcms/essentials', true);
-    (new \CometCMS\Backups\RestoreService())->restore(COMET_STORAGE . '/backups/' . $backup['name'], true, ['id' => 'admin'], ['site']);
+    (new \CometCMS\Backups\RestoreService())->restore(COMET_STORAGE . '/backups/' . $backup['name'], true, ['id' => 'admin'], ['extensions']);
     assert_false(ExtensionRegistry::active()->metadata()['extensions'][0]['enabled']);
     assert_same([], ExtensionRegistry::active()->all());
 });

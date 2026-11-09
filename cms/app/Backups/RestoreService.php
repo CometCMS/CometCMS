@@ -9,6 +9,9 @@ use CometCMS\Auth\RoleRepository;
 use CometCMS\Auth\UserRepository;
 use CometCMS\Cache\ApiCache;
 use CometCMS\Core\Security;
+use CometCMS\Extensions\Extension;
+use CometCMS\Extensions\ExtensionException;
+use CometCMS\Extensions\ExtensionRegistry;
 use CometCMS\Logging\Logger;
 use CometCMS\Storage\SettingsStore;
 use CometCMS\Workspaces\WorkspaceContext;
@@ -32,6 +35,7 @@ final class RestoreService
         'api_tokens',
         'webhooks',
         'site',
+        'extensions',
     ];
 
     private const DEFAULT_PARTS = [
@@ -41,7 +45,13 @@ final class RestoreService
         'api_tokens',
         'webhooks',
         'site',
+        'extensions',
     ];
+
+    public static function defaultParts(): array
+    {
+        return self::DEFAULT_PARTS;
+    }
 
     public function restore(string $zipPath, bool $overwrite, array $user, ?array $parts = null): array
     {
@@ -75,6 +85,7 @@ final class RestoreService
             'restored_tokens' => 0,
             'restored_webhooks' => 0,
             'restored_site' => 0,
+            'restored_extensions' => 0,
             'skipped' => 0,
             'errors' => [],
         ];
@@ -131,6 +142,10 @@ final class RestoreService
             $summary['restored_webhooks'] = $this->restoreWebhooks($zip, $summary);
         }
 
+        if (in_array('extensions', $parts, true)) {
+            $summary['restored_extensions'] = $this->restoreExtensions($zip, $overwrite, $summary);
+        }
+
         $zip->close();
         ApiCache::fromConfig($this->workspace)->clear();
         (new Logger())->info('backup restored', ['summary' => $summary, 'user_id' => $user['id'] ?? null]);
@@ -167,8 +182,10 @@ final class RestoreService
             'tokens' => 0,
             'webhooks' => 0,
             'site' => 0,
+            'extensions' => 0,
         ];
         $contentTypes = [];
+        $extensions = [];
         $errors = [];
 
         for ($i = 0; $i < $zip->numFiles; $i++) {
@@ -191,9 +208,17 @@ final class RestoreService
             } elseif (str_starts_with($name, 'media-meta/')) {
                 $counts['media_meta']++;
             } elseif (str_starts_with($name, 'site/')) {
-                $counts['site']++;
+                if (!ExtensionRegistry::ownsSitePath(substr($name, 5))) {
+                    $counts['site']++;
+                } elseif (Extension::validName(self::extensionFile($name)[0] ?? null)) {
+                    $extensions[self::extensionFile($name)[0]] = true;
+                }
             }
         }
+
+        $counts['extensions'] = count($extensions);
+        $extensions = array_keys($extensions);
+        sort($extensions);
 
         $users = json_decode((string) $zip->getFromName('users.json'), true);
         if (is_array($users)) {
@@ -237,6 +262,7 @@ final class RestoreService
             ],
             'counts' => $counts,
             'content_types' => $contentTypes,
+            'extensions' => $extensions,
             'available_parts' => $this->availableParts($counts),
             'default_parts' => array_values(array_filter(
                 self::DEFAULT_PARTS,
@@ -265,6 +291,11 @@ final class RestoreService
         ) {
             if (str_starts_with($name, $prefix)) {
                 if (!in_array($part, $parts, true)) {
+                    return null;
+                }
+
+                // Extensions are restored whole by restoreExtensions(), never file by file.
+                if ($part === 'site' && ExtensionRegistry::ownsSitePath(substr($name, strlen($prefix)))) {
                     return null;
                 }
 
@@ -338,7 +369,95 @@ final class RestoreService
             $parts[] = 'site';
         }
 
+        if (($counts['extensions'] ?? 0) > 0) {
+            $parts[] = 'extensions';
+        }
+
         return $parts;
+    }
+
+    /** @return array{0: string, 1: string}|null the extension folder name and the path inside it */
+    private static function extensionFile(string $name): ?array
+    {
+        return preg_match('~^site/extensions/([^/]+/[^/]+)/(.+)$~D', $name, $match) === 1 ? [$match[1], $match[2]] : null;
+    }
+
+    /** Each extension is validated and replaced as a unit; one that fails leaves the others restored. */
+    private function restoreExtensions(\ZipArchive $zip, bool $overwrite, array &$summary): int
+    {
+        $entries = [];
+
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $name = str_replace('\\', '/', (string) $zip->getNameIndex($i));
+            $file = $this->unsafePath($name) || str_ends_with($name, '/') ? null : self::extensionFile($name);
+
+            if ($file !== null) {
+                $entries[$file[0]][$file[1]] = $i;
+            }
+        }
+
+        $records = [];
+
+        foreach (ExtensionRegistry::BACKUP_RECORDS as $record) {
+            $decoded = json_decode((string) $zip->getFromName('site/' . $record . '.json'), true);
+            $records[$record] = is_array($decoded) ? $decoded : [];
+        }
+
+        $registry = new ExtensionRegistry($this->workspace);
+        $restored = 0;
+
+        foreach ($entries as $name => $indexes) {
+            $name = (string) $name;
+
+            if (!Extension::validName($name)) {
+                $summary['errors'][] = 'Invalid extension folder skipped: ' . $name;
+                continue;
+            }
+
+            if (!$overwrite && is_dir($registry->directory() . '/' . $name)) {
+                $summary['skipped']++;
+                continue;
+            }
+
+            try {
+                $registry->restoreFiles($name, $this->extensionFiles($zip, $indexes), $records);
+                $restored++;
+            } catch (\Throwable $e) {
+                $summary['errors'][] = 'Extension skipped: ' . $name . ' (' . $e->getMessage() . ')';
+            }
+        }
+
+        return $restored;
+    }
+
+    /**
+     * @param array<string, int> $indexes extension path => ZIP entry
+     * @return array<string, string> extension path => bytes
+     */
+    private function extensionFiles(\ZipArchive $zip, array $indexes): array
+    {
+        $files = [];
+        $total = 0;
+
+        foreach ($indexes as $path => $index) {
+            $path = (string) $path;
+            $size = (int) ($zip->statIndex($index)['size'] ?? 0);
+            $total += $size;
+
+            if (count($indexes) > Extension::MAX_FILES || $size > Extension::MAX_ASSET || $total > Extension::MAX_BYTES) {
+                throw ExtensionException::single($path, 'The extension exceeds its file count or size limits.');
+            }
+
+            $bytes = $size === 0 ? '' : $zip->getFromIndex($index, $size + 1);
+
+            if (!is_string($bytes) || strlen($bytes) !== $size) {
+                throw ExtensionException::single($path, 'The file could not be extracted.');
+            }
+
+            $files[$path] = $bytes;
+        }
+
+        return $files;
     }
 
     private function restoreUsers(\ZipArchive $zip, bool $overwrite, array &$summary): int
