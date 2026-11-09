@@ -2,11 +2,14 @@
 
 declare(strict_types=1);
 
+use CometCMS\Content\ContentRepository;
+use CometCMS\Content\ContentTypeRepository;
 use CometCMS\Media\MediaRepository;
 use CometCMS\Site\GalleryLightbox;
 use CometCMS\Site\LayoutSchema;
 use CometCMS\Site\NodeRenderer;
 use CometCMS\Site\PageRenderer;
+use CometCMS\Site\SmartValue;
 
 test('gallery modals are opt in and only public images become viewer triggers', function (): void {
     comet_site_test_setup();
@@ -35,6 +38,26 @@ test('gallery modals are opt in and only public images become viewer triggers', 
     $html = $renderer->render([$saved]);
     assert_false(str_contains($html, 'data-gallery-image'));
     assert_false(str_contains($html, 'data-gallery-lightbox'));
+});
+
+test('builder previews resolve translated labels of a bound gallery field', function (): void {
+    $site = comet_site_test_setup();
+    file_put_contents(comet_test_workspace_path() . '/media/photo.svg', '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="40"></svg>');
+    (new ContentTypeRepository())->save(['name' => 'album', 'label' => 'Albums', 'fields' => [
+        'photos' => ['type' => 'media', 'multiple' => true, 'label' => ['type' => 'localized', 'values' => ['en' => 'Photos', 'de' => 'Fotos']]],
+    ]]);
+    ContentRepository::make()->save('album', ['title' => 'Summer', 'slug' => 'summer', 'photos' => ['photo.svg'], 'status' => 'published'], comet_site_test_user());
+    $gallery = LayoutSchema::node('gallery', ['media' => SmartValue::reference('photos'), 'label' => true]);
+    $site->saveLayout('album', 'detail', [LayoutSchema::node('section', [], [], [LayoutSchema::node('row', [], [], [LayoutSchema::node('column', [], [], [$gallery])])])]);
+    $ctx = comet_site_test_context($site);
+    $ctx->preview = true;
+    $ctx->annotate = true;
+    $ctx->locale = 'de';
+
+    $html = (new PageRenderer($ctx))->layoutPreview($site->types()['album'], 'detail', $ctx->findEntry('album', 'summer', true));
+
+    assert_true(str_contains($html, '<div class="c-field-label">Fotos</div>'));
+    assert_false(str_contains($html, '<div class="c-field-label">Array</div>'));
 });
 
 test('pages include one hashed viewer module only when enabled while previews remain script free', function (): void {

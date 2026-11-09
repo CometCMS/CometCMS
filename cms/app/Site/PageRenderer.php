@@ -193,6 +193,7 @@ final class PageRenderer
             $original = $entry !== null ? $saved->findEntry($type['name'], (string) ($entry['uid'] ?? $entry['id']), true) : null;
             return (new self($saved))->layoutPreview($type, $variant, $original, $area);
         };
+        $type = $this->localizedType($type);
         $name = (string) $type['name'];
         $entry ??= $this->sampleEntry($type);
         $layout = $this->ctx->layout($name, $variant, $area);
@@ -228,6 +229,7 @@ final class PageRenderer
      */
     public function pagePreview(array $type, array $entry, string $field): string
     {
+        $type = $this->localizedType($type);
         $name = (string) $type['name'];
         $template = $this->pageTemplate($name, 'detail', $entry);
         $layout = $this->ctx->layout($name, 'detail', $template['template']['id']);
@@ -282,6 +284,7 @@ final class PageRenderer
             return (new self($saved))->componentPreview($original, $type, $savedEntry);
         };
         if ($type !== null) {
+            $type = $this->localizedType($type);
             $entry ??= $this->sampleEntry($type);
             $url = $this->ctx->entryUrl((string) $type['name'], $entry) ?? $this->ctx->homeUrl();
             $state = $this->state($entry, $type, $url, 1, $this->entryAlternates($type, $entry));
@@ -302,6 +305,12 @@ final class PageRenderer
             'noindex' => true,
             'body_class' => 'c-view-component-preview' . ($type !== null ? ' c-type-' . $type['name'] : ''),
         ], '<div data-drop-root>' . $html . '</div>', $state, false);
+    }
+
+    /** The builder hands previews the stored schema; rendering needs its labels in the shown language. */
+    private function localizedType(array $type): array
+    {
+        return $this->ctx->type((string) $type['name']) ?? $type;
     }
 
     /**
