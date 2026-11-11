@@ -15,6 +15,12 @@ final class ExternalReadPolicy
         return !empty($schema['api_enabled']);
     }
 
+    public static function allowsAnonymousRead(array $schema): bool
+    {
+        // Submission status and legacy public visibility must never expose form data.
+        return empty($schema['allow_submissions']) && ($schema['visibility'] ?? 'public') !== 'private';
+    }
+
     public static function allowsEntry(array $entry, ContentRepository $content, ContentTypeRepository $types, WorkspaceContext $workspace, ?array $principal, bool $management = false): bool
     {
         $collection = (string) ($entry['collection'] ?? '');
@@ -25,7 +31,7 @@ final class ExternalReadPolicy
         if ((!$management || $principal === null) && !self::apiEnabled($schema)) return false;
         $locale = (string) ($entry['locale'] ?? $content->locale());
         if ($principal === null) {
-            return ($schema['visibility'] ?? 'public') !== 'private' && $content->isPubliclyVisible($entry, $locale);
+            return self::allowsAnonymousRead($schema) && $content->isPubliclyVisible($entry, $locale);
         }
 
         return (new PermissionService())->allows($principal, 'content.read', [

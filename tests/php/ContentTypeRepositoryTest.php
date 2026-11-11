@@ -127,3 +127,16 @@ test('submission-enabled schemas reject unusable fields before changing storage'
         assert_false($types->exists('applications'));
     }
 });
+
+test('submission types default to private and API opt-in preserves their privacy', function (): void {
+    $types = new ContentTypeRepository();
+    $schema = ['name' => 'inquiries', 'allow_submissions' => true, 'fields' => ['email' => ['type' => 'text']]];
+    assert_same('private', $types->normalize('inquiries', $schema)['visibility']);
+    $types->save($schema + ['api_enabled' => true]);
+    assert_same('private', $types->find('inquiries')['visibility']);
+
+    // Partial updates inherit the submission flag before deciding visibility.
+    $types->save(['name' => 'inquiries', 'api_enabled' => true, 'visibility' => 'private', 'fields' => $schema['fields']]);
+    assert_true($types->find('inquiries')['allow_submissions']);
+    assert_same('private', $types->find('inquiries')['visibility']);
+});

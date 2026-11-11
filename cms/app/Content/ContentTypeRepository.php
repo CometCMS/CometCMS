@@ -153,14 +153,14 @@ final class ContentTypeRepository
     private function saveUnlocked(array $schema, array $dropAreas = []): void
     {
         $name = Security::slug((string) ($schema['name'] ?? ''));
-        if (!empty($schema['api_enabled'])) {
-            $schema['visibility'] = 'public';
-        }
         if ($this->isDisabled($name)) throw new ValidationException(['name' => 'Enable the extension before editing this content type.']);
         $previous = $this->exists($name) ? $this->find($name) : null;
         if ($previous !== null && isset($schema['revision']) && $schema['revision'] !== $previous['revision']) throw new \CometCMS\Core\ConflictException();
-        $schema['api_enabled'] ??= $previous['api_enabled'] ?? false;
         $schema['allow_submissions'] ??= $previous['allow_submissions'] ?? false;
+        if (!empty($schema['api_enabled']) && !$schema['allow_submissions']) {
+            $schema['visibility'] = 'public';
+        }
+        $schema['api_enabled'] ??= $previous['api_enabled'] ?? false;
         if (!array_key_exists('submission_settings', $schema)) {
             $schema['submission_settings'] = $previous['submission_settings'] ?? null;
         }
@@ -256,7 +256,7 @@ final class ContentTypeRepository
             'label' => (string) ($schema['label'] ?? ucfirst(str_replace(['-', '_'], ' ', $name))),
             'icon' => $this->normalizeIcon($schema['icon'] ?? 'mdi:file-document-outline'),
             'api_enabled' => (bool) ($schema['api_enabled'] ?? false),
-            'visibility' => ($schema['visibility'] ?? 'public') === 'private' ? 'private' : 'public',
+            'visibility' => ($schema['visibility'] ?? (!empty($schema['allow_submissions']) ? 'private' : 'public')) === 'private' ? 'private' : 'public',
             'hierarchical' => (bool) ($schema['hierarchical'] ?? false),
             'allow_submissions' => (bool) ($schema['allow_submissions'] ?? false),
             'submission_settings' => is_array($schema['submission_settings'] ?? null) ? FormRepository::settings($schema['submission_settings']) : null,

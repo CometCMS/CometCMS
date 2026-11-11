@@ -31,7 +31,8 @@ final class ApiCache
 
     public function key(string $path, string $query): string
     {
-        return hash('sha256', $path . '?' . $query . '|public-v1');
+        // Discard responses cached before submission types were excluded from public reads.
+        return hash('sha256', $path . '?' . $query . '|public-v2');
     }
 
     public function get(string $key): ?array

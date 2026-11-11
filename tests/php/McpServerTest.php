@@ -159,6 +159,52 @@ test('anonymous mcp omits private and unpublished expanded relations', function 
     }
 });
 
+test('anonymous mcp never reads submission types including legacy public schemas and expanded relations', function (): void {
+    $types = new ContentTypeRepository();
+    $store = new \CometCMS\Storage\JsonStore(comet_test_workspace_path() . '/content-types');
+    $content = ContentRepository::make();
+    $types->save(['name' => 'pages', 'api_enabled' => true, 'fields' => [
+        'inquiry' => ['type' => 'relation', 'target' => 'inquiries'],
+        'inquiries' => ['type' => 'relation', 'target' => 'inquiries', 'multiple' => true],
+    ]]);
+    foreach ([false, true] as $enabled) {
+        foreach (['private', 'public'] as $visibility) {
+            foreach (['draft', 'published'] as $status) {
+                $store->write([
+                    'name' => 'inquiries', 'api_enabled' => $enabled, 'visibility' => $visibility, 'allow_submissions' => true,
+                    'submission_settings' => ['status' => $status], 'fields' => ['email' => ['type' => 'text']],
+                ], 'inquiries');
+                $entry = $content->save('inquiries', ['title' => 'Private submission', 'slug' => 'private', 'email' => 'private@example.com', 'status' => $status], ['id' => 'admin'], 'private');
+                $content->save('pages', ['title' => 'Visible', 'slug' => 'visible', 'status' => 'published', 'inquiry' => $entry['id'], 'inquiries' => [$entry['id']]], ['id' => 'admin'], 'visible');
+                [, $listing] = comet_test_mcp_tool(null, 'list_content_types');
+                assert_same(['pages'], array_column($listing['data'], 'name'));
+                foreach (['get_content_type', 'list_entries', 'get_entry'] as $tool) {
+                    [$response, $payload] = comet_test_mcp_tool(null, $tool, ['collection' => 'inquiries', 'identifier' => $entry['id']]);
+                    assert_true($response['result']['isError']);
+                    assert_same($tool === 'get_content_type' || $enabled ? 401 : 404, $payload['error']['status']);
+                    assert_false(isset($payload['data']));
+                }
+                foreach (['list_entries', 'get_entry'] as $tool) {
+                    [, $payload] = comet_test_mcp_tool(null, $tool, ['collection' => 'pages', 'identifier' => 'visible', 'include' => 'inquiry,inquiries']);
+                    $page = $tool === 'list_entries' ? $payload['data'][0] : $payload['data'];
+                    assert_null($page['data']['inquiry']);
+                    assert_same([], $page['data']['inquiries']);
+                    assert_false(str_contains(json_encode($payload), 'private@example.com'));
+                }
+            }
+        }
+    }
+    $token = comet_test_mcp_token([['actions' => ['content.read', 'schema.read'], 'resources' => ['*']]]);
+    foreach (['list_entries', 'get_entry'] as $tool) {
+        [, $payload] = comet_test_mcp_tool($token, $tool, ['collection' => 'inquiries', 'identifier' => $entry['id']]);
+        $submission = $tool === 'list_entries' ? $payload['data'][0] : $payload['data'];
+        assert_same('private@example.com', $submission['data']['email']);
+    }
+    $denied = comet_test_mcp_token([['actions' => ['content.read'], 'resources' => ['content:other:*']]]);
+    [, $payload] = comet_test_mcp_tool($denied, 'get_entry', ['collection' => 'inquiries', 'identifier' => $entry['id']]);
+    assert_same(403, $payload['error']['status']);
+});
+
 test('mcp initialize returns server metadata and capabilities', function (): void {
     $token = comet_test_mcp_token([
         ['actions' => ['schema.read'], 'resources' => ['workspace:default:schema:*']],

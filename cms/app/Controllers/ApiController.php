@@ -91,7 +91,7 @@ final class ApiController
             if (!ExternalReadPolicy::apiEnabled($type)) {
                 return false;
             }
-            if (($type['visibility'] ?? 'public') !== 'private') {
+            if (ExternalReadPolicy::allowsAnonymousRead($type)) {
                 return true;
             }
 
@@ -118,7 +118,7 @@ final class ApiController
             $this->response->error('not_found', 'Content type is not exposed through the API.', 404);
         }
 
-        if (($schema['visibility'] ?? 'public') === 'private') {
+        if (!ExternalReadPolicy::allowsAnonymousRead($schema)) {
             $this->requireToken('schema.read', ['type' => 'schema', 'name' => $name]);
             $this->http->json(['data' => $schema]);
         }
@@ -201,7 +201,7 @@ final class ApiController
         $this->requireCollection($collection);
         $schema = $this->types->find($collection);
 
-        $this->readPrincipal = ($schema['visibility'] ?? 'public') === 'private'
+        $this->readPrincipal = !ExternalReadPolicy::allowsAnonymousRead($schema)
             ? $this->requireToken('content.read', ['type' => 'content', 'collection' => $collection])
             : $this->optionalTokenWithPermission('content.read', ['type' => 'content', 'collection' => $collection]);
         $admin = $this->readPrincipal !== null;
@@ -227,7 +227,7 @@ final class ApiController
         $user = null;
         $token = $this->bearerToken();
 
-        if ($token === null && ($schema['visibility'] ?? 'public') === 'private') {
+        if ($token === null && !ExternalReadPolicy::allowsAnonymousRead($schema)) {
             $this->response->error('unauthorized', 'This content type requires a bearer token.', 401);
         }
 

@@ -267,7 +267,7 @@ final class McpServer
     private function listContentTypes(): array
     {
         $this->requirePermission('list_content_types', []);
-        return ['data' => array_values(array_filter($this->types->all(), fn(array $type): bool => $this->principal !== [] || (ExternalReadPolicy::apiEnabled($type) && ($type['visibility'] ?? 'public') !== 'private')))];
+        return ['data' => array_values(array_filter($this->types->all(), fn(array $type): bool => $this->principal !== [] || (ExternalReadPolicy::apiEnabled($type) && ExternalReadPolicy::allowsAnonymousRead($type))))];
     }
 
     private function getContentType(array $args): array
@@ -633,7 +633,7 @@ final class McpServer
         }
         if ($this->principal === []) {
             $schema = isset($args['collection']) ? $this->types->find((string) $args['collection']) : null;
-            if ($this->toolSchemas()[$tool]['annotations']['readOnlyHint'] && ($schema['visibility'] ?? 'public') !== 'private') {
+            if ($this->toolSchemas()[$tool]['annotations']['readOnlyHint'] && ($schema === null || ExternalReadPolicy::allowsAnonymousRead($schema))) {
                 return;
             }
 

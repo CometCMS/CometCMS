@@ -164,3 +164,76 @@ test('API exposure controls schema discovery collection reads and individual ent
     assert_same('not_found', comet_api_exposure_test_request(true, 'contentShow', 'draft')['error']['code']);
     assert_same('not_found', comet_api_exposure_test_request(true, 'contentShow', 'protected')['error']['code']);
 });
+
+/** Seed a legacy public submission schema without going through save-time defaults. */
+function comet_api_submission_privacy_request(string $method, bool $enabled = true, string $visibility = 'public', string $status = 'published', ?bool $authorized = null, bool $related = false): array
+{
+    $schema = [
+        'name' => 'inquiries', 'api_enabled' => $enabled, 'visibility' => $visibility, 'allow_submissions' => true,
+        'submission_settings' => ['status' => $status],
+        'fields' => ['email' => ['type' => 'text'], 'message' => ['type' => 'textarea']],
+    ];
+    $collection = $related ? 'pages' : 'inquiries';
+    $arguments = $method === 'contentTypes' ? '' : var_export($collection, true) . ($method === 'contentShow' ? ', "visible"' : '');
+    $output = comet_test_run_php(['-r',
+        comet_api_controller_test_bootstrap_require_snippet() .
+        'comet_test_reset_storage();' .
+        '(new \\CometCMS\\Storage\\JsonStore(comet_test_workspace_path() . "/content-types"))->write(' . var_export($schema, true) . ', "inquiries");' .
+        '$content = \\CometCMS\\Content\\ContentRepository::make();' .
+        '$entry = $content->save("inquiries", ["title" => "Private submission", "slug" => "visible", "email" => "private@example.com", "message" => "Confidential message", "status" => ' . var_export($status, true) . '], ["id" => "admin"]);' .
+        '(new \\CometCMS\\Content\\ContentTypeRepository())->save(["name" => "pages", "api_enabled" => true, "fields" => ["inquiry" => ["type" => "relation", "target" => "inquiries"], "inquiries" => ["type" => "relation", "target" => "inquiries", "multiple" => true]]]);' .
+        '$content->save("pages", ["title" => "Visible", "slug" => "visible", "status" => "published", "inquiry" => $entry["id"], "inquiries" => [$entry["id"]]], ["id" => "admin"]);' .
+        ($authorized === null ? '' :
+            '$plain = (new \\CometCMS\\Auth\\ApiTokenRepository())->create("reader", "", [["effect" => "allow", "actions" => ["content.read", "schema.read"], "resources" => [' . var_export($authorized ? '*' : 'content:other:*', true) . ']]]);' .
+            '$_SERVER["HTTP_AUTHORIZATION"] = "Bearer " . $plain;') .
+        '$_GET = ["include" => "inquiry,inquiries"];' .
+        '$_SERVER["REQUEST_METHOD"] = "GET";' .
+        '$_SERVER["REQUEST_URI"] = ' . var_export('/api/v1/workspaces/default/content/' . $collection, true) . ';' .
+        '$_SERVER["SCRIPT_NAME"] = "/index.php";' .
+        // Simulate a response from before the fix containing an expanded submission.
+        '$_SERVER["QUERY_STRING"] = "include=inquiry,inquiries";' .
+        '(\\CometCMS\\Cache\\ApiCache::fromConfig())->put(hash("sha256", $_SERVER["REQUEST_URI"] . "?" . $_SERVER["QUERY_STRING"] . "|public-v1"), ["data" => [["email" => "private@example.com"]]]);' .
+        '(new \\CometCMS\\Controllers\\ApiController(new \\CometCMS\\Core\\Http()))->useWorkspace("default")->' . $method . '(' . $arguments . ');'
+    ]);
+    return json_decode($output, true, flags: JSON_THROW_ON_ERROR);
+}
+
+test('anonymous API never exposes submission schemas or entries regardless of exposure visibility or status', function (): void {
+    foreach ([false, true] as $enabled) {
+        foreach (['private', 'public'] as $visibility) {
+            foreach (['draft', 'published'] as $status) {
+                $listing = comet_api_submission_privacy_request('contentTypes', $enabled, $visibility, $status);
+                assert_same(['pages'], array_column($listing['data'], 'name'));
+                foreach (['contentTypeShow', 'contentIndex', 'contentShow'] as $method) {
+                    $payload = comet_api_submission_privacy_request($method, $enabled, $visibility, $status);
+                    assert_same($enabled ? 'unauthorized' : 'not_found', $payload['error']['code']);
+                    assert_false(isset($payload['data']));
+                }
+            }
+        }
+    }
+});
+
+test('anonymous API relation expansion cannot expose published submissions', function (): void {
+    foreach (['contentIndex', 'contentShow'] as $method) {
+        $payload = comet_api_submission_privacy_request($method, related: true);
+        $entry = $method === 'contentIndex' ? $payload['data'][0] : $payload['data'];
+        assert_same('Visible', $entry['title']);
+        assert_null($entry['data']['inquiry']);
+        assert_same([], $entry['data']['inquiries']);
+        assert_false(str_contains(json_encode($payload), 'private@example.com'));
+    }
+});
+
+test('API submission reads still require a token with the appropriate permission', function (): void {
+    foreach (['contentTypeShow', 'contentIndex', 'contentShow'] as $method) {
+        $allowed = comet_api_submission_privacy_request($method, authorized: true);
+        assert_true(isset($allowed['data']));
+        if ($method !== 'contentTypeShow') {
+            $entry = $method === 'contentIndex' ? $allowed['data'][0] : $allowed['data'];
+            assert_same('private@example.com', $entry['data']['email']);
+        }
+        $denied = comet_api_submission_privacy_request($method, authorized: false);
+        assert_same('forbidden', $denied['error']['code']);
+    }
+});
