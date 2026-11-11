@@ -1,0 +1,12 @@
+<div class="cometcms-download cometcms-download--{{align}}">
+  <div class="cometcms-download__items">
+    {{#downloads}}{{#link}}
+    <div class="cometcms-download__item" data-os="{{os}}" style="--cometcms-download-accent: {{accent}}">
+      <a class="cometcms-download__button" href="{{link}}">{{label}}</a>
+      {{#caption}}<p class="cometcms-download__caption">{{caption}}</p>{{/caption}}
+      {{#recommended_label}}<p class="cometcms-download__recommended" data-recommended hidden>{{recommended_label}}</p>{{/recommended_label}}
+    </div>
+    {{/link}}{{/downloads}}
+  </div>
+  <p class="cometcms-download__empty">{{empty_label}}</p>
+</div>

@@ -1,0 +1,57 @@
+.c-block-cometcms__os-download .cometcms-download__items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md, 1rem);
+}
+.c-block-cometcms__os-download .cometcms-download--center .cometcms-download__items {
+  justify-content: center;
+}
+.c-block-cometcms__os-download .cometcms-download--right .cometcms-download__items {
+  justify-content: flex-end;
+}
+.c-block-cometcms__os-download .cometcms-download__item {
+  min-width: 0;
+  max-width: 100%;
+  text-align: center;
+}
+.c-block-cometcms__os-download :where(.cometcms-download__button) {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  box-sizing: border-box;
+  min-height: 2.75rem;
+  max-width: 100%;
+  padding: 0.75rem 1.25rem;
+  border: 2px solid var(--cometcms-download-accent, var(--cometcms-accent));
+  border-radius: var(--radius-button, var(--cometcms-radius));
+  color: inherit;
+  background: transparent;
+  font-weight: 600;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+.c-block-cometcms__os-download :where(.cometcms-download__item[data-matched] .cometcms-download__button) {
+  background: var(--cometcms-download-accent, var(--cometcms-accent));
+  color: var(--c-on-primary, #fff);
+}
+.c-block-cometcms__os-download .cometcms-download__button:hover {
+  text-decoration: underline;
+}
+.c-block-cometcms__os-download .cometcms-download__button:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 4px;
+}
+.c-block-cometcms__os-download .cometcms-download__caption,
+.c-block-cometcms__os-download .cometcms-download__recommended {
+  margin: 0.5rem 0 0;
+  font-size: 0.875em;
+}
+.c-block-cometcms__os-download .cometcms-download__recommended {
+  font-weight: 600;
+}
+.c-block-cometcms__os-download [hidden] {
+  display: none;
+}
+.c-block-cometcms__os-download .cometcms-download__items:has(.cometcms-download__item) + .cometcms-download__empty {
+  display: none;
+}

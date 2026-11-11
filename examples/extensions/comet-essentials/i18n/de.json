@@ -1,5 +1,5 @@
 {
-  "description": "Vorher/Nachher-Vergleiche, Testimonials, Hinweise, Karten, Logoleisten, Features, Preise, Landkarten, Slideshows, Statistiken und vertikaler Text für jedes Theme.",
+  "description": "Vorher/Nachher-Vergleiche, Testimonials, Hinweise, Karten, Logoleisten, Features, Preise, Landkarten, OS-Download-Buttons, Slideshows, Statistiken und vertikaler Text für jedes Theme.",
   "settings": {
     "tile_url": {
       "label": "Kachelserver für Karten",
@@ -135,6 +135,65 @@
     },
     "vertical-text": {
       "title": "Vertikaler Text"
+    },
+    "os-download": {
+      "title": "OS-Download",
+      "description": "Download-Buttons mit betriebssystemspezifischen Beschriftungen, Links und Farben.",
+      "props": {
+        "downloads": {
+          "label": "Downloads",
+          "fields": {
+            "os": {
+              "label": "Betriebssystem",
+              "options": {
+                "windows": "Windows",
+                "macos": "macOS",
+                "linux": "Linux",
+                "android": "Android",
+                "ios": "iOS / iPadOS",
+                "chromeos": "ChromeOS",
+                "other": "Andere / unbekannt"
+              }
+            },
+            "label": {
+              "label": "Button-Text"
+            },
+            "caption": {
+              "label": "Beschriftung"
+            },
+            "link": {
+              "label": "Download-Link"
+            },
+            "accent": {
+              "label": "Button-Akzentfarbe"
+            }
+          }
+        },
+        "display": {
+          "label": "Anzeige",
+          "group": "Darstellung",
+          "options": {
+            "all": "Alle Downloads, passendes OS hervorheben",
+            "matched": "Nur passendes OS"
+          },
+          "help": "Ohne passenden Download-Link bleiben alle Links sichtbar. Die Erkennung benötigt JavaScript."
+        },
+        "align": {
+          "label": "Ausrichtung",
+          "group": "Darstellung",
+          "options": {
+            "left": "Links",
+            "center": "Zentriert",
+            "right": "Rechts"
+          }
+        },
+        "recommended_label": {
+          "label": "Hinweis für passendes OS"
+        },
+        "empty_label": {
+          "label": "Leertext"
+        }
+      }
     }
   }
 }

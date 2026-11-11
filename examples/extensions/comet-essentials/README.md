@@ -1,6 +1,6 @@
 # Comet Essentials
 
-The CometCMS builder extension: Before / after, Callout, Card, Logo bar, Feature, Maps, Pricing plan, Slideshow, Stats, Testimonial and Vertical Text. Extension ID: `cometcms/essentials`.
+The CometCMS builder extension: Before / after, Callout, Card, Logo bar, Feature, Maps, OS Download, Pricing plan, Slideshow, Stats, Testimonial and Vertical Text. Extension ID: `cometcms/essentials`.
 
 Validate and extension from the repository root:
 
@@ -9,7 +9,7 @@ npm run extensions -- validate examples/extensions/comet-essentials
 npm run extensions -- pack examples/extensions/comet-essentials examples/extensions/comet-essentials.zip
 ```
 
-Install the ZIP in **Website Settings → Extensions**. Before / after, Logo bar, Maps, Slideshow and Stats include JavaScript, which an administrator must allow during installation.
+Install the ZIP in **Website Settings → Extensions**. Before / after, Logo bar, Maps, OS Download, Slideshow and Stats include JavaScript, which an administrator must allow during installation.
 
 The Style controls apply to each block wrapper. Main surfaces use overridable background defaults, text inherits the wrapper color, and link defaults yield to the Link color control. Internal accents and map viewports retain their own colors. Reinstall the extension ZIP to update an existing installation.
 
@@ -30,5 +30,7 @@ Logo bar scrolls logos infinitely to the left or right, with configurable speed,
 Slideshow overlays titles, captions, links and navigation on the slide images, with a dark gradient for readability. Slides without images use the block background. Long captions expand the slide, and slide selectors scroll horizontally on narrow screens. Autoplay has a **Pause on hover** toggle, enabled by default; leaving the slideshow resumes rotation. Keyboard focus and manual navigation stop autoplay for that instance, and reduced-motion preferences suppress it. Slide changes are announced to screen readers without a visible counter or play/pause button.
 
 Vertical Text displays a heading rotated 90° clockwise (top to bottom), 90° counterclockwise (bottom to top), or stacked with upright letters. Choose H1–H6 and left, center or right alignment. It uses the theme's heading typography and the standard Style controls. Text is translatable and bindable, and remains one readable text node for screen readers, copying and search. Spaces become gaps between words in stacked mode. No JavaScript is needed.
+
+OS Download provides a list of download buttons, each with an operating system, editable button label, optional caption, shared link picker and accent color. Add the Windows, Mac and Linux download URLs to the default entries; Android, iOS / iPadOS, ChromeOS and other / unknown are also supported. Multiple entries can target the same OS, for example separate Linux packages. **All downloads** highlights matches with a filled button and an editable recommendation label. **Matching OS only** hides alternatives when a linked entry matches. Detection runs locally, is best effort, and makes no network requests. Unknown or unconfigured platforms, disabled JavaScript and denied script permission leave all configured links visible. Entries without links are omitted. Builder previews detect the browser’s OS too.
 
 The root `icon.png` is the full-color icon shown in the Extensions list. It is a transparent 192×192 PNG below 64 KiB.

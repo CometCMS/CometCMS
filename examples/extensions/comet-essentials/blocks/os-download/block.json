@@ -1,0 +1,41 @@
+{
+  "title": "OS Download",
+  "description": "Download buttons with OS-specific labels, captions, links and colors. Highlights or shows the visitor's matching platform.",
+  "icon": "mdi:download-outline",
+  "keywords": ["download", "windows", "linux", "mac", "operating system", "button"],
+  "props": {
+    "downloads": {
+      "type": "list", "label": "Downloads", "max": 20,
+      "fields": {
+        "os": {
+          "type": "enum", "label": "Operating system",
+          "options": ["windows", "macos", "linux", "android", "ios", "chromeos", "other"],
+          "option_labels": {"windows": "Windows", "macos": "macOS", "linux": "Linux", "android": "Android", "ios": "iOS / iPadOS", "chromeos": "ChromeOS", "other": "Other / unknown"},
+          "default": "windows"
+        },
+        "label": {"type": "string", "label": "Button label", "max": 120, "default": "Download"},
+        "caption": {"type": "string", "label": "Caption", "max": 200},
+        "link": {"type": "link", "label": "Download link"},
+        "accent": {"type": "color", "label": "Button accent", "default": "primary"}
+      },
+      "default": [
+        {"os": "windows", "label": "Download for Windows", "caption": "Windows 10 or later", "accent": "primary"},
+        {"os": "macos", "label": "Download for Mac", "caption": "macOS", "accent": "primary"},
+        {"os": "linux", "label": "Download for Linux", "caption": "Linux", "accent": "primary"}
+      ]
+    },
+    "display": {
+      "type": "enum", "label": "Display", "group": "Appearance",
+      "options": ["all", "matched"], "default": "all",
+      "option_labels": {"all": "All downloads, highlight matching OS", "matched": "Matching OS only"},
+      "help": "If no linked download matches, all linked downloads stay visible. Detection requires JavaScript."
+    },
+    "align": {
+      "type": "enum", "label": "Alignment", "group": "Appearance",
+      "options": ["left", "center", "right"], "default": "left",
+      "option_labels": {"left": "Left", "center": "Center", "right": "Right"}
+    },
+    "recommended_label": {"type": "string", "label": "Matching OS label", "max": 100, "default": "Recommended for your device"},
+    "empty_label": {"type": "string", "label": "Empty message", "max": 200, "default": "Add download links to enable these buttons."}
+  }
+}
