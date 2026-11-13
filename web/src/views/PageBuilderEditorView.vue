@@ -129,7 +129,7 @@
       <div v-if="switchingSlow" class="builder-progress pointer-events-none absolute inset-x-0 bottom-0 h-0.5 overflow-hidden" role="progressbar" :aria-label="t('site.builder.switching')"></div>
     </header>
 
-    <!-- The scope itself is the subtitle's hint; only what keeps an entry from being designed here takes a row. -->
+    <!-- Shared layouts always take a row, since edits reach every entry using them; it also says what keeps an entry from being designed here. -->
     <div v-if="scopeBar?.note" role="note" class="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-amber-200 bg-amber-50 px-4 py-1.5 text-xs text-amber-800">
       <Icon icon="mdi:information-outline" class="h-4 w-4 shrink-0" aria-hidden="true" />
       <p class="min-w-0 flex-1 basis-64">{{ scopeBar.note }}</p>
@@ -1003,12 +1003,14 @@ const scopeBar = computed(() => {
   if (target.value !== "layout" || variant.value !== "detail") return null;
   const live = liveTemplate.value;
   const elsewhere = !pageView.value && entrySide.value && live && live !== editedTemplate.value;
+  const type = builder.type.value?.label ?? name.value;
   return {
     kind: "template",
     icon: "mdi:page-layout-header-footer",
     title: t("site.scope.sharedLayout"),
-    text: t(builder.placedPageFields().length ? "site.scope.templateWithPages" : "site.scope.templateText", { type: builder.type.value?.label ?? name.value }),
-    note: entrySide.value?.unavailable ?? "",
+    text: t(builder.placedPageFields().length ? "site.scope.templateWithPages" : "site.scope.templateText", { type }),
+    // A shared layout always says so: edits here reach every entry that uses it.
+    note: [t("site.scope.templateText", { type }), entrySide.value?.unavailable].filter(Boolean).join(" "),
     actions: pageView.value
       ? [{ key: "page", icon: "mdi:arrow-right", label: t("site.scope.toPage", { title: pageView.value.entryTitle }), run: () => goToView(pageView.value) }]
       : elsewhere
