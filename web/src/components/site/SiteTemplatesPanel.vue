@@ -30,11 +30,11 @@
       <div class="min-w-0">
         <div class="mb-2 flex items-center justify-between gap-2">
           <h3 class="text-xs font-semibold text-slate-700">{{ t("site.templates.order") }}</h3>
-          <button type="button" class="btn-secondary btn-sm" :disabled="list.length >= MAX_TEMPLATES" @click="nameDialog = { mode: 'new' }">
+          <button v-if="multiple" type="button" class="btn-secondary btn-sm" :disabled="list.length >= MAX_TEMPLATES" @click="nameDialog = { mode: 'new' }">
             <Icon icon="mdi:plus" class="h-4 w-4" aria-hidden="true" />{{ t("site.templates.new") }}
           </button>
         </div>
-        <p class="mb-3 text-xs text-slate-500">{{ t(selectedVariant === "detail" ? "site.templates.orderHint" : "site.templates.orderHintIndex") }}</p>
+        <p class="mb-3 text-xs text-slate-500">{{ t(multiple ? "site.templates.orderHint" : "site.templates.singleHint") }}</p>
         <ol class="space-y-1.5" :aria-label="t('site.templates.order')">
           <li
             v-for="(template, index) in list"
@@ -71,7 +71,7 @@
           <button v-if="!isDefault(selected)" type="button" class="btn-secondary btn-sm" @click="nameDialog = { mode: 'rename' }">
             <Icon icon="mdi:form-textbox" class="h-4 w-4" aria-hidden="true" />{{ t("site.templates.rename") }}
           </button>
-          <button type="button" class="btn-secondary btn-sm" :disabled="list.length >= MAX_TEMPLATES" @click="nameDialog = { mode: 'duplicate' }">
+          <button v-if="multiple" type="button" class="btn-secondary btn-sm" :disabled="list.length >= MAX_TEMPLATES" @click="nameDialog = { mode: 'duplicate' }">
             <Icon icon="mdi:content-copy" class="h-4 w-4" aria-hidden="true" />{{ t("site.templates.duplicate") }}
           </button>
           <button v-if="!isDefault(selected)" type="button" class="btn-danger-subtle btn-sm" @click="deleteOpen = true">
@@ -158,11 +158,10 @@
           </div>
         </div>
 
-        <!-- When the template applies. -->
-        <div class="rounded-xl border border-slate-200 p-4">
+        <!-- When the template applies (list pages have only the default, which always does). -->
+        <div v-if="multiple" class="rounded-xl border border-slate-200 p-4">
           <h4 class="text-xs font-semibold text-slate-700">{{ t("site.templates.conditions") }}</h4>
           <p v-if="isDefault(selected)" class="mt-1 text-xs text-slate-500">{{ t("site.templates.defaultHint") }}</p>
-          <p v-else-if="selectedVariant !== 'detail'" class="mt-1 text-xs text-slate-500">{{ t("site.templates.indexConditionsHint") }}</p>
           <template v-else>
             <p class="mt-1 text-xs text-slate-500">{{ selected.conditions.length ? t("site.templates.conditionsHint") : t("site.templates.noConditionsHint") }}</p>
             <ul class="mt-3 space-y-2">
@@ -270,7 +269,7 @@ import { previewCache, templatePreview } from "../../composables/templatePreview
 import { api } from "../../api/index.js";
 import {
   DEFAULT_TEMPLATE, FRAME_DEFAULT, FRAME_NONE, MAX_CONDITIONS, MAX_TEMPLATES,
-  conditionFields, conditionLabel, conditionOps, conditionValueOptions, frameComponents, frameLabel, initialConditionValue, needsValue, parseConditionValue,
+  allowsTemplates, conditionFields, conditionLabel, conditionOps, conditionValueOptions, frameComponents, frameLabel, initialConditionValue, needsValue, parseConditionValue,
   templateList, templateName, withTemplate, withTemplateMoved, withoutTemplate,
 } from "../../composables/templates.js";
 import { useSiteStore } from "../../stores/site.js";
@@ -306,6 +305,8 @@ watch(variants, (available) => {
 }, { immediate: true });
 
 const schema = computed(() => types.value.find((type) => type.name === selectedType.value) ?? null);
+/** List pages have one layout; only entry pages choose between several. */
+const multiple = computed(() => allowsTemplates(selectedVariant.value));
 const list = computed(() => templateList(site.draft?.templates, selectedType.value, selectedVariant.value));
 const selectedId = ref(typeof route.query.template === "string" ? route.query.template : DEFAULT_TEMPLATE);
 const selected = computed(() => list.value.find((template) => template.id === selectedId.value) ?? list.value[list.value.length - 1]);

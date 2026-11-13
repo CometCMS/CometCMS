@@ -104,14 +104,18 @@ test('saving templates rejects unknown parts and conditions that do not fit', fu
         ['blog' => ['detail' => [comet_template_test('a', [], [['field' => 'author', 'op' => 'equals', 'value' => 'ada']])]]],
         ['blog' => ['detail' => [comet_template_test('a', [], [['field' => 'category', 'op' => 'equals', 'value' => ['tips']]])]]],
         ['blog' => ['detail' => [SiteRepository::defaultTemplate() + ['conditions' => []], comet_template_test('default', [], [['field' => 'body', 'op' => 'empty']])]]],
-        ['blog' => ['index' => [comet_template_test('a', [], [['field' => 'body', 'op' => 'empty']])]]],
+        ['blog' => ['index' => [comet_template_test('a'), $default]]],
     ] as $templates) {
         assert_throws(ValidationException::class, fn() => $site->saveTemplates($templates), json_encode($templates));
     }
 
     // Unknown keys are dropped and the default template moves last.
-    $saved = $site->saveTemplates(['blog' => ['index' => [$default, comet_template_test('a', ['header' => $blog['id'], 'content' => 'default', 'sidebar' => 'none'])]]]);
-    assert_same([comet_template_test('a', ['header' => $blog['id']]), $default], $saved['blog']['index']);
+    $saved = $site->saveTemplates(['blog' => ['detail' => [$default, comet_template_test('a', ['header' => $blog['id'], 'content' => 'default', 'sidebar' => 'none'])]]]);
+    assert_same([comet_template_test('a', ['header' => $blog['id']]), $default], $saved['blog']['detail']);
+    // List pages have one layout: the default, whose header and footer can still change.
+    $saved = $site->saveTemplates(['blog' => ['index' => [SiteRepository::defaultTemplate(['header' => $blog['id']])]]]);
+    assert_same([SiteRepository::defaultTemplate(['header' => $blog['id']])], $saved['blog']['index']);
+    assert_throws(ValidationException::class, fn() => $site->createTemplate('blog', 'index', 'Second'));
     // Components fit every type, so another type's section works as a footer.
     $saved = $site->saveTemplates(['blog' => ['detail' => [comet_template_test('a', ['footer' => $about['id']]), $default]]]);
     assert_same($about['id'], $saved['blog']['detail'][0]['footer']);

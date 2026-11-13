@@ -502,7 +502,8 @@ final class SiteRepository
      * a header, its own content area (stored under its id, see layout()) and
      * a footer, and says when it applies. The first one whose conditions
      * match an entry is used. The last one is the default: it has no
-     * conditions and always applies.
+     * conditions and always applies. List pages have no entry to choose by,
+     * so they have only the default, like the site's region pages.
      *
      * @return list<array{id: string, name: string, conditions: list<array{field: string, op: string, value: mixed}>, header: string, footer: string}>
      */
@@ -601,6 +602,7 @@ final class SiteRepository
     {
         $schema = $this->requireType($type);
         $this->assertVariant($schema, $variant);
+        if ($variant !== 'detail') throw new ValidationException(['name' => 'List pages have one layout.']);
         $name = mb_substr(trim(is_string($name) ? $name : ''), 0, 120);
         if ($name === '') throw new ValidationException(['name' => 'Name the template.']);
 
@@ -731,6 +733,10 @@ final class SiteRepository
                 continue;
             }
             $seen[$id] = true;
+            if ($id !== self::DEFAULT_TEMPLATE && $variant !== 'detail') {
+                $fail('List pages have one layout.');
+                continue;
+            }
             $name = mb_substr(trim(is_string($template['name'] ?? null) ? $template['name'] : ''), 0, 120);
             if ($name === '' && $id !== self::DEFAULT_TEMPLATE) {
                 $fail('Name the template.');
@@ -749,7 +755,7 @@ final class SiteRepository
             $normalized = [
                 'id' => $id,
                 'name' => $name,
-                'conditions' => $this->normalizeConditions($schema, $variant, $template['conditions'] ?? [], $strict, $id === self::DEFAULT_TEMPLATE),
+                'conditions' => $this->normalizeConditions($schema, $template['conditions'] ?? [], $strict, $id === self::DEFAULT_TEMPLATE),
                 'header' => $parts['header'],
                 'footer' => $parts['footer'],
             ];
@@ -763,7 +769,7 @@ final class SiteRepository
         return [...$others, $default ?? self::defaultTemplate()];
     }
 
-    private function normalizeConditions(array $schema, string $variant, mixed $conditions, bool $strict, bool $default): array
+    private function normalizeConditions(array $schema, mixed $conditions, bool $strict, bool $default): array
     {
         if ($conditions === [] || $conditions === null) return [];
         $fail = static function (string $message) use ($strict): array {
@@ -771,7 +777,6 @@ final class SiteRepository
             return [];
         };
         if ($default) return $fail('The default template applies to everything; it has no conditions.');
-        if ($variant !== 'detail') return $fail('List pages have no entry, so their templates have no conditions.');
         if (!is_array($conditions) || !array_is_list($conditions) || count($conditions) > self::MAX_CONDITIONS) return $fail('Invalid conditions.');
 
         $result = [];

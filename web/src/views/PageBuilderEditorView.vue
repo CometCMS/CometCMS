@@ -430,7 +430,7 @@ import { useBuilderPanels } from "../composables/useBuilderPanels.js";
 import { useBuilderEntry } from "../composables/useBuilderEntry.js";
 import { usePermissions } from "../composables/usePermissions.js";
 import { MODAL, findNode } from "../composables/layoutTree.js";
-import { DEFAULT_TEMPLATE, FRAME_DEFAULT, FRAME_NONE, FRAME_REGIONS, frameComponents, templateById, templateList, templateName, usesTemplates, withTemplate } from "../composables/templates.js";
+import { DEFAULT_TEMPLATE, FRAME_DEFAULT, allowsTemplates, FRAME_NONE, FRAME_REGIONS, frameComponents, templateById, templateList, templateName, usesTemplates, withTemplate } from "../composables/templates.js";
 import { useUnsavedChangesGuard } from "../composables/useUnsavedChangesGuard.js";
 import { useAuthStore } from "../stores/auth.js";
 import { useSiteStore } from "../stores/site.js";
@@ -1139,7 +1139,8 @@ const showsTemplates = computed(() => !!frameLayout.value && usesTemplates(site.
 /** The layout breadcrumb's menu, for layouts and entry pages. */
 const templateMenu = computed(() => {
   const layout = frameLayout.value;
-  if (!layout || !canEditLayouts.value) return null;
+  // List pages have one layout, like the site's region pages: nothing to switch between.
+  if (!layout || !canEditLayouts.value || !allowsTemplates(layout.variant)) return null;
   // Until the first preview says why, a layout names the template it edits.
   const edited = target.value === "layout" ? templateById(site.draft?.templates, layout.type, layout.variant, editedTemplate.value) : null;
   return {

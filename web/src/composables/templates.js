@@ -21,10 +21,16 @@ export function defaultTemplate() {
   return { id: DEFAULT_TEMPLATE, name: 'Default', conditions: [], header: FRAME_DEFAULT, footer: FRAME_DEFAULT }
 }
 
+/** Whether a page kind can have templates besides the default. List pages have no entry to choose by, so they have one layout. */
+export function allowsTemplates(variant) {
+  return variant === 'detail'
+}
+
 /** A page kind's templates in order, the default last. */
 export function templateList(templates, type, variant) {
   const list = templates?.[type]?.[variant]
-  return Array.isArray(list) && list.length ? list : [defaultTemplate()]
+  if (!Array.isArray(list) || !list.length) return [defaultTemplate()]
+  return allowsTemplates(variant) ? list : [list.find((template) => template.id === DEFAULT_TEMPLATE) ?? defaultTemplate()]
 }
 
 /**
