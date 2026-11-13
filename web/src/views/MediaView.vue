@@ -430,7 +430,7 @@
             <div
               v-for="(file, fileIndex) in files"
               :key="file.name"
-              class="group grid gap-3 border-b border-slate-100 bg-white p-3 last:border-b-0 sm:grid-cols-[2rem_4rem_minmax(0,1fr)_8rem_8rem_3rem] sm:items-center"
+              class="group grid gap-3 border-b border-slate-100 bg-white p-3 last:border-b-0 sm:grid-cols-[1.25rem_4rem_minmax(0,1fr)_3.5rem_5.5rem_2.5rem] sm:items-center"
               :class="{
                 'opacity-50': draggedFile?.name === file.name,
                 'ring-2 ring-inset ring-theme-500': isSelected(file),
@@ -467,7 +467,7 @@
               <div class="min-w-0">
                 <button
                   type="button"
-                  class="max-w-full truncate text-left text-sm font-medium text-slate-800 hover:text-theme-700"
+                  class="line-clamp-2 w-full text-left text-sm font-medium text-slate-800 [overflow-wrap:anywhere] hover:text-theme-700"
                   :title="file.name"
                   @click="openDetail(file)"
                 >
@@ -483,10 +483,11 @@
                   {{ file.category || t("media.noCategory") }}
                 </p>
               </div>
-              <span class="text-sm text-slate-500">{{
-                fileTypeLabel(file)
-              }}</span>
-              <span class="text-sm text-slate-500">{{
+              <span
+                class="truncate text-sm text-slate-500"
+                :title="fileTypeLabel(file)"
+              >{{ fileTypeLabel(file) }}</span>
+              <span class="whitespace-nowrap text-sm tabular-nums text-slate-500 sm:text-right">{{
                 formatBytes(file.size)
               }}</span>
               <div class="flex items-center gap-2 sm:justify-end">
