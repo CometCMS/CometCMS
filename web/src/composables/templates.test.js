@@ -14,6 +14,8 @@ describe('templates', () => {
   it('starts every page kind with the default template', () => {
     expect(templateList({}, 'blog', 'detail')).toEqual([defaultTemplate()])
     expect(templateList({ blog: { detail: [tips, defaultTemplate()] } }, 'blog', 'detail')).toEqual([tips, defaultTemplate()])
+    // List pages have one layout: stored extras are ignored.
+    expect(templateList({ blog: { index: [tips, defaultTemplate()] } }, 'blog', 'index')).toEqual([defaultTemplate()])
     expect(templateById({}, 'blog', 'detail', 'missing').id).toBe(DEFAULT_TEMPLATE)
   })
 
