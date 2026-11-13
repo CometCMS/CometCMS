@@ -265,11 +265,11 @@ async function searchEntries(needle, generation) {
     if (response.status !== "fulfilled") return [];
     const type = types[i];
     return (response.value.data ?? []).map((entry) => ({
-      id: `entry:${type.name}:${entry.id}`,
+      id: `entry:${type.name}:${entry.uid || entry.id}`,
       label: entry.title || entry.slug || entry.id,
       hint: type.label,
       icon: contentTypeIcon(type),
-      to: `/content/${type.name}/${entry.id}`,
+      to: `/content/${type.name}/${entry.uid || entry.id}`,
     }));
   });
   searching.value = false;

@@ -56,7 +56,7 @@
         <SplitButton
           v-if="canSaveEntry"
           type="submit"
-          :disabled="saving"
+          :disabled="saving || !formLoaded"
           form="entry-form"
           :menu-label="t('common.moreActions')"
           :items="saveMenuItems"
@@ -1333,7 +1333,7 @@ onMounted(async () => {
 
   await nextTick();
   newEntryBaseline.value = cloneLocaleValue(form.value);
-  formLoaded.value = true;
+  formLoaded.value = !loadError.value;
 });
 
 onBeforeUnmount(() => {
