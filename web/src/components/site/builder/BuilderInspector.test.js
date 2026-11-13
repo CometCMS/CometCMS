@@ -56,6 +56,19 @@ describe('template part inspector', () => {
     expect(html).toContain(t('site.frame.editComponent', { name: 'Blog header' }))
   })
 
+  it('shows an entry page header read-only, to be changed in its layout', async () => {
+    const frame = { value: 'blog-header', components: [{ id: 'blog-header', name: 'Blog header' }], scope: 'Default layout', readOnly: true }
+    const app = createSSRApp({ setup() {
+      createSiteBuilder({ t })
+      return () => h(BuilderInspector, { templatePart: 'header', frame })
+    } })
+    const html = await renderToString(app)
+    expect(html).not.toContain('builder-frame-assign')
+    expect(html).toContain('Blog header')
+    expect(html).toContain(t('site.frame.readOnly', { scope: frame.scope }))
+    expect(html).toContain(t('site.frame.changeInLayout'))
+  })
+
   it('offers no edit button for a removed footer', async () => {
     const app = createSSRApp({ setup() {
       createSiteBuilder({ t })

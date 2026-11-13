@@ -1973,6 +1973,8 @@ const messages = {
   'site.region.resetDone': 'Auf das Standarddesign zurückgesetzt.',
   'site.frame.assign': 'Auf diesen Seiten angezeigt',
   'site.frame.scope': 'Teil des Layouts „{scope}“',
+  'site.frame.readOnly': 'Teil des Layouts „{scope}“. Eine Änderung dort betrifft alle Einträge, die das Layout nutzen.',
+  'site.frame.changeInLayout': 'Im Layout ändern',
   'site.frame.default.header': 'Website-Header',
   'site.frame.default.footer': 'Website-Footer',
   'site.frame.none.header': 'Kein Header',

@@ -1968,6 +1968,8 @@ const messages = {
     'site.region.resetDone': 'Reset to the default design.',
     'site.frame.assign': 'Shown on these pages',
     'site.frame.scope': 'Part of the layout “{scope}”',
+    'site.frame.readOnly': 'Part of the layout “{scope}”. Changing it there affects every entry that uses the layout.',
+    'site.frame.changeInLayout': 'Change in layout',
     'site.frame.default.header': 'Site header',
     'site.frame.default.footer': 'Site footer',
     'site.frame.none.header': 'No header',

@@ -10,7 +10,17 @@
       </div>
     </div>
     <div class="space-y-4 p-4">
-      <div v-if="frame" class="space-y-1.5">
+      <!-- On an entry's page the header and footer belong to its layout: shown here, changed there. -->
+      <div v-if="frame?.readOnly" class="space-y-2">
+        <p class="text-xs font-semibold text-slate-700">{{ t("site.frame.assign") }}</p>
+        <p class="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-800 ring-1 ring-inset ring-slate-200">{{ frameLabel(t, frame.value, templatePart, frame.components) }}</p>
+        <p class="text-xs text-slate-500">{{ t("site.frame.readOnly", { scope: frame.scope }) }}</p>
+        <button type="button" class="btn-secondary w-full justify-between" @click="$emit('change-template-part', templatePart)">
+          <span>{{ t("site.frame.changeInLayout") }}</span>
+          <Icon icon="mdi:arrow-right" class="h-4 w-4 shrink-0" aria-hidden="true" />
+        </button>
+      </div>
+      <div v-else-if="frame" class="space-y-1.5">
         <label for="builder-frame-assign" class="block text-xs font-semibold text-slate-700">{{ t("site.frame.assign") }}</label>
         <select
           id="builder-frame-assign"
@@ -411,7 +421,7 @@ const props = defineProps({
   /** Whether the search results page is edited: only there do lists have search results to show. */
   searchPage: { type: Boolean, default: false },
 });
-defineEmits(["edit-template-part", "assign-template-part"]);
+defineEmits(["edit-template-part", "assign-template-part", "change-template-part"]);
 
 /** A button's own colors sit with its style, though they are props. */
 const BUTTON_COLORS = ["button_color", "button_text_color", "button_border_color"];

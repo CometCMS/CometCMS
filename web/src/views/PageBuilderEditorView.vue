@@ -250,6 +250,7 @@
           :search-page="target === 'region' && name === 'search_results'"
           @edit-template-part="editTemplatePart"
           @assign-template-part="assignTemplatePart"
+          @change-template-part="changeTemplatePartInLayout"
         >
           <template #empty>
             <BuilderOverview
@@ -1162,8 +1163,17 @@ const selectedFrame = computed(() => {
     value: template[selectedTemplatePart.value],
     components: frameComponents(builder.components.value),
     scope: templateName(t, template),
+    // An entry's page shows its layout's header and footer; they are changed in the layout, for every entry using it.
+    readOnly: target.value === "page",
   };
 });
+
+/** From an entry's page to its layout, with the header or footer selected there to change it. */
+function changeTemplatePartInLayout(part) {
+  if (!FRAME_REGIONS.includes(part)) return;
+  const view = templateView.value;
+  goToView({ ...view, to: { ...view.to, query: { ...view.to.query, part } } });
+}
 
 function assignTemplatePart(part, value) {
   const layout = frameLayout.value;
@@ -1294,6 +1304,13 @@ async function load(next = requested) {
     layoutBaseline.value = clone(builder.nodes.value);
     layoutConflict.value = false;
     await restoreRecovery(current);
+    // Arriving from an entry's page to change its header or footer: select that part.
+    const part = route.query.part;
+    if (typeof part === "string") {
+      if (target === "layout" && canEditLayouts.value && FRAME_REGIONS.includes(part)) selectedTemplatePart.value = part;
+      const { part: _part, ...query } = route.query;
+      if (isBuilderPath(route.path)) router.replace({ query });
+    }
   } catch (err) {
     if (current !== loadSequence) return;
     // A list page that is turned off does not exist: open the entry page instead.
